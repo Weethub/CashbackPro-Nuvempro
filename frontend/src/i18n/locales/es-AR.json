@@ -1,0 +1,190 @@
+{
+  "app": {
+    "loading": "Cargando aplicaci\u00f3n...",
+    "error": "Ocurri\u00f3 un error",
+    "directAccess": "Esta aplicaci\u00f3n debe ser accedida desde el panel de Tiendanube."
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "settings": "Configuraci\u00f3n",
+    "billing": "Planes",
+    "support": "Soporte"
+  },
+  "terms": {
+    "title": "T\u00e9rminos de Uso",
+    "sections": {
+      "s1": {
+        "title": "1. Aceptaci\u00f3n de los T\u00e9rminos",
+        "body": "Al utilizar esta aplicaci\u00f3n, acept\u00e1s todos los t\u00e9rminos y condiciones aqu\u00ed descritos. Si no est\u00e1s de acuerdo con alguna parte de estos t\u00e9rminos, no deber\u00edas utilizar el servicio."
+      },
+      "s2": {
+        "title": "2. Descripci\u00f3n del Servicio",
+        "body": "La aplicaci\u00f3n proporciona herramientas y funcionalidades integradas a la plataforma Tiendanube para ayudarte en la gesti\u00f3n de tu tienda online. Los recursos disponibles pueden variar seg\u00fan el plan contratado."
+      },
+      "s3": {
+        "title": "3. Privacidad y Datos",
+        "body": "Respetamos tu privacidad. Los datos recopilados se utilizan exclusivamente para el funcionamiento de la aplicaci\u00f3n. No compartimos informaci\u00f3n personal con terceros sin tu consentimiento expreso."
+      },
+      "s4": {
+        "title": "4. Uso Aceptable",
+        "body": "Te compromet\u00e9s a utilizar la aplicaci\u00f3n de forma \u00e9tica y legal. Est\u00e1 prohibido usar el servicio para actividades il\u00edcitas, spam o cualquier forma de abuso."
+      },
+      "s5": {
+        "title": "5. Pagos y Cancelaci\u00f3n",
+        "body": "Los planes pagos se cobran seg\u00fan el ciclo elegido. Pod\u00e9s cancelar en cualquier momento. Despu\u00e9s de la cancelaci\u00f3n, el acceso contin\u00faa hasta el final del per\u00edodo pago."
+      },
+      "s6": {
+        "title": "6. Limitaci\u00f3n de Responsabilidad",
+        "body": "La aplicaci\u00f3n se proporciona \"tal cual\". No nos responsabilizamos por p\u00e9rdidas o da\u00f1os derivados del uso o imposibilidad de uso del servicio. Haremos lo posible para mantener la disponibilidad y seguridad."
+      }
+    },
+    "scrollHint": "Desplaz\u00e1 hasta el final para aceptar los t\u00e9rminos",
+    "accept": "Le\u00ed y acepto los T\u00e9rminos de Uso",
+    "error": "Error al aceptar los t\u00e9rminos. Intent\u00e1 de nuevo."
+  },
+  "onboarding": {
+    "title": "Configurar tu perfil",
+    "steps": {
+      "s1": "Sobre tu negocio",
+      "s2": "Preferencias de contenido",
+      "s3": "Detalles adicionales"
+    },
+    "fields": {
+      "niche": "Nicho de mercado",
+      "nichePlaceholder": "Ej: Moda femenina, electr\u00f3nica, tienda de mascotas...",
+      "audience": "P\u00fablico objetivo",
+      "audiencePlaceholder": "Ej: Mujeres de 25-40 a\u00f1os, gamers...",
+      "tone": "Tono de comunicaci\u00f3n",
+      "toneOptions": {
+        "professional": "Profesional",
+        "casual": "Casual",
+        "friendly": "Amigable",
+        "formal": "Formal"
+      },
+      "frequency": "Frecuencia de publicaci\u00f3n",
+      "frequencyOptions": {
+        "daily": "Diaria",
+        "weekly": "Semanal",
+        "biweekly": "Quincenal",
+        "monthly": "Mensual"
+      },
+      "articleLength": "Largo del art\u00edculo",
+      "articleLengthOptions": {
+        "short": "Corto (300-500 palabras)",
+        "medium": "Medio (500-1000 palabras)",
+        "long": "Largo (1000+ palabras)"
+      },
+      "keywords": "Palabras clave",
+      "keywordsPlaceholder": "Separ\u00e1 por coma: palabra1, palabra2...",
+      "extras": "Informaci\u00f3n adicional",
+      "extrasPlaceholder": "\u00bfAlgo m\u00e1s que debamos saber sobre tu negocio?"
+    },
+    "back": "Volver",
+    "next": "Siguiente",
+    "finish": "Finalizar"
+  },
+  "billing": {
+    "title": "Planes y Facturaci\u00f3n",
+    "locked": "Eleg\u00ed un plan para seguir usando la aplicaci\u00f3n.",
+    "status": {
+      "currentPlan": "Plan actual",
+      "renewalDate": "Fecha de renovaci\u00f3n",
+      "active": "Activo",
+      "canceled": "Cancelado",
+      "pastDue": "Pago pendiente",
+      "trialing": "Per\u00edodo de prueba"
+    },
+    "interval": {
+      "monthly": "Mensual",
+      "semiannual": "Semestral",
+      "annual": "Anual"
+    },
+    "plans": {
+      "starter": {
+        "name": "Starter",
+        "price": "Gratis",
+        "features": [
+          "Funcionalidades b\u00e1sicas",
+          "Hasta 100 productos",
+          "Soporte por e-mail"
+        ]
+      },
+      "growth": {
+        "name": "Growth",
+        "priceMonthly": "$ 49,90/mes",
+        "priceSemiannual": "$ 39,90/mes",
+        "priceAnnual": "$ 29,90/mes",
+        "features": [
+          "Todo de Starter",
+          "Productos ilimitados",
+          "Reportes avanzados",
+          "Soporte prioritario"
+        ]
+      },
+      "scale": {
+        "name": "Scale",
+        "priceMonthly": "$ 99,90/mes",
+        "priceSemiannual": "$ 79,90/mes",
+        "priceAnnual": "$ 59,90/mes",
+        "features": [
+          "Todo de Growth",
+          "API personalizada",
+          "Integraciones premium",
+          "Gerente de cuenta dedicado",
+          "SLA garantizado"
+        ]
+      }
+    },
+    "checkout": "Suscribirse",
+    "portal": "Gestionar suscripci\u00f3n",
+    "cancel": "Cancelar plan",
+    "invoices": {
+      "title": "Facturas",
+      "date": "Fecha",
+      "amount": "Monto",
+      "status": "Estado",
+      "paid": "Pagado",
+      "pending": "Pendiente",
+      "noInvoices": "No se encontraron facturas."
+    }
+  },
+  "support": {
+    "title": "Soporte",
+    "whatsapp": "Hablar por WhatsApp",
+    "videoTitle": "Tutorial en video",
+    "faq": [
+      {
+        "question": "\u00bfC\u00f3mo cambio mi plan?",
+        "answer": "And\u00e1 a la p\u00e1gina de Planes y eleg\u00ed el plan deseado. El cambio se aplica de inmediato."
+      },
+      {
+        "question": "\u00bfPuedo cancelar en cualquier momento?",
+        "answer": "S\u00ed, pod\u00e9s cancelar cuando quieras. El acceso contin\u00faa hasta el final del per\u00edodo ya pagado."
+      },
+      {
+        "question": "\u00bfC\u00f3mo contacto al soporte?",
+        "answer": "Pod\u00e9s contactarnos por WhatsApp o abrir un ticket por el e-mail de soporte."
+      },
+      {
+        "question": "\u00bfMis datos est\u00e1n seguros?",
+        "answer": "S\u00ed, utilizamos encriptaci\u00f3n y seguimos las mejores pr\u00e1cticas de seguridad para proteger tus datos."
+      }
+    ]
+  },
+  "dashboard": {
+    "title": "Panel",
+    "welcome": "\u00a1Bienvenido a tu panel!"
+  },
+  "settings": {
+    "title": "Configuraci\u00f3n"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "\u00a1\u00c9xito!",
+    "noData": "No se encontraron datos."
+  }
+}

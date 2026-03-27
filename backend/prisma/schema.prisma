@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══ APP (Tenant) ═══
+
+model Store {
+  id                Int       @id @default(autoincrement())
+  nuvemshopId       String    @unique
+  name              String?
+  domain            String?
+  email             String?
+  accessToken       String?
+  plan              String    @default("starter")
+  trialEndsAt       DateTime?
+  stripeCustomerId  String?
+  partnerId         String?
+  partnerName       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  subscription      Subscription?
+  profile           StoreProfile?
+  termsAcceptances  TermsAcceptance[]
+  @@map("stores")
+}
+
+model StoreProfile {
+  id        Int      @id @default(autoincrement())
+  storeId   Int      @unique
+  store     Store    @relation(fields: [storeId], references: [id])
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("store_profiles")
+}
+
+model Subscription {
+  id                    Int       @id @default(autoincrement())
+  storeId               Int       @unique
+  store                 Store     @relation(fields: [storeId], references: [id])
+  stripeSubscriptionId  String?
+  status                String    @default("none")
+  planKey               String?
+  billingInterval       String?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id               Int      @id @default(autoincrement())
+  storeId          Int
+  stripeInvoiceId  String   @unique
+  amountPaid       Float
+  currency         String   @default("brl")
+  status           String
+  invoiceUrl       String?
+  invoicePdf       String?
+  periodStart      DateTime?
+  periodEnd        DateTime?
+  createdAt        DateTime @default(now())
+  @@map("invoices")
+}
+
+model TermsVersion {
+  id          Int       @id @default(autoincrement())
+  version     String
+  title       String
+  content     String
+  isPublished Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  acceptances TermsAcceptance[]
+  @@map("terms_versions")
+}
+
+model TermsAcceptance {
+  id              Int          @id @default(autoincrement())
+  storeId         Int
+  store           Store        @relation(fields: [storeId], references: [id])
+  termsVersionId  Int
+  termsVersion    TermsVersion @relation(fields: [termsVersionId], references: [id])
+  acceptedAt      DateTime     @default(now())
+  @@unique([storeId, termsVersionId])
+  @@map("terms_acceptances")
+}
+
+// ═══ ADMIN ═══
+
+model AdminUser {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String    @default("suporte")
+  isActive     Boolean   @default(true)
+  lastLogin    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     AdminSession[]
+  @@map("admin_users")
+}
+
+model AdminSession {
+  id        Int       @id @default(autoincrement())
+  adminId   Int
+  admin     AdminUser @relation(fields: [adminId], references: [id])
+  token     String
+  ipAddress String?
+  userAgent String?
+  isActive  Boolean   @default(true)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  @@map("admin_sessions")
+}
+
+model AdminPlan {
+  id               Int      @id @default(autoincrement())
+  appId            String
+  name             String
+  stripePriceIds   Json     @default("{}")
+  features         Json     @default("{}")
+  price            Json     @default("{}")
+  commissionRate   Float    @default(0)
+  revenueShareRate Float    @default(0)
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@unique([appId, name])
+  @@map("admin_plans")
+}
+
+model AdminConfig {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  group     String   @default("system")
+  label     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("admin_configs")
+}
+
+model AdminLog {
+  id        Int      @id @default(autoincrement())
+  adminId   Int?
+  action    String
+  entity    String?
+  entityId  String?
+  details   Json?
+  ipAddress String?
+  severity  String   @default("info")
+  createdAt DateTime @default(now())
+  @@map("admin_logs")
+}
+
+model AdminCommission {
+  id               Int      @id @default(autoincrement())
+  partnerId        String
+  partnerName      String?
+  storeId          Int
+  invoiceId        String
+  amount           Float
+  commissionRate   Float
+  commissionAmount Float
+  status           String   @default("pending")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@map("admin_commissions")
+}
+
+model AdminCoupon {
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  type           String
+  value          Float
+  maxRedemptions Int?
+  timesRedeemed  Int       @default(0)
+  validUntil     DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  @@map("admin_coupons")
+}
+
+model AdminFaq {
+  id          Int      @id @default(autoincrement())
+  category    String   @default("geral")
+  question    String
+  answer      String
+  videoUrl    String?
+  isPublished Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@map("admin_faqs")
+}

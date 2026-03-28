@@ -62,13 +62,20 @@ router.get('/stripe-account', async (req, res, next) => {
 });
 
 /**
+ * Normalize a plan row: expose `prices` as alias for `price` for frontend compatibility.
+ */
+function normalizePlan(plan) {
+  return { ...plan, prices: plan.price };
+}
+
+/**
  * GET /admin-api/plans — List all plans
  */
 router.get('/', async (req, res, next) => {
   try {
     const appId = process.env.APP_SLUG || 'meuapp';
     const plans = await adminPlanService.list(appId);
-    res.json({ plans });
+    res.json({ plans: plans.map(normalizePlan) });
   } catch (err) {
     next(err);
   }
@@ -79,7 +86,7 @@ router.get('/', async (req, res, next) => {
  */
 router.post('/', requireRole('gerente'), async (req, res, next) => {
   try {
-    const { name, features, price, commissionRate, revenueShareRate, sortOrder } = req.body;
+    const { name, features, prices, price, commissionRate, revenueShareRate, sortOrder } = req.body;
     const appId = process.env.APP_SLUG || 'meuapp';
 
     if (!name) {
@@ -90,7 +97,7 @@ router.post('/', requireRole('gerente'), async (req, res, next) => {
       appId,
       name,
       features: features || {},
-      price: price || {},
+      price: prices || price || {},
       commissionRate: commissionRate || 0,
       revenueShareRate: revenueShareRate || 0,
       sortOrder: sortOrder || 0,
@@ -105,7 +112,38 @@ router.post('/', requireRole('gerente'), async (req, res, next) => {
       ipAddress: req.ip,
     });
 
-    res.status(201).json({ plan });
+    res.status(201).json({ plan: normalizePlan(plan) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /admin-api/plans/verify-stripe — Verify all plans Stripe price IDs at once
+ * Rota definida ANTES de /:id para evitar conflito de params.
+ */
+router.get('/verify-stripe', async (req, res, next) => {
+  try {
+    const appId = process.env.APP_SLUG || 'meuapp';
+    const plans = await adminPlanService.list(appId);
+    const verifications = {};
+
+    for (const plan of plans) {
+      const key = plan.id;
+      const stripePriceIds = plan.stripePriceIds || {};
+      const hasPrices = plan.price && Object.values(plan.price).some((v) => v > 0);
+      const hasPriceIds = Object.values(stripePriceIds).some(Boolean);
+
+      if (!hasPrices) {
+        verifications[key] = { status: 'missing', reason: 'Plano sem precos configurados' };
+      } else if (!hasPriceIds) {
+        verifications[key] = { status: 'missing', reason: 'Ainda nao sincronizado com Stripe' };
+      } else {
+        verifications[key] = { status: 'synced', stripePriceIds };
+      }
+    }
+
+    res.json({ verifications });
   } catch (err) {
     next(err);
   }
@@ -117,12 +155,13 @@ router.post('/', requireRole('gerente'), async (req, res, next) => {
 router.put('/:id', requireRole('gerente'), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const { name, features, price, commissionRate, revenueShareRate, sortOrder, isActive } = req.body;
+    const { name, features, prices, price, commissionRate, revenueShareRate, sortOrder, isActive } = req.body;
 
     const data = {};
     if (name !== undefined) data.name = name;
     if (features !== undefined) data.features = features;
-    if (price !== undefined) data.price = price;
+    if (prices !== undefined) data.price = prices;
+    else if (price !== undefined) data.price = price;
     if (commissionRate !== undefined) data.commissionRate = commissionRate;
     if (revenueShareRate !== undefined) data.revenueShareRate = revenueShareRate;
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
@@ -139,7 +178,7 @@ router.put('/:id', requireRole('gerente'), async (req, res, next) => {
       ipAddress: req.ip,
     });
 
-    res.json({ plan });
+    res.json({ plan: normalizePlan(plan) });
   } catch (err) {
     next(err);
   }
@@ -161,7 +200,7 @@ router.post('/:id/deactivate', requireRole('gerente'), async (req, res, next) =>
       ipAddress: req.ip,
     });
 
-    res.json({ plan });
+    res.json({ plan: normalizePlan(plan) });
   } catch (err) {
     next(err);
   }
@@ -184,7 +223,7 @@ router.post('/:id/sync-stripe', requireRole('proprietario'), async (req, res, ne
       ipAddress: req.ip,
     });
 
-    res.json({ plan });
+    res.json({ plan: normalizePlan(plan) });
   } catch (err) {
     next(err);
   }

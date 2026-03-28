@@ -57,21 +57,39 @@ const adminPlanService = {
 
     const prices = plan.price || {};
     const appName = process.env.APP_NAME || 'MeuApp';
+    const appSlug = process.env.APP_SLUG || plan.appId;
 
     // Create or find Stripe product
     const productName = `${appName} - ${plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}`;
 
     let product;
     const existingProducts = await stripe.products.search({
-      query: `metadata['plan_id']:'${plan.id}'`,
+      query: `metadata['admin_plan_id']:'${plan.id}'`,
     });
 
     if (existingProducts.data.length > 0) {
       product = existingProducts.data[0];
+      // Update metadata to keep in sync
+      await stripe.products.update(product.id, {
+        name: productName,
+        metadata: {
+          plan_key: plan.name,
+          admin_plan_id: String(plan.id),
+          app_id: plan.appId,
+          app_name: appName,
+          app_slug: appSlug,
+        },
+      });
     } else {
       product = await stripe.products.create({
         name: productName,
-        metadata: { plan_id: String(plan.id), app_id: plan.appId },
+        metadata: {
+          plan_key: plan.name,
+          admin_plan_id: String(plan.id),
+          app_id: plan.appId,
+          app_name: appName,
+          app_slug: appSlug,
+        },
       });
     }
 
@@ -99,8 +117,10 @@ const adminPlanService = {
           interval_count: config.interval_count,
         },
         metadata: {
-          plan_id: String(plan.id),
-          plan_name: plan.name,
+          plan_key: plan.name,
+          admin_plan_id: String(plan.id),
+          app_id: plan.appId,
+          app_slug: appSlug,
           billing_interval: key,
         },
       });

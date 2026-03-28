@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Box, Button, Text, Title, Sidebar, NavTabs } from '@nimbus-ds/components';
+import { Box, Button, Text, Title, Sidebar } from '@nimbus-ds/components';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
 
 export default function AppNav() {
@@ -12,35 +12,41 @@ export default function AppNav() {
 
   const faqItems = t('support.faq', { returnObjects: true }) || [];
 
+  const isActive = (path) =>
+    path === '/'
+      ? location.pathname === '/'
+      : location.pathname.startsWith(path);
+
   return (
     <>
       <Box
         display="flex"
         alignItems="center"
         justifyContent="space-between"
-        padding="4"
+        padding="2"
+        paddingLeft="4"
+        paddingRight="4"
         borderColor="neutral-surfaceHighlight"
         borderStyle="solid"
         borderWidth="none"
         borderBottomWidth="1"
+        backgroundColor="neutral-background"
       >
         {/* Left nav */}
-        <Box display="flex" gap="2" alignItems="center">
-          <NavTabs>
-            <NavTabs.Item
-              active={location.pathname === '/'}
-              onClick={() => navigate('/')}
-            >
-              {t('nav.dashboard')}
-            </NavTabs.Item>
-            {/* Placeholder for app-specific nav items */}
-          </NavTabs>
+        <Box display="flex" gap="1" alignItems="center">
+          <Button
+            appearance={isActive('/') ? 'primary' : 'transparent'}
+            onClick={() => navigate('/')}
+          >
+            {t('nav.dashboard')}
+          </Button>
+          {/* Placeholder for app-specific nav items */}
         </Box>
 
         {/* Right nav */}
         <Box display="flex" gap="2" alignItems="center">
           <Button
-            appearance={location.pathname === '/billing' ? 'primary' : 'transparent'}
+            appearance={isActive('/billing') ? 'primary' : 'transparent'}
             onClick={() => navigate('/billing')}
           >
             {t('nav.billing')}
@@ -60,10 +66,11 @@ export default function AppNav() {
         open={supportOpen}
         onRemove={() => setSupportOpen(false)}
       >
-        <Sidebar.Header title={t('support.title')} />
-        <Sidebar.Body>
-          <Box display="flex" flexDirection="column" gap="4" padding="4">
-            {/* WhatsApp link */}
+        <Box display="flex" flexDirection="column" gap="6" padding="6">
+          <Title as="h2">{t('support.title')}</Title>
+
+          {/* WhatsApp link */}
+          <Box display="flex" flexDirection="column" gap="2">
             <Button
               appearance="primary"
               as="a"
@@ -73,37 +80,36 @@ export default function AppNav() {
             >
               {t('support.whatsapp')}
             </Button>
+          </Box>
 
-            {/* Video embed placeholder */}
-            <Box>
-              <Title as="h4">{t('support.videoTitle')}</Title>
-              <Box
-                padding="4"
-                borderColor="neutral-surfaceHighlight"
-                borderStyle="dashed"
-                borderWidth="1"
-                borderRadius="2"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                height="180px"
-              >
-                <Text color="neutral-textDisabled">Video placeholder</Text>
-              </Box>
-            </Box>
-
-            {/* FAQ */}
-            <Box display="flex" flexDirection="column" gap="3">
-              <Title as="h4">FAQ</Title>
-              {Array.isArray(faqItems) && faqItems.map((item, idx) => (
-                <Box key={idx} display="flex" flexDirection="column" gap="1">
-                  <Text fontWeight="bold">{item.question}</Text>
-                  <Text>{item.answer}</Text>
-                </Box>
-              ))}
+          {/* Video embed placeholder */}
+          <Box display="flex" flexDirection="column" gap="2">
+            <Title as="h4">{t('support.videoTitle')}</Title>
+            <Box
+              padding="4"
+              borderColor="neutral-surfaceHighlight"
+              borderStyle="dashed"
+              borderWidth="1"
+              borderRadius="2"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text color="neutral-textDisabled">Video placeholder</Text>
             </Box>
           </Box>
-        </Sidebar.Body>
+
+          {/* FAQ */}
+          <Box display="flex" flexDirection="column" gap="3">
+            <Title as="h4">FAQ</Title>
+            {Array.isArray(faqItems) && faqItems.map((item, idx) => (
+              <Box key={idx} display="flex" flexDirection="column" gap="1">
+                <Text fontWeight="bold">{item.question}</Text>
+                <Text color="neutral-textLow" fontSize="caption">{item.answer}</Text>
+              </Box>
+            ))}
+          </Box>
+        </Box>
       </Sidebar>
     </>
   );

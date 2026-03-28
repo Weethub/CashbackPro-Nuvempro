@@ -6,6 +6,14 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.4] - 2026-03-28
+
+### Corrigido
+
+- **`AppNav.jsx`: crash `Cannot read properties of undefined (reading 'Item')`** — `NavTabs` não existe no `@nimbus-ds/components` v5; acesso a `NavTabs.Item` causava TypeError imediato ao renderizar; substituído por `Button` com `appearance="primary|transparent"` baseado em `isActive(path)`, seguindo o padrão correto do Nimbus DS v5
+
+---
+
 ## [1.3.3] - 2026-03-28
 
 ### Corrigido

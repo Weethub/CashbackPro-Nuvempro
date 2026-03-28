@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.2] - 2026-03-28
+
+### Corrigido
+
+- **Nexo SDK: API usada incorretamente** — `NexoProvider` chamava `nexoInstance.connect()` e `nexoInstance.getSessionToken()` como métodos de instância, mas o SDK só exporta estas como **funções standalone** (`connect(instance)`, `getSessionToken(instance)`); a instância criada por `create()` não possui esses métodos
+- **`iAmReady()` nunca era chamado** — sem esta chamada a Nuvemshop mantém o iframe com `height=0` e exibe erro; corrigido para chamar `iAmReady(nexoInstance)` ao final da inicialização, justo antes de `setLoading(false)`
+- Imports corrigidos: `import nexo, { connect as nexoConnect, iAmReady, getSessionToken as nexoGetSessionToken } from '@tiendanube/nexo'`
+
+---
+
 ## [1.3.1] - 2026-03-28
 
 ### Corrigido

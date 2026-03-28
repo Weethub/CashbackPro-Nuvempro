@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import nexo from '@tiendanube/nexo';
+import nexo, { connect as nexoConnect, iAmReady, getSessionToken as nexoGetSessionToken } from '@tiendanube/nexo';
 import { useTranslation } from 'react-i18next';
 import api, { setSessionToken, setTokenRefresher, setOnUnauthorized } from '../services/api.js';
 import LoadingState from '../components/LoadingState.jsx';
@@ -44,6 +44,7 @@ export default function NexoProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const refreshInterval = useRef(null);
+  const nexoInstanceRef = useRef(null);
 
   const isEmbedded = isInsideIframe() && isNuvemshopReferrer();
   const isDevLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -64,7 +65,7 @@ export default function NexoProvider({ children }) {
 
   const refreshToken = useCallback(async (nexoInstance) => {
     try {
-      const token = await nexoInstance.getSessionToken();
+      const token = await nexoGetSessionToken(nexoInstance);
       setSessionToken(token);
       return token;
     } catch (err) {
@@ -99,9 +100,10 @@ export default function NexoProvider({ children }) {
             clientId: import.meta.env.VITE_NUVEMSHOP_APP_ID || '00000',
           });
 
-          await nexoInstance.connect();
-          token = await nexoInstance.getSessionToken();
+          await nexoConnect(nexoInstance);
+          token = await nexoGetSessionToken(nexoInstance);
           setSessionToken(token);
+          nexoInstanceRef.current = nexoInstance;
 
           // Set up token refresher for 401 retry
           setTokenRefresher(() => refreshToken(nexoInstance));
@@ -126,6 +128,8 @@ export default function NexoProvider({ children }) {
 
         if (!cancelled) {
           await loadStatus();
+          // Signal Nuvemshop that the app is fully ready (triggers iframe resize)
+          if (nexoInstanceRef.current) iAmReady(nexoInstanceRef.current);
           setLoading(false);
         }
       } catch (err) {

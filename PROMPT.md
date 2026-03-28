@@ -97,6 +97,8 @@ Siga a Fase 11 do documento de referencia:
 10. Nuvemshop usa "Authentication" (nao "Authorization")
 11. Apos prisma db push, SEMPRE prisma generate + reiniciar backend
 12. Testes minimos passando antes de qualquer deploy
+13. **TODA atualizacao do template DEVE terminar com o processo de release** (ver STANDARDS.md seção 6):
+    bump version.js → CHANGELOG.md → commit → tag → push → GitHub Release → deploy Railway
 
 ## Dados do App
 

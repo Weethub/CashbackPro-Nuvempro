@@ -454,6 +454,88 @@ describe('App: [NomeDoApp]', () => {
 
 ---
 
+---
+
+## 6. Versionamento e Release (OBRIGATORIO apos toda atualizacao)
+
+### Regra Geral
+
+**Toda alteracao no template — seja bug fix, nova feature ou melhoria — DEVE seguir este processo de release antes de ser considerada concluida.**
+
+### Quando Incrementar
+
+| Tipo de mudanca | Versao | Exemplo |
+|-----------------|--------|---------|
+| Bug fix, melhoria pequena | PATCH (x.x.**+1**) | 1.1.0 → 1.1.1 |
+| Nova funcionalidade, nova rota, nova tela | MINOR (x.**+1**.0) | 1.1.0 → 1.2.0 |
+| Breaking change, migration de banco, refactor arquitetural | MAJOR (**+1**.0.0) | 1.1.0 → 2.0.0 |
+
+### Processo Obrigatorio (executar sempre)
+
+#### Passo 1 — Atualizar versao
+```javascript
+// backend/src/lib/version.js
+const TEMPLATE_VERSION = 'X.Y.Z'; // novo numero
+```
+
+#### Passo 2 — Atualizar CHANGELOG.md
+```markdown
+## [X.Y.Z] - YYYY-MM-DD
+
+### Corrigido
+- Descricao do bug fix
+
+### Adicionado
+- Descricao da nova feature
+```
+
+#### Passo 3 — Commit + Tag + Push
+```bash
+git add backend/src/lib/version.js CHANGELOG.md
+git commit -m "chore: bump versao para vX.Y.Z"
+git tag vX.Y.Z
+git push origin main
+git push origin vX.Y.Z
+```
+
+#### Passo 4 — Criar Release no GitHub
+```bash
+# Via API (substituir X.Y.Z e DESCRICAO)
+curl -X POST https://api.github.com/repos/NuvemproApp/nuvempro-app-template/releases \
+  -H "Authorization: Bearer $GH_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"tag_name":"vX.Y.Z","name":"vX.Y.Z - DESCRICAO","body":"...","draft":false,"prerelease":false}'
+```
+
+#### Passo 5 — Deploy Railway (backend)
+```bash
+# Via API Railway (obtem COMMIT_SHA do ultimo commit)
+# Necessario para templateVersion atualizar no /health e na sidebar do admin
+```
+
+#### Passo 6 — Verificar no admin
+- Sidebar mostra `vX.Y.Z` no rodape
+- `/admin-api/health` retorna `"templateVersion": "X.Y.Z"`
+
+### Por que isso importa
+
+O badge de versao na sidebar compara a versao local com o GitHub Releases via API. Se o template nao for tagueado + release criado, apps que usam este template nao saberao que existe uma atualizacao disponivel.
+
+### Checklist de Release
+
+```
+[ ] version.js atualizado com novo numero
+[ ] CHANGELOG.md atualizado com o que mudou
+[ ] commit com mensagem "chore: bump versao para vX.Y.Z"
+[ ] git tag vX.Y.Z criada e pushed
+[ ] Release publicado no GitHub com notas
+[ ] Deploy Railway feito (backend)
+[ ] /admin-api/health retorna versao nova
+[ ] Sidebar do admin exibe versao nova
+```
+
+---
+
 ## Resumo — Validacao Rapida
 
 Antes de fazer deploy, confirme:

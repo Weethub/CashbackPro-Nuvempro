@@ -10,12 +10,15 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 function Root() {
   const params = new URLSearchParams(window.location.search);
-  const sessionToken = params.get('session_token');
+  const path = window.location.pathname;
 
-  if (sessionToken) {
+  // Auth callback: backend redirected here with ?token=JWT after OAuth install
+  // Also handle legacy ?session_token= format
+  const callbackToken = params.get('token') || params.get('session_token');
+  if (path === '/auth/callback' && callbackToken) {
     return (
       <ErrorBoundary>
-        <InstallSuccess />
+        <InstallSuccess token={callbackToken} />
       </ErrorBoundary>
     );
   }

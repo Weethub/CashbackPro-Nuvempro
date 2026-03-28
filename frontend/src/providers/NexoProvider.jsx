@@ -83,7 +83,7 @@ export default function NexoProvider({ children }) {
 
         if (isDevLocal && !isEmbedded) {
           // Dev token flow
-          const res = await api.get('/auth/dev-token');
+          const res = await api.post('/auth/dev-token', {});
           token = res.data.token;
           setSessionToken(token);
           if (res.data.store) setStore(res.data.store);
@@ -109,12 +109,12 @@ export default function NexoProvider({ children }) {
         // Verify token and get store info
         if (token) {
           try {
-            const verifyRes = await api.get('/api/me');
+            const verifyRes = await api.get('/auth/verify-token');
             if (!cancelled && verifyRes.data) {
               setStore(verifyRes.data.store || verifyRes.data);
             }
           } catch (err) {
-            console.warn('Could not load /api/me:', err);
+            console.warn('Could not verify token:', err);
           }
         }
 

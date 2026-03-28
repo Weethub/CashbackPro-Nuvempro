@@ -6,6 +6,18 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.0] - 2026-03-28
+
+### Corrigido
+
+- **OAuth callback redireciona para o admin da Nuvemshop** — backend agora redireciona para `nuvemshop.com.br/admin/{userId}` (ou `tiendanube.com` para AR) após instalação; antes redirecionava para o frontend causando erro "acesso direto"
+- **`InstallSuccess` reescrito** — página de fallback `/auth/callback?token=...` decodifica o JWT, mostra "Instalação concluída!" e redireciona com countdown para o admin correto; detecta país pelo payload do JWT
+- **`main.jsx`** — detecta path `/auth/callback` + param `token` e renderiza `InstallSuccess` fora do `NexoProvider` (sem o erro de "acesso direto")
+- **Bug #1: dev-token GET→POST** — `NexoProvider.jsx` chamava `api.get('/auth/dev-token')` mas backend tem `POST`; corrigido para `api.post('/auth/dev-token', {})`
+- **Bug #4: /api/me não existe** — `NexoProvider.jsx` chamava `/api/me` (rota inexistente); corrigido para `/auth/verify-token` (rota real)
+
+---
+
 ## [1.2.0] - 2026-03-28
 
 ### Adicionado

@@ -60,16 +60,22 @@ router.get('/callback', authLimiter, async (req, res, next) => {
       create: { storeId: store.id, status: 'none' },
     });
 
-    // Generate JWT
+    // Generate JWT (kept for session use if needed)
     const token = jwt.sign(
       { storeId: store.id, nuvemshopId: store.nuvemshopId },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    // Redirect to frontend with token
-    const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
-    res.redirect(redirectUrl);
+    // Redirect to Nuvemshop admin — the app will be available there embedded via Nexo SDK
+    // storeInfo.country: 'BR' → nuvemshop.com.br | 'AR' → tiendanube.com | others → .com.br
+    const country = (storeInfo.country || 'BR').toUpperCase();
+    const adminBase = country === 'AR'
+      ? 'https://www.tiendanube.com'
+      : 'https://www.nuvemshop.com.br';
+    const nuvemshopAdminUrl = `${adminBase}/admin/${userId}`;
+
+    res.redirect(nuvemshopAdminUrl);
   } catch (err) {
     next(err);
   }

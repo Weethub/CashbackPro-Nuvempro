@@ -180,16 +180,18 @@ model AdminCommission {
 }
 
 model AdminCoupon {
-  id             Int       @id @default(autoincrement())
-  code           String    @unique
-  type           String
-  value          Float
-  maxRedemptions Int?
-  timesRedeemed  Int       @default(0)
-  validUntil     DateTime?
-  isActive       Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                    Int       @id @default(autoincrement())
+  code                  String    @unique
+  type                  String
+  value                 Float
+  maxRedemptions        Int?
+  timesRedeemed         Int       @default(0)
+  validUntil            DateTime?
+  isActive              Boolean   @default(true)
+  stripeCouponId        String?
+  stripePromotionCodeId String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
   @@map("admin_coupons")
 }
 

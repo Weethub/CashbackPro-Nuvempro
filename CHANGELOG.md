@@ -6,6 +6,32 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.2.0] - 2026-03-28
+
+### Adicionado
+
+- **Sincronização automática de cupons com Stripe** — ao criar um cupom no admin, o sistema cria automaticamente um Stripe Coupon e um Stripe Promotion Code vinculados
+- **Isolamento por app via `applies_to.products`** — cada cupom é restrito aos produtos Stripe dos planos deste app; não funciona em checkouts de outros apps na mesma conta Stripe
+- **Endpoint `POST /admin-api/coupons/:id/sync-stripe`** — sincroniza um cupom existente com o Stripe (útil para cupons criados antes desta versão)
+- **Endpoint `GET /admin-api/coupons/verify-stripe`** — verifica o status de todos os cupons no Stripe (synced / missing / expired / not_synced)
+- **Endpoint `PATCH /admin-api/coupons/:id`** — toggle de `isActive` com desativação automática do Promotion Code no Stripe
+- **Coluna "Stripe" na tabela de cupons** — badge de status (Stripe OK / Ausente / Expirado / Não sincronizado) com ícones visuais
+- **Botão de sincronização por linha** — ícone de refresh em cada cupom para sincronizar individualmente
+- **Botão "Verificar Stripe"** no cabeçalho da página de cupons
+
+### Corrigido
+
+- **Tipo de cupom unificado** — backend e frontend agora usam os mesmos tipos: `percent_off`, `amount_off`, `free_period` (antes backend usava "percentage"/"fixed")
+- **Modal de edição de cupom** — código e tipo desabilitados ao editar (não podem ser alterados após criação no Stripe)
+
+### Técnico
+
+- Modelo `AdminCoupon` no Prisma recebeu campos `stripeCouponId String?` e `stripePromotionCodeId String?`
+- `free_period` mapeado para Stripe como cupom 100% off com `duration: repeating, duration_in_months = ceil(dias/30)`
+- Erros de sincronização com Stripe são não-bloqueantes: cupom é criado no banco mesmo se Stripe falhar
+
+---
+
 ## [1.1.0] - 2026-03-28
 
 ### Corrigido

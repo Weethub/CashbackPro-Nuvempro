@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import adminApi from '../services/adminApi';
 import { Settings, Save, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import TemplateVersionCard from '../components/TemplateVersionCard';
 
 export default function SettingsPage() {
   const [configs, setConfigs] = useState({});
@@ -221,6 +222,9 @@ export default function SettingsPage() {
           Nenhuma configuracao encontrada.
         </div>
       )}
+
+      {/* Template Version */}
+      <TemplateVersionCard />
 
       {/* Change Password */}
       <div className="bg-white rounded-xl shadow-sm p-6">

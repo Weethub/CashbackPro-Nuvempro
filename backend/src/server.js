@@ -4,6 +4,7 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const { AppError } = require('./lib/errors');
+const { TEMPLATE_VERSION, TEMPLATE_REPO } = require('./lib/version');
 const { globalLimiter } = require('./middleware/rateLimiter');
 const { requireAuth } = require('./middleware/auth');
 const { adminAuth } = require('./admin/middleware/adminAuth');
@@ -47,6 +48,8 @@ app.get('/health', (req, res) => {
     ok: true,
     app: process.env.APP_NAME || 'NuvemProApp',
     env: process.env.NODE_ENV || 'development',
+    templateVersion: TEMPLATE_VERSION,
+    templateRepo: TEMPLATE_REPO,
     timestamp: new Date().toISOString(),
   });
 });
@@ -83,7 +86,13 @@ const adminConfigRouter = require('./admin/routes/adminConfig');
 
 // Admin health (no auth)
 app.get('/admin-api/health', (req, res) => {
-  res.json({ ok: true, service: 'admin-api', timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    service: 'admin-api',
+    templateVersion: TEMPLATE_VERSION,
+    templateRepo: TEMPLATE_REPO,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Admin auth routes (login does not require adminAuth)

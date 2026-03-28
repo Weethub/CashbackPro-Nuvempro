@@ -3,8 +3,63 @@ const { AppError } = require('../../lib/errors');
 const { requireRole } = require('../middleware/requireRole');
 const adminPlanService = require('../services/adminPlanService');
 const adminLogService = require('../services/adminLogService');
+const { stripe } = require('../../config/stripe');
 
 const router = express.Router();
+
+/**
+ * GET /admin-api/plans/stripe-account
+ * Retorna informações da conta Stripe configurada:
+ * modo (test/live), nome, email e país.
+ * Rota definida ANTES de /:id para evitar conflito de params.
+ */
+router.get('/stripe-account', async (req, res, next) => {
+  try {
+    const key = process.env.STRIPE_SECRET_KEY || '';
+
+    // Detecta o modo pelo prefixo da chave
+    let mode = 'unknown';
+    if (key.startsWith('sk_live_') || key.startsWith('rk_live_')) mode = 'live';
+    else if (key.startsWith('sk_test_') || key.startsWith('rk_test_')) mode = 'test';
+
+    // Chave não configurada (demo/placeholder)
+    const isConfigured = key.length > 20 && !key.includes('CHANGE_ME') && !key.includes('demo');
+
+    if (!isConfigured) {
+      return res.json({
+        configured: false,
+        mode,
+        accountName: null,
+        email: null,
+        country: null,
+        accountId: null,
+      });
+    }
+
+    // Consulta a conta na API Stripe
+    const account = await stripe.accounts.retrieve();
+
+    res.json({
+      configured: true,
+      mode,
+      accountName: account.settings?.dashboard?.display_name || account.business_profile?.name || null,
+      email: account.email || null,
+      country: account.country || null,
+      accountId: account.id || null,
+    });
+  } catch (err) {
+    // Stripe retornou erro (chave inválida, etc.)
+    res.json({
+      configured: false,
+      mode: 'unknown',
+      accountName: null,
+      email: null,
+      country: null,
+      accountId: null,
+      error: err.message,
+    });
+  }
+});
 
 /**
  * GET /admin-api/plans — List all plans

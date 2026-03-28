@@ -13,6 +13,10 @@ import {
   X,
   DollarSign,
   Percent,
+  FlaskConical,
+  Zap,
+  Building2,
+  ExternalLink,
 } from 'lucide-react';
 
 const syncIcons = {
@@ -30,10 +34,24 @@ export default function PlansPage() {
   const [syncLoading, setSyncLoading] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingPlan, setEditingPlan] = useState(null);
+  const [stripeAccount, setStripeAccount] = useState(null);
+  const [stripeAccountLoading, setStripeAccountLoading] = useState(true);
 
   useEffect(() => {
     fetchPlans();
+    fetchStripeAccount();
   }, []);
+
+  const fetchStripeAccount = async () => {
+    try {
+      const res = await adminApi.get('/plans/stripe-account');
+      setStripeAccount(res.data);
+    } catch {
+      setStripeAccount({ configured: false });
+    } finally {
+      setStripeAccountLoading(false);
+    }
+  };
 
   const fetchPlans = async () => {
     try {
@@ -221,6 +239,9 @@ export default function PlansPage() {
         })}
       </div>
 
+      {/* Stripe Account Info */}
+      <StripeAccountBanner account={stripeAccount} loading={stripeAccountLoading} />
+
       {/* Modal */}
       {showForm && (
         <PlanForm
@@ -231,6 +252,88 @@ export default function PlansPage() {
             setEditingPlan(null);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function StripeAccountBanner({ account, loading }) {
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center gap-3 text-gray-400 text-sm">
+        <Loader2 size={16} className="animate-spin" />
+        Verificando conta Stripe...
+      </div>
+    );
+  }
+
+  if (!account) return null;
+
+  const isLive = account.mode === 'live';
+  const isTest = account.mode === 'test';
+  const configured = account.configured;
+
+  return (
+    <div className={`rounded-xl border p-4 flex items-center justify-between gap-4 flex-wrap
+      ${isLive ? 'bg-emerald-50 border-emerald-200' : isTest ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+
+      <div className="flex items-center gap-3">
+        {/* Modo badge */}
+        {isLive ? (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full">
+            <Zap size={11} /> PRODUÇÃO
+          </span>
+        ) : isTest ? (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500 text-white text-xs font-bold rounded-full">
+            <FlaskConical size={11} /> TESTE
+          </span>
+        ) : (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-400 text-white text-xs font-bold rounded-full">
+            <XCircle size={11} /> NÃO CONFIGURADO
+          </span>
+        )}
+
+        {/* Dados da conta */}
+        {configured ? (
+          <div className="flex items-center gap-4 flex-wrap">
+            {account.accountName && (
+              <div className="flex items-center gap-1.5 text-sm">
+                <Building2 size={14} className={isLive ? 'text-emerald-700' : 'text-amber-700'} />
+                <span className={`font-semibold ${isLive ? 'text-emerald-900' : 'text-amber-900'}`}>
+                  {account.accountName}
+                </span>
+              </div>
+            )}
+            {account.email && (
+              <span className={`text-sm ${isLive ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {account.email}
+              </span>
+            )}
+            {account.country && (
+              <span className={`text-xs font-mono px-2 py-0.5 rounded ${isLive ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                {account.country.toUpperCase()}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-gray-500">
+            {account.error ? `Erro: ${account.error}` : 'Chave Stripe não configurada'}
+          </span>
+        )}
+      </div>
+
+      {/* Link para o dashboard Stripe */}
+      {configured && (
+        <a
+          href={isLive ? 'https://dashboard.stripe.com' : 'https://dashboard.stripe.com/test'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`flex items-center gap-1.5 text-xs font-medium transition-colors
+            ${isLive ? 'text-emerald-700 hover:text-emerald-900' : 'text-amber-700 hover:text-amber-900'}`}
+        >
+          <ExternalLink size={13} />
+          Abrir Dashboard Stripe
+        </a>
       )}
     </div>
   );

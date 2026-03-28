@@ -11,19 +11,50 @@ async function requireAuth(req, res, next) {
 
     const token = header.slice(7);
     let payload;
+    let isNexoToken = false;
+
+    // Tenta verificar com JWT_SECRET (tokens gerados pelo backend)
+    // Se falhar, tenta NUVEMSHOP_CLIENT_SECRET (tokens do Nexo SDK)
     try {
       payload = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-      throw new AppError('Token invalido ou expirado.', 401, 'INVALID_TOKEN');
+    } catch (e1) {
+      try {
+        payload = jwt.verify(token, process.env.NUVEMSHOP_CLIENT_SECRET);
+        isNexoToken = true;
+      } catch (e2) {
+        throw new AppError('Token invalido ou expirado.', 401, 'INVALID_TOKEN');
+      }
     }
 
-    const store = await prisma.store.findUnique({
-      where: { id: payload.storeId },
-      include: { subscription: true },
-    });
+    let store;
 
-    if (!store) {
-      throw new AppError('Loja nao encontrada.', 401, 'STORE_NOT_FOUND');
+    if (isNexoToken) {
+      // Token do Nexo SDK: storeId é o nuvemshopId (userId da Nuvemshop)
+      const nuvemshopId = String(payload.storeId || payload.store_id || payload.sub || '');
+      if (!nuvemshopId || nuvemshopId === 'undefined') {
+        throw new AppError('store_id ausente no token.', 401, 'MISSING_STORE_ID');
+      }
+      store = await prisma.store.findUnique({
+        where: { nuvemshopId },
+        include: { subscription: true },
+      });
+    } else {
+      // Token do backend: storeId é o id interno do banco
+      store = await prisma.store.findUnique({
+        where: { id: payload.storeId },
+        include: { subscription: true },
+      });
+    }
+
+    if (!store || !store.accessToken) {
+      throw new AppError('Loja nao encontrada. Reinstale o app.', 401, 'STORE_NOT_FOUND');
+    }
+
+    // Sincroniza plan com a assinatura ativa se necessário
+    const activeSub = store.subscription;
+    if (activeSub?.status === 'active' && activeSub?.planKey && activeSub.planKey !== store.plan) {
+      await prisma.store.update({ where: { id: store.id }, data: { plan: activeSub.planKey } });
+      store.plan = activeSub.planKey;
     }
 
     req.store = store;

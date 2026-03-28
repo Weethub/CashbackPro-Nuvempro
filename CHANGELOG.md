@@ -6,6 +6,15 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.3] - 2026-03-28
+
+### Corrigido
+
+- **`requireAuth` não aceitava tokens do Nexo SDK** — o middleware só verificava com `JWT_SECRET` e buscava por `id` interno; tokens do Nexo são assinados com `NUVEMSHOP_CLIENT_SECRET` e têm `storeId` = nuvemshopId (string); adicionada verificação dual-key com fallback e lookup por `nuvemshopId` para tokens Nexo
+- **Sincronização de `plan` com assinatura ativa** adicionada ao middleware (garante que `store.plan` reflita a assinatura ativa)
+
+---
+
 ## [1.3.2] - 2026-03-28
 
 ### Corrigido

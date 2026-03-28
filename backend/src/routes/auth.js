@@ -67,15 +67,22 @@ router.get('/callback', authLimiter, async (req, res, next) => {
       { expiresIn: '7d' }
     );
 
-    // Redirect to Nuvemshop admin — the app will be available there embedded via Nexo SDK
-    // storeInfo.country: 'BR' → nuvemshop.com.br | 'AR' → tiendanube.com | others → .com.br
-    const country = (storeInfo.country || 'BR').toUpperCase();
-    const adminBase = country === 'AR'
-      ? 'https://www.tiendanube.com'
-      : 'https://www.nuvemshop.com.br';
-    const nuvemshopAdminUrl = `${adminBase}/admin/${userId}`;
+    // Redirect to the app inside the store's Nuvemshop admin panel
+    // Pattern: https://{store_domain}/admin/apps/{APP_ID}/
+    // APP_ID = NUVEMSHOP_CLIENT_ID (e.g. 28692)
+    // store_domain = original_domain from store info (e.g. postaidemo.lojavirtualnuvem.com.br)
+    const appId = process.env.NUVEMSHOP_CLIENT_ID;
+    const storeDomain = storeInfo.original_domain || storeInfo.domain;
 
-    res.redirect(nuvemshopAdminUrl);
+    let redirectTarget;
+    if (storeDomain && appId) {
+      redirectTarget = `https://${storeDomain}/admin/apps/${appId}/`;
+    } else {
+      // Fallback: frontend callback page with token
+      redirectTarget = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+    }
+
+    res.redirect(redirectTarget);
   } catch (err) {
     next(err);
   }

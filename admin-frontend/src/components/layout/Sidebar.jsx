@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
+import { useTemplateVersion } from '../../hooks/useTemplateVersion';
 import {
   LayoutDashboard,
   Store,
@@ -15,6 +16,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  GitBranch,
+  AlertTriangle,
 } from 'lucide-react';
 
 const navItems = [
@@ -34,6 +37,7 @@ const navItems = [
 export default function Sidebar({ collapsed, onToggle }) {
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
+  const { current, outdated, loading: versionLoading } = useTemplateVersion();
 
   const handleLogout = () => {
     logout();
@@ -80,10 +84,31 @@ export default function Sidebar({ collapsed, onToggle }) {
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-slate-700 p-3">
+      <div className="border-t border-slate-700 p-3 space-y-1">
         {!collapsed && admin?.email && (
-          <p className="text-xs text-slate-400 truncate mb-2 px-1">{admin.email}</p>
+          <p className="text-xs text-slate-400 truncate mb-1 px-1">{admin.email}</p>
         )}
+
+        {/* Template version badge */}
+        {!versionLoading && current && (
+          <NavLink
+            to="/settings"
+            title={outdated ? `Atualização disponível!` : `Template v${current}`}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-sidebar-hover transition-colors w-full"
+          >
+            {outdated ? (
+              <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+            ) : (
+              <GitBranch size={15} className="text-slate-500 shrink-0" />
+            )}
+            {!collapsed && (
+              <span className={`text-xs font-mono ${outdated ? 'text-amber-400' : 'text-slate-500'}`}>
+                v{current}{outdated ? ' ⬆' : ''}
+              </span>
+            )}
+          </NavLink>
+        )}
+
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-slate-300 hover:bg-red-600/20 hover:text-red-400 transition-colors"

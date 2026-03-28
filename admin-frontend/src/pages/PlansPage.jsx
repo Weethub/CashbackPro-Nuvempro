@@ -368,7 +368,7 @@ function PlanForm({ plan, onSave, onClose }) {
     annualPrice: plan?.prices?.annual || '',
     commissionRate: plan?.commissionRate ?? '',
     revenueShareRate: plan?.revenueShareRate ?? '',
-    features: plan?.features?.join('\n') || '',
+    features: Array.isArray(plan?.features) ? plan.features.join('\n') : '',
     isActive: plan?.isActive !== false,
   });
   const [saving, setSaving] = useState(false);

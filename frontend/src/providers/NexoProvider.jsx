@@ -24,7 +24,13 @@ function isInsideIframe() {
 function isNuvemshopReferrer() {
   try {
     const ref = document.referrer.toLowerCase();
-    return ref.includes('nuvemshop') || ref.includes('tiendanube');
+    return (
+      ref.includes('nuvemshop') ||
+      ref.includes('tiendanube') ||
+      ref.includes('lojavirtualnuvem.com.br') ||
+      ref.includes('mitiendanube.com') ||
+      ref.includes('mynuvemshop.com')
+    );
   } catch {
     return false;
   }

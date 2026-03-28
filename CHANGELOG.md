@@ -6,6 +6,15 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.1] - 2026-03-28
+
+### Corrigido
+
+- **`isNuvemshopReferrer()` não reconhecia lojas brasileiras** — `document.referrer` dentro do iframe aponta para `*.lojavirtualnuvem.com.br` (domínio do painel admin BR), que não estava na lista de verificação; adicionados `lojavirtualnuvem.com.br`, `mitiendanube.com` e `mynuvemshop.com`
+- **Variáveis de ambiente Vercel ausentes** — `VITE_API_URL` e `VITE_NUVEMSHOP_APP_ID` não estavam configuradas no projeto Vercel, fazendo o Nexo SDK conectar com clientId `'00000'` (fallback) em vez do ID real do app (`28692`)
+
+---
+
 ## [1.3.0] - 2026-03-28
 
 ### Corrigido

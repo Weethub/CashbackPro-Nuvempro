@@ -6,10 +6,11 @@ let gitCommit = 'dev';
 try {
   gitCommit = execSync('git rev-parse --short HEAD').toString().trim();
 } catch {
-  // Vercel injeta VERCEL_GIT_COMMIT_SHA automaticamente no build
-  if (process.env.VERCEL_GIT_COMMIT_SHA) {
-    gitCommit = process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7);
-  }
+  // Fallbacks para ambientes sem git (Vercel CLI deploy, CI, etc.)
+  gitCommit =
+    (process.env.VERCEL_GIT_COMMIT_SHA || '').slice(0, 7) ||
+    process.env.VITE_GIT_COMMIT ||
+    'dev';
 }
 
 export default defineConfig({

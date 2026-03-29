@@ -64,8 +64,14 @@ const StripeService = {
           billing_interval: billingInterval || '',
         },
       },
-      success_url: `${process.env.FRONTEND_URL}/billing?success=true`,
-      cancel_url: `${process.env.FRONTEND_URL}/billing?canceled=true`,
+      // Redireciona de volta ao painel Nuvemshop onde o app está embedado.
+      // Fallback: FRONTEND_URL (fora do iframe, mas melhor que página em branco).
+      success_url: store.domain
+        ? `https://${store.domain}/admin/apps/${process.env.NUVEMSHOP_APP_ID}`
+        : `${process.env.FRONTEND_URL}/billing?success=true`,
+      cancel_url: store.domain
+        ? `https://${store.domain}/admin/apps/${process.env.NUVEMSHOP_APP_ID}`
+        : `${process.env.FRONTEND_URL}/billing?canceled=true`,
     });
 
     return session;
@@ -99,7 +105,9 @@ const StripeService = {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: store.stripeCustomerId,
-      return_url: `${process.env.FRONTEND_URL}/billing`,
+      return_url: store.domain
+        ? `https://${store.domain}/admin/apps/${process.env.NUVEMSHOP_APP_ID}`
+        : `${process.env.FRONTEND_URL}/billing`,
     });
 
     return session;

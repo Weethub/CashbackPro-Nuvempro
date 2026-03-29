@@ -65,7 +65,7 @@ router.get('/stripe-account', async (req, res, next) => {
  * Normalize a plan row: expose `prices` as alias for `price` for frontend compatibility.
  */
 function normalizePlan(plan) {
-  return { ...plan, prices: plan.price };
+  return { ...plan, key: plan.name, prices: plan.price };
 }
 
 /**

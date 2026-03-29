@@ -129,13 +129,14 @@ router.get('/verify-stripe', async (req, res, next) => {
     const verifications = {};
 
     for (const plan of plans) {
-      const key = plan.id;
+      const key = plan.name; // frontend usa plan.name (ex: "growth") como chave
       const stripePriceIds = plan.stripePriceIds || {};
       const hasPrices = plan.price && Object.values(plan.price).some((v) => v > 0);
       const hasPriceIds = Object.values(stripePriceIds).some(Boolean);
 
       if (!hasPrices) {
-        verifications[key] = { status: 'missing', reason: 'Plano sem precos configurados' };
+        // Plano gratuito (sem preços): não precisa de Stripe
+        verifications[key] = { status: 'synced', reason: 'Plano gratuito' };
       } else if (!hasPriceIds) {
         verifications[key] = { status: 'missing', reason: 'Ainda nao sincronizado com Stripe' };
       } else {
@@ -208,17 +209,33 @@ router.post('/:id/deactivate', requireRole('gerente'), async (req, res, next) =>
 
 /**
  * POST /admin-api/plans/:id/sync-stripe — Sync plan to Stripe
+ * Aceita tanto ID numérico quanto planKey (nome string).
  */
 router.post('/:id/sync-stripe', requireRole('proprietario'), async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
-    const plan = await adminPlanService.syncToStripe(id);
+    const param = req.params.id;
+    const numId = parseInt(param);
+    const prisma = require('../../lib/prisma');
+
+    let planRecord;
+    if (!isNaN(numId)) {
+      planRecord = await prisma.adminPlan.findUnique({ where: { id: numId } });
+    } else {
+      const appId = process.env.APP_SLUG || 'meuapp';
+      planRecord = await prisma.adminPlan.findFirst({ where: { appId, name: param } });
+    }
+
+    if (!planRecord) {
+      throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
+    }
+
+    const plan = await adminPlanService.syncToStripe(planRecord.id);
 
     await adminLogService.log({
       adminId: req.admin.id,
       action: 'sync_plan_to_stripe',
       entity: 'admin_plan',
-      entityId: id,
+      entityId: planRecord.id,
       details: { stripePriceIds: plan.stripePriceIds },
       ipAddress: req.ip,
     });

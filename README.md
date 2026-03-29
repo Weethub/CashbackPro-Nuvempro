@@ -37,4 +37,4 @@ npm run dev
 
 - `STANDARDS.md` — Regras obrigatorias (erros, rate limit, paginacao, seguranca, testes)
 - `PROMPT.md` — Prompt ideal para o Claude criar um novo app
-- `D:\AI\ADMIN-PADRAO-NUVEMPRO-v2.1_1.md` — Documento completo de referencia (v3.0)
+- `ADMIN-PADRAO-NUVEMPRO-v3.0.md` — Documento completo de referencia (guia 12 fases)

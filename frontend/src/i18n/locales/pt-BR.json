@@ -2,7 +2,12 @@
   "app": {
     "loading": "Carregando aplicativo...",
     "error": "Ocorreu um erro",
-    "directAccess": "Este aplicativo deve ser acessado pelo painel da Nuvemshop."
+    "directAccess": "Este aplicativo deve ser acessado pelo painel da Nuvemshop.",
+    "errorBoundary": {
+      "title": "Algo deu errado",
+      "description": "Um erro inesperado ocorreu.",
+      "reload": "Recarregar"
+    }
   },
   "nav": {
     "dashboard": "Painel",
@@ -151,6 +156,7 @@
   "support": {
     "title": "Suporte",
     "whatsapp": "Falar no WhatsApp",
+    "whatsappNumber": "",
     "videoTitle": "Tutorial em v\u00eddeo",
     "faq": [
       {

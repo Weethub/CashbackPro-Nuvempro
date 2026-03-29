@@ -154,7 +154,7 @@ export default function BillingPage({ locked = false }) {
                 <Card.Header>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Title as="h3">{plan.name}</Title>
-                    {isCurrent && <Tag appearance="primary">Atual</Tag>}
+                    {isCurrent && <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>}
                   </Box>
                 </Card.Header>
                 <Card.Body>

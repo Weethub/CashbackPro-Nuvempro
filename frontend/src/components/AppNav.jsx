@@ -40,6 +40,12 @@ export default function AppNav() {
           >
             {t('nav.dashboard')}
           </Button>
+          <Button
+            appearance={isActive('/settings') ? 'primary' : 'transparent'}
+            onClick={() => navigate('/settings')}
+          >
+            {t('nav.settings')}
+          </Button>
           {/* Placeholder for app-specific nav items */}
         </Box>
 
@@ -74,7 +80,7 @@ export default function AppNav() {
             <Button
               appearance="primary"
               as="a"
-              href="https://wa.me/5500000000000"
+              href={`https://wa.me/${t('support.whatsappNumber', { defaultValue: '' })}`}
               target="_blank"
               rel="noopener noreferrer"
             >

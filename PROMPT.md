@@ -22,7 +22,7 @@ Leia os seguintes documentos ANTES de iniciar qualquer codigo:
    - Copie todo o template para o diretorio do novo app
    - Este template ja tem o backend, frontend e admin-frontend prontos
 
-2. **Documento de referencia**: D:\AI\ADMIN-PADRAO-NUVEMPRO-v2.1_1.md
+2. **Documento de referencia**: D:\AI\nuvempro-app-template\ADMIN-PADRAO-NUVEMPRO-v3.0.md
    - Padrao completo v3.0 — siga as 12 fases em ordem
 
 3. **Standards**: D:\AI\nuvempro-app-template\STANDARDS.md

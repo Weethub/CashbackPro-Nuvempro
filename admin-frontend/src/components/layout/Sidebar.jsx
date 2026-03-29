@@ -20,24 +20,30 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
+// Role hierarchy: suporte (1) < gerente (2) < proprietario (3)
+const ROLE_LEVEL = { suporte: 1, gerente: 2, proprietario: 3 };
+
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-400' },
-  { to: '/customers', label: 'Lojas', icon: Store, color: 'text-emerald-400' },
-  { to: '/plans', label: 'Planos', icon: CreditCard, color: 'text-violet-400' },
-  { to: '/subscriptions', label: 'Assinaturas', icon: Receipt, color: 'text-sky-400' },
-  { to: '/coupons', label: 'Cupons', icon: Tag, color: 'text-amber-400' },
-  { to: '/commissions', label: 'Comissoes', icon: DollarSign, color: 'text-green-400' },
-  { to: '/terms', label: 'Termos', icon: FileText, color: 'text-orange-400' },
-  { to: '/faq', label: 'FAQ', icon: HelpCircle, color: 'text-pink-400' },
-  { to: '/logs', label: 'Logs', icon: Activity, color: 'text-red-400' },
-  { to: '/security', label: 'Seguranca', icon: Shield, color: 'text-indigo-400' },
-  { to: '/settings', label: 'Configuracoes', icon: Settings, color: 'text-slate-400' },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-blue-400', minRole: 'suporte' },
+  { to: '/customers', label: 'Lojas', icon: Store, color: 'text-emerald-400', minRole: 'suporte' },
+  { to: '/plans', label: 'Planos', icon: CreditCard, color: 'text-violet-400', minRole: 'gerente' },
+  { to: '/subscriptions', label: 'Assinaturas', icon: Receipt, color: 'text-sky-400', minRole: 'suporte' },
+  { to: '/coupons', label: 'Cupons', icon: Tag, color: 'text-amber-400', minRole: 'gerente' },
+  { to: '/commissions', label: 'Comissoes', icon: DollarSign, color: 'text-green-400', minRole: 'gerente' },
+  { to: '/terms', label: 'Termos', icon: FileText, color: 'text-orange-400', minRole: 'gerente' },
+  { to: '/faq', label: 'FAQ', icon: HelpCircle, color: 'text-pink-400', minRole: 'suporte' },
+  { to: '/logs', label: 'Logs', icon: Activity, color: 'text-red-400', minRole: 'gerente' },
+  { to: '/security', label: 'Seguranca', icon: Shield, color: 'text-indigo-400', minRole: 'proprietario' },
+  { to: '/settings', label: 'Configuracoes', icon: Settings, color: 'text-slate-400', minRole: 'proprietario' },
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
   const { current, outdated, loading: versionLoading } = useTemplateVersion();
+
+  const adminLevel = ROLE_LEVEL[admin?.role] || 0;
+  const visibleItems = navItems.filter((item) => adminLevel >= ROLE_LEVEL[item.minRole]);
 
   const handleLogout = () => {
     logout();
@@ -64,7 +70,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-1">
-        {navItems.map((item) => (
+        {visibleItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

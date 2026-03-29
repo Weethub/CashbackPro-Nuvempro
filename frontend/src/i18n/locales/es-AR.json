@@ -2,7 +2,12 @@
   "app": {
     "loading": "Cargando aplicaci\u00f3n...",
     "error": "Ocurri\u00f3 un error",
-    "directAccess": "Esta aplicaci\u00f3n debe ser accedida desde el panel de Tiendanube."
+    "directAccess": "Esta aplicaci\u00f3n debe ser accedida desde el panel de Tiendanube.",
+    "errorBoundary": {
+      "title": "Algo sali\u00f3 mal",
+      "description": "Ocurri\u00f3 un error inesperado.",
+      "reload": "Recargar"
+    }
   },
   "nav": {
     "dashboard": "Panel",
@@ -151,6 +156,7 @@
   "support": {
     "title": "Soporte",
     "whatsapp": "Hablar por WhatsApp",
+    "whatsappNumber": "",
     "videoTitle": "Tutorial en video",
     "faq": [
       {

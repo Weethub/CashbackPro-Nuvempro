@@ -55,8 +55,7 @@ export default function NexoProvider({ children }) {
         api.get('/api/billing/status'),
         api.get('/api/terms/status'),
       ]);
-      setBillingStatus(billingRes.data);
-      setTermsAccepted(billingRes.data ? termsRes.data.accepted : termsRes.data.accepted);
+      if (billingRes.data) setBillingStatus(billingRes.data);
       if (termsRes.data) setTermsAccepted(termsRes.data.accepted);
     } catch (err) {
       console.error('Failed to load status:', err);

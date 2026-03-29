@@ -101,9 +101,10 @@
     },
     "interval": {
       "monthly": "Mensual",
-      "semiannual": "Semestral",
+      "semestral": "Semestral",
       "annual": "Anual"
     },
+    "free": "Gratis",
     "plans": {
       "starter": {
         "name": "Starter",

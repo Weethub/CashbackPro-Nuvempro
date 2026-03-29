@@ -4,13 +4,11 @@ import { Box, Card, Button, Text, Title, Tag, Badge, Alert, Table, Spinner } fro
 import { useNexo } from '../providers/NexoProvider.jsx';
 import api from '../services/api.js';
 
-const INTERVALS = ['monthly', 'semiannual', 'annual'];
-const PLAN_KEYS = ['starter', 'growth', 'scale'];
+const INTERVALS = ['monthly', 'semestral', 'annual'];
 
-function getPriceKey(interval) {
-  if (interval === 'semiannual') return 'priceSemiannual';
-  if (interval === 'annual') return 'priceAnnual';
-  return 'priceMonthly';
+function formatPrice(value, t) {
+  if (value == null || value === 0) return t('billing.free');
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
 function StatusBadge({ status, t }) {
@@ -26,8 +24,10 @@ function StatusBadge({ status, t }) {
 
 export default function BillingPage({ locked = false }) {
   const { t } = useTranslation();
-  const { billingStatus, setBillingStatus } = useNexo();
+  const { billingStatus } = useNexo();
   const [interval, setInterval_] = useState('monthly');
+  const [plans, setPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(true);
   const [invoices, setInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(null);
@@ -35,10 +35,21 @@ export default function BillingPage({ locked = false }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!locked) {
-      loadInvoices();
-    }
+    loadPlans();
+    if (!locked) loadInvoices();
   }, [locked]);
+
+  const loadPlans = async () => {
+    setLoadingPlans(true);
+    try {
+      const res = await api.get('/api/billing/plans');
+      setPlans(res.data?.plans || []);
+    } catch {
+      // Silent — plans are not critical
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
 
   const loadInvoices = async () => {
     setLoadingInvoices(true);
@@ -57,8 +68,8 @@ export default function BillingPage({ locked = false }) {
     setError(null);
     try {
       const res = await api.post('/api/billing/checkout', {
-        plan: planKey,
-        interval,
+        planKey,
+        billingInterval: interval,
       });
       if (res.data?.url) {
         window.top.location.href = res.data.url;
@@ -139,62 +150,69 @@ export default function BillingPage({ locked = false }) {
       </Box>
 
       {/* Plan cards */}
-      <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center">
-        {PLAN_KEYS.map((planKey) => {
-          const plan = t(`billing.plans.${planKey}`, { returnObjects: true });
-          const features = plan.features || [];
-          const price = planKey === 'starter'
-            ? plan.price
-            : plan[getPriceKey(interval)] || plan.priceMonthly;
-          const isCurrent = billingStatus?.plan?.toLowerCase() === planKey;
+      {loadingPlans ? (
+        <Box display="flex" justifyContent="center" padding="4">
+          <Spinner />
+        </Box>
+      ) : (
+        <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center">
+          {plans.map((plan) => {
+            const features = Array.isArray(plan.features)
+              ? plan.features
+              : Object.values(plan.features || {});
+            const prices = plan.price || {};
+            const priceValue = prices[interval] ?? prices.monthly ?? 0;
+            const priceDisplay = formatPrice(priceValue, t);
+            const isCurrent = billingStatus?.plan?.toLowerCase() === plan.key.toLowerCase();
+            const isFreeplan = !priceValue || priceValue === 0;
+            const planName = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
 
-          return (
-            <Box key={planKey} width="280px">
-              <Card>
-                <Card.Header>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Title as="h3">{plan.name}</Title>
-                    {isCurrent && <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>}
-                  </Box>
-                </Card.Header>
-                <Card.Body>
-                  <Box display="flex" flexDirection="column" gap="3">
-                    <Title as="h2">{price}</Title>
-
-                    <Box display="flex" flexDirection="column" gap="1">
-                      {features.map((feat, idx) => (
-                        <Text key={idx}>{feat}</Text>
-                      ))}
+            return (
+              <Box key={plan.key} width="280px">
+                <Card>
+                  <Card.Header>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Title as="h3">{planName}</Title>
+                      {isCurrent && <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>}
                     </Box>
+                  </Card.Header>
+                  <Card.Body>
+                    <Box display="flex" flexDirection="column" gap="3">
+                      <Title as="h2">{priceDisplay}</Title>
 
-                    {planKey !== 'starter' && !isCurrent && (
-                      <Button
-                        appearance="primary"
-                        onClick={() => handleCheckout(planKey)}
-                        disabled={checkoutLoading === planKey}
-                      >
-                        {checkoutLoading === planKey
-                          ? t('common.loading')
-                          : t('billing.checkout')}
-                      </Button>
-                    )}
+                      <Box display="flex" flexDirection="column" gap="1">
+                        {features.map((feat, idx) => (
+                          <Text key={idx}>{feat}</Text>
+                        ))}
+                      </Box>
 
-                    {isCurrent && planKey !== 'starter' && (
-                      <Button
-                        appearance="transparent"
-                        onClick={handlePortal}
-                        disabled={portalLoading}
-                      >
-                        {t('billing.portal')}
-                      </Button>
-                    )}
-                  </Box>
-                </Card.Body>
-              </Card>
-            </Box>
-          );
-        })}
-      </Box>
+                      {!isFreeplan && !isCurrent && (
+                        <Button
+                          appearance="primary"
+                          onClick={() => handleCheckout(plan.key)}
+                          disabled={checkoutLoading === plan.key}
+                        >
+                          {checkoutLoading === plan.key ? t('common.loading') : t('billing.checkout')}
+                        </Button>
+                      )}
+
+                      {isCurrent && !isFreeplan && (
+                        <Button
+                          appearance="transparent"
+                          onClick={handlePortal}
+                          disabled={portalLoading}
+                        >
+                          {t('billing.portal')}
+                        </Button>
+                      )}
+                    </Box>
+                  </Card.Body>
+                </Card>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
 
       {error && (
         <Alert appearance="danger">

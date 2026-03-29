@@ -184,6 +184,10 @@
   "settings": {
     "title": "Configuraci\u00f3n"
   },
+  "footer": {
+    "rights": "Todos los derechos reservados",
+    "terms": "T\u00e9rminos de Uso y Privacidad"
+  },
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",

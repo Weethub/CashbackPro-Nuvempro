@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Card, Button, Text, Title, Alert } from '@nimbus-ds/components';
 import api from '../services/api.js';
 
-export default function TermsPage({ onAccepted }) {
+export default function TermsPage({ onAccepted, viewOnly = false }) {
   const { t } = useTranslation();
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -75,19 +75,21 @@ export default function TermsPage({ onAccepted }) {
                 ))}
               </Box>
 
-              {error && (
+              {!viewOnly && error && (
                 <Alert appearance="danger">
                   <Text>{error}</Text>
                 </Alert>
               )}
 
-              <Button
-                appearance="primary"
-                onClick={handleAccept}
-                disabled={!scrolledToBottom || submitting}
-              >
-                {submitting ? t('common.loading') : t('terms.accept')}
-              </Button>
+              {!viewOnly && (
+                <Button
+                  appearance="primary"
+                  onClick={handleAccept}
+                  disabled={!scrolledToBottom || submitting}
+                >
+                  {submitting ? t('common.loading') : t('terms.accept')}
+                </Button>
+              )}
             </Box>
           </Card.Body>
         </Card>

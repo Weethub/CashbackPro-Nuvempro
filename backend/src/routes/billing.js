@@ -4,7 +4,8 @@ const { AppError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { checkoutLimiter } = require('../middleware/rateLimiter');
 const { StripeService } = require('../config/stripe');
-const { getPriceId, isValidPlan, getAvailablePlans } = require('../config/plans');
+// plans.js (env-var based) mantido apenas para compatibilidade legada
+// O checkout e o listing agora usam os IDs do banco (adminPlan.stripePriceIds)
 
 const router = express.Router();
 
@@ -13,6 +14,7 @@ router.use(requireAuth);
 
 /**
  * POST /api/billing/checkout — Create Stripe Checkout Session
+ * Usa stripePriceIds do banco (preenchido ao sincronizar com Stripe no admin).
  */
 router.post('/checkout', checkoutLimiter, async (req, res, next) => {
   try {
@@ -22,13 +24,24 @@ router.post('/checkout', checkoutLimiter, async (req, res, next) => {
       throw new AppError('planKey e billingInterval sao obrigatorios.', 400, 'MISSING_FIELDS');
     }
 
-    if (!isValidPlan(planKey, billingInterval)) {
-      throw new AppError('Plano ou intervalo invalido.', 400, 'INVALID_PLAN');
+    const appSlug = process.env.APP_SLUG || 'meuapp';
+    const plan = await prisma.adminPlan.findFirst({
+      where: { appId: appSlug, name: planKey, isActive: true },
+    });
+
+    if (!plan) {
+      throw new AppError('Plano nao encontrado.', 400, 'PLAN_NOT_FOUND');
     }
 
-    const priceId = getPriceId(planKey, billingInterval);
+    const stripePriceIds = plan.stripePriceIds || {};
+    const priceId = stripePriceIds[billingInterval];
+
     if (!priceId) {
-      throw new AppError('Preco nao configurado para este plano.', 400, 'PRICE_NOT_CONFIGURED');
+      throw new AppError(
+        'Preco nao configurado para este plano. Sincronize o plano com o Stripe no painel admin.',
+        400,
+        'PRICE_NOT_CONFIGURED'
+      );
     }
 
     const session = await StripeService.createCheckoutSession(
@@ -97,27 +110,42 @@ router.post('/cancel', async (req, res, next) => {
 
 /**
  * GET /api/billing/plans — List available plans
+ * Usa dados do banco: stripePriceIds para intervals/configured, price para valores.
  */
 router.get('/plans', async (req, res, next) => {
   try {
     const appSlug = process.env.APP_SLUG || 'meuapp';
 
-    // Get plans from database for full details
     const dbPlans = await prisma.adminPlan.findMany({
       where: { appId: appSlug, isActive: true },
       orderBy: { sortOrder: 'asc' },
     });
 
-    const envPlans = getAvailablePlans();
-
     const plans = dbPlans.map((plan) => {
-      const envPlan = envPlans.find((p) => p.key === plan.name);
+      // Intervalos configurados = aqueles que têm priceId no Stripe
+      const stripePriceIds = plan.stripePriceIds || {};
+      const configuredIntervals = Object.entries(stripePriceIds)
+        .filter(([, priceId]) => priceId && priceId.length > 0)
+        .map(([interval]) => interval);
+
+      const prices = plan.price || {};
+      const isFree = Object.values(prices).every((v) => !v || v === 0);
+
+      // Normaliza features para array de strings
+      let features = [];
+      if (Array.isArray(plan.features)) {
+        features = plan.features.map(String).filter(Boolean);
+      } else if (plan.features && typeof plan.features === 'object') {
+        features = Object.values(plan.features).map(String).filter(Boolean);
+      }
+
       return {
         key: plan.name,
-        features: plan.features,
-        price: plan.price,
-        intervals: envPlan ? envPlan.intervals : [],
-        configured: envPlan ? envPlan.configured : false,
+        features,
+        price: prices,
+        intervals: configuredIntervals,
+        configured: isFree || configuredIntervals.length > 0,
+        isFree,
       };
     });
 

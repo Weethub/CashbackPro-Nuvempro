@@ -164,7 +164,7 @@ export default function BillingPage({ locked = false }) {
             const priceValue = prices[interval] ?? prices.monthly ?? 0;
             const priceDisplay = formatPrice(priceValue, t);
             const isCurrent = billingStatus?.plan?.toLowerCase() === plan.key.toLowerCase();
-            const isFreeplan = !priceValue || priceValue === 0;
+            const isFreeplan = plan.isFree || !priceValue || priceValue === 0;
             const planName = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
 
             return (

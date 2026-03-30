@@ -5,10 +5,38 @@ import { ArrowLeft, Store, CreditCard, Calendar, Mail, Globe, User, Clock, Loade
 
 const statusColors = {
   active: 'bg-emerald-100 text-emerald-700',
+  trialing: 'bg-amber-100 text-amber-700',
   trial: 'bg-amber-100 text-amber-700',
   expired: 'bg-red-100 text-red-700',
   canceled: 'bg-gray-100 text-gray-600',
+  past_due: 'bg-red-100 text-red-700',
+  no_plan: 'bg-slate-100 text-slate-600',
 };
+
+const statusLabel = {
+  active: 'Ativo',
+  trialing: 'Trial',
+  trial: 'Trial',
+  expired: 'Expirado',
+  canceled: 'Cancelado',
+  past_due: 'Inadimplente',
+  no_plan: 'Sem Plano',
+};
+
+function computeStatus(customer) {
+  const sub = customer?.subscription;
+  if (sub) {
+    if (sub.status === 'trialing') return 'trial';
+    if (sub.status === 'active') return 'active';
+    if (sub.status === 'past_due') return 'past_due';
+    if (sub.status === 'canceled') return 'canceled';
+    return sub.status;
+  }
+  const now = new Date();
+  if (customer?.trialEndsAt && new Date(customer.trialEndsAt) > now) return 'trial';
+  if (customer?.trialEndsAt && new Date(customer.trialEndsAt) <= now) return 'expired';
+  return 'no_plan';
+}
 
 export default function CustomerDetailPage() {
   const { id } = useParams();
@@ -26,7 +54,7 @@ export default function CustomerDetailPage() {
     try {
       setLoading(true);
       const res = await adminApi.get(`/customers/${id}`);
-      setCustomer(res.data.customer || res.data);
+      setCustomer(res.data.store || res.data.customer || res.data);
     } catch (err) {
       setError('Erro ao carregar detalhes do cliente.');
     } finally {
@@ -103,9 +131,14 @@ export default function CustomerDetailPage() {
             <p className="text-gray-500 text-sm mt-0.5">{customer.email}</p>
           </div>
         </div>
-        <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${statusColors[customer.status] || 'bg-gray-100 text-gray-600'}`}>
-          {customer.status || 'unknown'}
-        </span>
+        {(() => {
+          const st = computeStatus(customer);
+          return (
+            <span className={`px-3 py-1.5 rounded-full text-sm font-medium ${statusColors[st] || 'bg-gray-100 text-gray-600'}`}>
+              {statusLabel[st] || st}
+            </span>
+          );
+        })()}
       </div>
 
       {/* Store Info */}

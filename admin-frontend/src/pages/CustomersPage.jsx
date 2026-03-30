@@ -17,7 +17,17 @@ const statusColors = {
   trial: 'bg-amber-100 text-amber-700',
   expired: 'bg-red-100 text-red-700',
   canceled: 'bg-gray-100 text-gray-600',
+  past_due: 'bg-red-100 text-red-700',
   no_plan: 'bg-slate-100 text-slate-600',
+};
+
+const statusLabel = {
+  active: 'Ativo',
+  trial: 'Trial',
+  expired: 'Expirado',
+  canceled: 'Cancelado',
+  past_due: 'Inadimplente',
+  no_plan: 'Sem Plano',
 };
 
 const planColors = {
@@ -89,8 +99,8 @@ export default function CustomersPage() {
       key: 'status',
       label: 'Status',
       render: (val) => (
-        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[val] || 'bg-gray-100 text-gray-600'}`}>
-          {val || 'unknown'}
+        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[val] || 'bg-slate-100 text-slate-600'}`}>
+          {statusLabel[val] || val || 'Sem Plano'}
         </span>
       ),
     },

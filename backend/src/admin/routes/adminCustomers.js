@@ -47,18 +47,25 @@ router.get('/dashboard', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const { page, limit, skip } = parsePagination(req.query);
-    const { tab, search } = req.query;
+    // frontend sends ?status=  (tab key) — accept both param names
+    const filter = req.query.status || req.query.tab;
+    const { search } = req.query;
 
     const where = {};
 
     // Tab filters
-    if (tab === 'active') {
-      where.subscription = { status: 'active' };
-    } else if (tab === 'trial') {
-      where.plan = 'starter';
-      where.trialEndsAt = { gt: new Date() };
-    } else if (tab === 'churned') {
-      where.subscription = { status: { in: ['canceled', 'past_due'] } };
+    if (filter === 'active') {
+      where.subscription = { is: { status: { in: ['active', 'trialing'] } } };
+    } else if (filter === 'trial') {
+      where.OR = [
+        { subscription: { is: { status: 'trialing' } } },
+        { trialEndsAt: { gt: new Date() } },
+      ];
+    } else if (filter === 'expired') {
+      where.trialEndsAt = { lte: new Date() };
+      where.subscription = { is: null };
+    } else if (filter === 'no_plan') {
+      where.subscription = { is: null };
     }
 
     // Search
@@ -82,19 +89,43 @@ router.get('/', async (req, res, next) => {
       prisma.store.count({ where }),
     ]);
 
-    const data = stores.map((s) => ({
-      id: s.id,
-      nuvemshopId: s.nuvemshopId,
-      name: s.name,
-      domain: s.domain,
-      email: s.email,
-      plan: s.plan,
-      trialEndsAt: s.trialEndsAt,
-      createdAt: s.createdAt,
-      subscription: s.subscription
-        ? { status: s.subscription.status, planKey: s.subscription.planKey }
-        : null,
-    }));
+    const now = new Date();
+
+    const data = stores.map((s) => {
+      // Compute a flat status for the list
+      let status = 'no_plan';
+      if (s.subscription) {
+        const ss = s.subscription.status;
+        if (ss === 'trialing') status = 'trial';
+        else if (ss === 'active') status = 'active';
+        else if (ss === 'past_due') status = 'past_due';
+        else if (ss === 'canceled') status = 'canceled';
+        else status = ss;
+      } else if (s.trialEndsAt && s.trialEndsAt > now) {
+        status = 'trial';
+      } else if (s.trialEndsAt && s.trialEndsAt <= now) {
+        status = 'expired';
+      }
+
+      return {
+        id: s.id,
+        nuvemshopId: s.nuvemshopId,
+        name: s.name,
+        domain: s.domain,
+        email: s.email,
+        planKey: s.subscription?.planKey || s.plan || null,
+        status,
+        trialEndsAt: s.trialEndsAt,
+        createdAt: s.createdAt,
+        subscription: s.subscription
+          ? {
+              status: s.subscription.status,
+              planKey: s.subscription.planKey,
+              billingInterval: s.subscription.billingInterval,
+            }
+          : null,
+      };
+    });
 
     res.json(paginatedResponse(data, total, { page, limit }));
   } catch (err) {

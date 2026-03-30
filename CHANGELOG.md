@@ -6,6 +6,20 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.5.5] - 2026-03-30
+
+### Corrigido
+
+- **"Plano atual" aparecia em todas as abas de intervalo** — `isCurrent` agora verifica plano E intervalo (`sub?.billingInterval === interval`); assinante do Scale Mensal não vê "Plano atual" nas abas Semestral e Anual
+- **Botão "Assinar" habilitado nos outros intervalos** — permite trocar de intervalo mesmo estando no plano correto
+- **"Indisponível neste período"** — exibido quando o intervalo não tem `priceId` configurado no Stripe
+
+### Adicionado
+
+- **Desconto % dinâmico nos botões de período** — Semestral e Anual exibem o percentual de desconto calculado automaticamente comparando com o preço mensal do primeiro plano pago (ex: `Semestral -20%`, `Anual -40%`)
+
+---
+
 ## [1.5.2] - 2026-03-30
 
 ### Corrigido

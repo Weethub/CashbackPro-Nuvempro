@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.4.1**
+> Versão atual do template: **1.6.3**
 
 ---
 
@@ -142,6 +142,63 @@ ADMIN_URL=https://...
 }
 ```
 
+### Campo importante: `AdminPlan.features`
+
+**SEMPRE array de strings legíveis** — nunca objeto JSON com booleanos.
+
+```json
+["Tudo do Starter", "Até 500 produtos", "Analytics avançado", "Suporte prioritário"]
+```
+
+O formulário de edição de planos no admin já salva no formato correto (textarea, uma feature por linha).
+O seed cria planos com arrays de strings. Se um plano antigo tiver features como objeto (`{analytics: true, maxProducts: 500}`), edite-o pelo admin para corrigir.
+
+### Campos de configuração de Trial (`AdminConfig`)
+
+Criados automaticamente pelo `seed-admin.js`:
+
+| key | valor padrão | descrição |
+|-----|-------------|-----------|
+| `trial_mode` | `'none'` | `none` \| `free` \| `paid` |
+| `trial_days` | `'7'` | duração do trial em dias |
+| `trial_coupon` | `''` | reservado (não usado atualmente) |
+
+Gerenciados em **Admin → Configurações → Período de Trial**.
+
+---
+
+## Sistema de Trial (duas modalidades)
+
+O trial é configurado pelo admin em **Configurações → Período de Trial** e armazenado no `AdminConfig`.
+
+### Modos disponíveis
+
+| `trial_mode` | Comportamento |
+|---|---|
+| `none` | Sem trial. Usuário assina para acessar. |
+| `free` | X dias grátis sem cartão. Banner de contagem regressiva no app. Ao expirar, gate de assinatura. |
+| `paid` | Usuário cadastra cartão mas não é cobrado por X dias (`trial_period_days` nativo Stripe). Status `trialing`. |
+
+### Como funciona no backend
+
+- `GET /api/billing/status` lê `trial_mode` e `trial_days` do `AdminConfig` e retorna:
+  - `trialMode`: modo atual
+  - `trialDaysLeft`: dias restantes (só > 0 quando `trial_mode=free` e dentro do prazo)
+  - `hasAccess`: `isFreePlan || subActive || (trialMode === 'free' && trialActive)`
+- `POST /api/billing/checkout` aplica `trial_period_days` na `subscription_data` quando `trial_mode=paid`
+- `GET /api/billing/plans` retorna `trialMode` e `trialDays` para o frontend exibir badges
+- `backend/routes/auth.js` lê `trial_days` do `AdminConfig` ao criar nova loja (fallback: env `TRIAL_DAYS`)
+
+### O que o usuário vê
+
+**`free`**: banner amarelo no topo do app com contagem regressiva e botão "Ver planos"
+
+**`paid`**: badge laranja nos planos pagos ("Assine e ganhe X dias grátis"). Após assinatura, card de status mostra "Trial ativo até {data}" + Alert azul: "Nenhuma cobrança até {data}. Cancele antes de {data} para não ser cobrado."
+
+### ATENÇÃO: `trial_period_days` vs cupom
+
+O modo `paid` usa `subscription_data.trial_period_days` (nativo Stripe) — **não** usa cupom. Isso evita erros de ID de cupom incorreto e é compatível com `allow_promotion_codes: true`. **Nunca trocar de volta para `discounts: [{coupon}]`** — Stripe não permite os dois ao mesmo tempo.
+
 ---
 
 ## Arquitetura de Billing (Stripe)
@@ -154,11 +211,34 @@ O sistema garante que os `stripePriceIds` no banco estejam sempre corretos:
 2. **Frontend carrega `GET /api/billing/plans`** → para planos sem `stripePriceIds`, chama `syncToStripe` automaticamente
 3. **`POST /api/billing/checkout`** → se `priceId` não encontrado no DB, tenta `syncToStripe` antes de falhar
 
+### `StripeService.getSubscriptionStatus(store)` — 3 fases
+
+Detecta troca de plano com trial sem depender de webhook:
+
+1. **Fase 1** — recupera a subscription armazenada no DB pelo `stripeSubscriptionId`
+2. **Fase 2** — se a armazenada NÃO está em `trialing`, consulta o Stripe por subscriptions `trialing` do cliente. Uma subscription trialing diferente = novo plano com trial → atualiza DB e retorna ela
+3. **Fase 3** — se a armazenada está `canceled`, busca qualquer subscription `active`
+
+**Por que isso existe**: ao assinar um novo plano com `trial_period_days`, a nova subscription fica `trialing`. Sem as fases 2-3, o status cacheado do plano antigo seria retornado indefinidamente até o webhook chegar.
+
+### `POST /api/billing/sync` — fetcha trialing + active
+
+Busca `trialing` e `active` em paralelo, com prioridade:
+`trialing` > `active sem cancelamento` > `active com cancelamento`
+
+**Não tem mais early return "already_synced"** — foi removido pois impedia a detecção de novas subscriptions trialing.
+
 ### `adminPlanService.syncToStripe(planId)` — Idempotente
 
 - `findOrCreateStripeProduct`: busca por `metadata['admin_plan_id']`, fallback por `metadata['plan_key']+metadata['app_id']`, cria se não existe
 - `findOrCreateStripePrice`: busca preço ativo com mesmo `amount+interval`, arquiva preços obsoletos, cria se necessário
 - Salva todos os `stripePriceIds` encontrados/criados no DB
+
+### Deativação e exclusão de planos
+
+- **Desativar** (`isActive: false` no admin): chama `archiveInStripe` → arquiva produto e preços no Stripe, depois marca `isActive: false` no DB. O seed nunca reverte `isActive` de planos gerenciados pelo admin.
+- **Deletar** (`DELETE /admin-api/plans/:id`): chama `archiveInStripe` + hard-delete no DB.
+- `archiveInStripe`: busca produto por `metadata['admin_plan_id']` (fallback: `plan_key+app_id`), arquiva todos os preços ativos, arquiva produto.
 
 ### Shape do `billingStatus` (frontend)
 
@@ -166,14 +246,18 @@ O sistema garante que os `stripePriceIds` no banco estejam sempre corretos:
 // GET /api/billing/status retorna:
 {
   plan: 'growth',           // string: planKey ativo na Store
-  trialEndsAt: null,        // DateTime | null
+  trialEndsAt: null,        // DateTime | null — data de expiração do trial gratuito
+  trialMode: 'paid',        // 'none' | 'free' | 'paid' — lido do AdminConfig
+  trialDays: 14,            // número de dias do trial — lido do AdminConfig
+  trialDaysLeft: 0,         // dias restantes (> 0 apenas quando trial_mode=free e ativo)
+  hasAccess: true,          // boolean — se false, App.jsx mostra BillingPage locked
   subscription: {
-    status: 'active',       // 'active' | 'trialing' | 'canceled' | 'past_due' | 'none'
+    status: 'trialing',     // 'active' | 'trialing' | 'canceled' | 'past_due' | 'none'
     planKey: 'growth',
     billingInterval: 'monthly',
     currentPeriodStart: '2026-03-01T...',
-    currentPeriodEnd: '2026-04-01T...',
-    cancelAtPeriodEnd: false,   // true = cancelamento agendado
+    currentPeriodEnd: '2026-04-15T...',  // = data da primeira cobrança quando trialing
+    cancelAtPeriodEnd: false,
     stripeSubscriptionId: 'sub_xxx',
   }
 }
@@ -325,11 +409,15 @@ git config user.name "username"
 
 | Versão | O que mudou |
 |--------|-------------|
-| **1.4.1** | Fix: tela branca em Terms/FAQ/Logs/Segurança admin (`res.data.data`); `isPublished` no lugar de `isActive`; endpoints `/logs/usage` e `/logs/abuse` adicionados; `admin-frontend/vercel.json` com build própria |
-| **1.4.0** | Gate de Termos de Uso funcional: `NexoProvider` expõe `termsData`; `TermsPage` usa conteúdo do banco; `POST /terms/accept` envia `termsVersionId` corretamente |
-| **1.3.9** | Fix: botão "Cancelar" não aparecia após resubscrição — `syncPlan` agora re-busca billing status completo |
-| **1.3.8** | Fix: checkmarks vermelhos no admin pós auto-heal; checkout com auto-sync antes de falhar |
-| **1.3.7** | Refactor completo BillingPage — campos corretos, modal cancelar, badge cancelAtPeriodEnd, faturas com "Ver" |
+| **1.6.3** | Aviso de trial ativo na BillingPage: "Trial ativo até {data}", Alert "Nenhuma cobrança até {data}", dica de cancelamento |
+| **1.6.2** | Fix: `getSubscriptionStatus` 3 fases detecta subscription trialing de novo plano; `POST /sync` busca trialing+active em paralelo |
+| **1.6.1** | Fix: checkout paid trial usa `trial_period_days` nativo (elimina erro com cupom ID); features do seed como arrays de strings legíveis |
+| **1.6.0** | Sistema de trial em duas modalidades (`free`/`paid`) configurável no admin; banner countdown; badge "Assine e ganhe X dias grátis"; `AdminConfig` com defaults de trial |
+| **1.5.5** | Fix: `isCurrent` verifica plano+intervalo (tag "Plano atual" só no intervalo correto); desconto % dinâmico nos botões de período |
+| **1.5.3** | Fix crítico: `isFree` não é campo Prisma — calcular via `price` JSON; gate e termsData corretos; `TRIAL_DAYS=0` impede trial |
+| **1.5.2** | Fix: seed não reverte `isActive`; desativar plano arquiva no Stripe; delete plano remove do Stripe+DB |
+| **1.5.0** | Gate de assinatura obrigatória; `allow_promotion_codes: true`; campo `hasAccess` no billing status |
+| **1.4.1** | Fix: tela branca em Terms/FAQ/Logs/Segurança admin; `isPublished` correto; endpoints `/logs/usage` e `/logs/abuse` |
 
 ---
 
@@ -381,6 +469,12 @@ cd backend && npm test
 - **`paginatedResponse`** retorna `{ data, meta }` — no frontend admin usar sempre `res.data.data`, nunca `res.data.campo || res.data`
 - **`TermsVersion.isPublished`** é o campo correto (não `isActive`)
 - **Admin frontend** é acessado diretamente via URL, sem restrição de iframe — o `NexoProvider` que bloqueia acesso direto existe apenas no `frontend/`, não no `admin-frontend/`
+- **`AdminPlan.features`** deve ser array de strings legíveis — nunca objeto JSON com booleanos. Editar pelo admin se plano tiver formato antigo.
+- **`AdminPlan.isFree`** NÃO existe no schema Prisma — é calculado: `Object.values(plan.price).every(v => !v || v === 0)`. Nunca usar `select: { isFree: true }` — lança erro Prisma.
+- **`trial_period_days`** e **`discounts`/`allow_promotion_codes`**: `trial_period_days` é compatível com `allow_promotion_codes`. `discounts` e `allow_promotion_codes` são mutuamente exclusivos — Stripe rejeita os dois juntos.
+- **Subscription `trialing`**: status `trialing` = assinatura com trial ativo no Stripe (não cobrado ainda). `subActive = ['active', 'trialing'].includes(status)` — sempre incluir trialing no check de acesso.
+- **Seed não reverte `isActive`**: `seed-admin.js` usa `update` sem `isActive` — admin controla o campo. Se um plano foi desativado no admin, o seed não reativa.
+- **`POST /sync` sem early return**: a otimização "already_synced" foi removida — sem ela o sync detecta novas subscriptions trialing. Não reintroduzir.
 
 ---
 

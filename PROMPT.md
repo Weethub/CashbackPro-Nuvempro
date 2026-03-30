@@ -63,6 +63,32 @@ Leia os seguintes documentos ANTES de iniciar qualquer codigo:
 3. Configure o webhook: stripe listen --forward-to localhost:3001/webhook
 4. Atualize STRIPE_WEBHOOK_SECRET no .env
 
+### Etapa 3.5 — Configurar Trial (obrigatório)
+
+Acesse **Admin → Configurações → Período de Trial** e defina a modalidade:
+
+| Modo | Quando usar |
+|------|-------------|
+| **Desativado** | App pago imediato — sem período de teste |
+| **Trial gratuito** | X dias de acesso sem cartão; banner no app conta regressiva |
+| **Trial com assinatura** | Cliente cadastra cartão, não paga por X dias via `trial_period_days` Stripe |
+
+**Passos:**
+1. Escolha o modo
+2. Defina a quantidade de dias (padrão: 7)
+3. Clique "Salvar Configuração de Trial"
+
+**ATENÇÃO para o modo `paid`:**
+- Usa `subscription_data.trial_period_days` nativo do Stripe (NÃO usa cupom)
+- O cliente vê "14 dias grátis" no checkout e "Nenhuma cobrança até {data}" após assinar
+- `allow_promotion_codes` permanece ativo — o cliente pode digitar cupons extras
+- **Nunca** substituir por `discounts: [{coupon}]` — incompatível com `allow_promotion_codes`
+
+**Validar:**
+- Frontend exibe badge "Assine e ganhe X dias grátis" nos planos pagos (modo paid)
+- Após assinar, card de status mostra "Trial ativo até {data}" + Alert azul
+- `GET /api/billing/status` retorna `{ trialMode, trialDays, trialDaysLeft, hasAccess }`
+
 ### Etapa 4 — Personalizar App
 Agora que a base esta rodando, adicione a logica especifica do app:
 1. Ajuste os campos do Onboarding (Onboarding.jsx) para o dominio do app
@@ -99,6 +125,16 @@ Siga a Fase 11 do documento de referencia:
 12. Testes minimos passando antes de qualquer deploy
 13. **TODA atualizacao do template DEVE terminar com o processo de release** (ver STANDARDS.md seção 6):
     bump version.js → CHANGELOG.md → commit → tag → push → GitHub Release → deploy Railway
+14. **AdminPlan.features DEVE ser array de strings** — nunca objeto JSON com booleanos.
+    O seed ja cria no formato correto. Se editar plano no admin, usar textarea (uma feature por linha).
+15. **isFree nao e campo Prisma** — calcular via `Object.values(plan.price).every(v => !v || v === 0)`.
+    NUNCA usar `select: { isFree: true }` — lanca erro Prisma e derruba GET /billing/status.
+16. **Trial mode DEVE ser configurado** (Etapa 3.5) antes de publicar o app.
+    Default e 'none' (sem trial). Escolha conscientemente — impacta conversao e primeiro acesso.
+17. **Subscription trialing = acesso liberado** — `subActive` inclui status 'trialing'.
+    Nunca remover 'trialing' do array de status permitidos em hasAccess.
+18. **POST /sync sem early return** — nao reintroduzir otimizacao "already_synced".
+    Ela impede deteccao de novas subscriptions trialing apos troca de plano.
 
 ## Dados do App
 

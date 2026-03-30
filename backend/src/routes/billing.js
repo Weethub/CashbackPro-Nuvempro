@@ -58,6 +58,75 @@ router.post('/checkout', checkoutLimiter, async (req, res, next) => {
 });
 
 /**
+ * POST /api/billing/sync — Sincroniza plano consultando o Stripe diretamente.
+ * Usado como fallback quando o webhook falha (ex: secret não configurado).
+ */
+router.post('/sync', async (req, res, next) => {
+  try {
+    const { stripe } = require('../config/stripe');
+    const store = req.store;
+
+    if (!store.stripeCustomerId) {
+      return res.json({ plan: store.plan, synced: false, reason: 'no_customer' });
+    }
+
+    // Busca assinaturas ativas no Stripe
+    const subscriptions = await stripe.subscriptions.list({
+      customer: store.stripeCustomerId,
+      status: 'active',
+      limit: 5,
+      expand: ['data.items.data.price'],
+    });
+
+    if (subscriptions.data.length === 0) {
+      return res.json({ plan: store.plan, synced: false, reason: 'no_active_subscription' });
+    }
+
+    const sub = subscriptions.data[0];
+    const planKey = sub.metadata?.plan_key;
+    const billingInterval = sub.metadata?.billing_interval;
+
+    if (!planKey) {
+      return res.json({ plan: store.plan, synced: false, reason: 'no_plan_metadata' });
+    }
+
+    // Atualiza store e subscription no banco
+    await prisma.store.update({
+      where: { id: store.id },
+      data: { plan: planKey },
+    });
+
+    await prisma.subscription.upsert({
+      where: { storeId: store.id },
+      update: {
+        stripeSubscriptionId: sub.id,
+        status: sub.status,
+        planKey,
+        billingInterval,
+        cancelAtPeriodEnd: sub.cancel_at_period_end,
+        currentPeriodStart: new Date(sub.current_period_start * 1000),
+        currentPeriodEnd: new Date(sub.current_period_end * 1000),
+      },
+      create: {
+        storeId: store.id,
+        stripeSubscriptionId: sub.id,
+        status: sub.status,
+        planKey,
+        billingInterval,
+        cancelAtPeriodEnd: sub.cancel_at_period_end,
+        currentPeriodStart: new Date(sub.current_period_start * 1000),
+        currentPeriodEnd: new Date(sub.current_period_end * 1000),
+      },
+    });
+
+    console.log(`Sync manual: store ${store.id} → plano ${planKey}`);
+    res.json({ plan: planKey, synced: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/billing/status — Get current subscription status
  */
 router.get('/status', async (req, res, next) => {

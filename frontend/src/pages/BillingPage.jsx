@@ -24,7 +24,7 @@ function StatusBadge({ status, t }) {
 
 export default function BillingPage({ locked = false }) {
   const { t } = useTranslation();
-  const { billingStatus } = useNexo();
+  const { billingStatus, setBillingStatus } = useNexo();
   const [interval, setInterval_] = useState('monthly');
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -33,11 +33,32 @@ export default function BillingPage({ locked = false }) {
   const [checkoutLoading, setCheckoutLoading] = useState(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
 
   useEffect(() => {
     loadPlans();
     if (!locked) loadInvoices();
+
+    // Fallback: se voltou do Stripe com ?success=true, sincroniza o plano diretamente
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      syncAfterCheckout();
+    }
   }, [locked]);
+
+  const syncAfterCheckout = async () => {
+    try {
+      const res = await api.post('/api/billing/sync');
+      if (res.data?.synced && res.data?.plan) {
+        setSuccessMsg(t('billing.syncSuccess', { plan: res.data.plan }));
+        if (setBillingStatus) {
+          setBillingStatus((prev) => ({ ...prev, plan: res.data.plan, status: 'active' }));
+        }
+      }
+    } catch {
+      // Silencioso — webhook pode ter funcionado
+    }
+  };
 
   const loadPlans = async () => {
     setLoadingPlans(true);
@@ -99,6 +120,12 @@ export default function BillingPage({ locked = false }) {
   return (
     <Box display="flex" flexDirection="column" gap="4" padding={locked ? '4' : '0'}>
       <Title as="h2">{t('billing.title')}</Title>
+
+      {successMsg && (
+        <Alert appearance="success">
+          <Text>{successMsg}</Text>
+        </Alert>
+      )}
 
       {locked && (
         <Alert appearance="warning">

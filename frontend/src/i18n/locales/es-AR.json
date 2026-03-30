@@ -105,6 +105,7 @@
       "annual": "Anual"
     },
     "free": "Gratis",
+    "syncSuccess": "Plan actualizado a {{plan}} con \u00e9xito!",
     "plans": {
       "starter": {
         "name": "Starter",

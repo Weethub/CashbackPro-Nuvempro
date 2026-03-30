@@ -112,33 +112,37 @@ router.post('/sync', async (req, res, next) => {
       return res.json({ plan: store.plan, synced: false, reason: 'no_customer' });
     }
 
-    // Otimização: pula sync se já tem assinatura ativa e não está pendente de cancelamento
-    const dbSub = await prisma.subscription.findUnique({ where: { storeId: store.id } });
-    if (
-      dbSub?.status === 'active' &&
-      !dbSub?.cancelAtPeriodEnd &&
-      dbSub?.planKey &&
-      dbSub.planKey === store.plan &&
-      store.plan !== 'starter'
-    ) {
-      return res.json({ plan: store.plan, synced: false, reason: 'already_synced' });
-    }
+    // Busca assinaturas 'trialing' E 'active' no Stripe.
+    // IMPORTANTE: trial_period_days cria subscription com status='trialing', não 'active'.
+    // O sync antigo buscava apenas 'active' e perdia novas assinaturas com trial.
+    const [trialingRes, activeRes] = await Promise.all([
+      stripe.subscriptions.list({
+        customer: store.stripeCustomerId,
+        status: 'trialing',
+        limit: 5,
+        expand: ['data.items.data.price'],
+      }),
+      stripe.subscriptions.list({
+        customer: store.stripeCustomerId,
+        status: 'active',
+        limit: 5,
+        expand: ['data.items.data.price'],
+      }),
+    ]);
 
-    // Busca assinaturas ativas no Stripe
-    const subscriptions = await stripe.subscriptions.list({
-      customer: store.stripeCustomerId,
-      status: 'active',
-      limit: 5,
-      expand: ['data.items.data.price'],
-    });
+    // Prioridade: trialing (novo plano com trial) > active sem cancel > active com cancel
+    const allSubs = [
+      ...trialingRes.data,
+      ...activeRes.data.filter((s) => !s.cancel_at_period_end),
+      ...activeRes.data.filter((s) => s.cancel_at_period_end),
+    ];
 
-    if (subscriptions.data.length === 0) {
+    if (allSubs.length === 0) {
       return res.json({ plan: store.plan, synced: false, reason: 'no_active_subscription' });
     }
 
-    // Prefere assinatura sem cancelamento pendente (a nova, após resubscrição)
-    const sub =
-      subscriptions.data.find((s) => !s.cancel_at_period_end) || subscriptions.data[0];
+    // Usa a assinatura de maior prioridade (trialing ou active mais recente)
+    const sub = allSubs[0];
     const planKey = sub.metadata?.plan_key;
     const billingInterval = sub.metadata?.billing_interval;
 
@@ -156,7 +160,7 @@ router.post('/sync', async (req, res, next) => {
       where: { storeId: store.id },
       update: {
         stripeSubscriptionId: sub.id,
-        status: sub.status,
+        status: sub.status,   // preserva 'trialing' — subActive inclui trialing
         planKey,
         billingInterval,
         cancelAtPeriodEnd: sub.cancel_at_period_end,
@@ -175,8 +179,8 @@ router.post('/sync', async (req, res, next) => {
       },
     });
 
-    console.log(`Sync manual: store ${store.id} → plano ${planKey}`);
-    res.json({ plan: planKey, synced: true });
+    console.log(`Sync manual: store ${store.id} → plano ${planKey} (${sub.status})`);
+    res.json({ plan: planKey, synced: true, status: sub.status });
   } catch (err) {
     next(err);
   }

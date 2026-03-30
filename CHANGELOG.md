@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.6.2] - 2026-03-30
+
+### Corrigido
+
+- **Plano não atualiza após assinar com trial** — `getSubscriptionStatus` só recuperava a subscription armazenada (plano antigo/active). Nova subscription com `trial_period_days` fica como `trialing` no Stripe e nunca era detectada. Implementadas 3 fases: (1) recupera subscription armazenada, (2) se não está em trialing, verifica se existe uma mais recente em trialing (novo plano), (3) se está canceled, procura uma active
+- **`POST /api/billing/sync` ignorava subscriptions trialing** — buscava apenas `status: 'active'`, perdendo novas assinaturas com trial. Agora busca tanto `trialing` quanto `active` em paralelo, priorizando trialing (novo plano) > active sem cancel > active com cancel
+- **Otimização "already_synced" muito agressiva** — impedia sync mesmo quando havia nova subscription trialing para plano diferente. Substituída pela lógica baseada em prioridade de status
+
+---
+
 ## [1.6.1] - 2026-03-30
 
 ### Corrigido

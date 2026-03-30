@@ -126,33 +126,108 @@ const StripeService = {
 
   /**
    * Get subscription status and sync with database.
+   *
+   * Estratégia em 3 fases para garantir que troca de plano com trial seja detectada:
+   *
+   * Fase 1 — recupera a assinatura armazenada no DB.
+   * Fase 2 — se ela NÃO está em 'trialing', consulta o Stripe por assinaturas 'trialing'
+   *           do cliente. Uma subscription trialing mais recente significa que o usuário
+   *           acabou de assinar um novo plano com período gratuito (trial_period_days);
+   *           essa tem prioridade e atualiza o DB.
+   * Fase 3 — se a armazenada está 'canceled', busca qualquer subscription 'active' no Stripe.
+   *
+   * Resultado: plan change + trial checkout refletem imediatamente sem depender de webhook.
    */
   async getSubscriptionStatus(store) {
     const subscription = await prisma.subscription.findUnique({
       where: { storeId: store.id },
     });
 
-    if (!subscription || !subscription.stripeSubscriptionId) {
+    // Sem customer Stripe ou sem subscription armazenada — retorna 'none' do cache
+    if (!store.stripeCustomerId) {
       return {
-        status: 'none',
-        planKey: null,
-        billingInterval: null,
-        currentPeriodEnd: null,
-        cancelAtPeriodEnd: false,
+        status: subscription?.status || 'none',
+        planKey: subscription?.planKey || null,
+        billingInterval: subscription?.billingInterval || null,
+        currentPeriodEnd: subscription?.currentPeriodEnd || null,
+        cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd || false,
+        stripeSubscriptionId: subscription?.stripeSubscriptionId || null,
       };
+    }
+
+    if (!subscription?.stripeSubscriptionId) {
+      // Sem subscription no DB — verifica se já existe alguma no Stripe
+      try {
+        const [trialingRes, activeRes] = await Promise.all([
+          stripe.subscriptions.list({ customer: store.stripeCustomerId, status: 'trialing', limit: 1 }),
+          stripe.subscriptions.list({ customer: store.stripeCustomerId, status: 'active', limit: 1 }),
+        ]);
+        const found = trialingRes.data[0] || activeRes.data[0];
+        if (!found) return { status: 'none', planKey: null, billingInterval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false };
+
+        const planKey = found.metadata?.plan_key;
+        const billingInterval = found.metadata?.billing_interval;
+        if (planKey) await prisma.store.update({ where: { id: store.id }, data: { plan: planKey } });
+        const upserted = await prisma.subscription.upsert({
+          where: { storeId: store.id },
+          update: { stripeSubscriptionId: found.id, status: found.status, planKey, billingInterval, cancelAtPeriodEnd: found.cancel_at_period_end, currentPeriodStart: new Date(found.current_period_start * 1000), currentPeriodEnd: new Date(found.current_period_end * 1000) },
+          create: { storeId: store.id, stripeSubscriptionId: found.id, status: found.status, planKey: planKey || 'starter', billingInterval, cancelAtPeriodEnd: found.cancel_at_period_end, currentPeriodStart: new Date(found.current_period_start * 1000), currentPeriodEnd: new Date(found.current_period_end * 1000) },
+        });
+        return { status: upserted.status, planKey: upserted.planKey, billingInterval: upserted.billingInterval, currentPeriodStart: upserted.currentPeriodStart, currentPeriodEnd: upserted.currentPeriodEnd, cancelAtPeriodEnd: upserted.cancelAtPeriodEnd, stripeSubscriptionId: upserted.stripeSubscriptionId };
+      } catch {
+        return { status: 'none', planKey: null, billingInterval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false };
+      }
     }
 
     // Sync with Stripe
     try {
+      // Fase 1: recupera a subscription armazenada
       const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+
+      // Fase 2: se não está em trialing, verifica se há uma subscription trialing mais recente
+      // (novo plano com trial_period_days após checkout — webhook ainda não processou)
+      let bestSub = stripeSub;
+      if (stripeSub.status !== 'trialing') {
+        const trialingRes = await stripe.subscriptions.list({
+          customer: store.stripeCustomerId,
+          status: 'trialing',
+          limit: 1,
+        });
+        const newerTrial = trialingRes.data[0];
+        // Usa o trial se for uma subscription diferente da armazenada (novo plano)
+        if (newerTrial && newerTrial.id !== stripeSub.id) {
+          bestSub = newerTrial;
+        }
+      }
+
+      // Fase 3: se a armazenada está canceled, procura uma active
+      if (bestSub.id === stripeSub.id && stripeSub.status === 'canceled') {
+        const activeRes = await stripe.subscriptions.list({
+          customer: store.stripeCustomerId,
+          status: 'active',
+          limit: 1,
+        });
+        if (activeRes.data[0]) bestSub = activeRes.data[0];
+      }
+
+      const planKey = bestSub.metadata?.plan_key || subscription.planKey;
+      const billingInterval = bestSub.metadata?.billing_interval || subscription.billingInterval;
+
+      // Atualiza store.plan se o melhor plano mudou
+      if (planKey && planKey !== store.plan) {
+        await prisma.store.update({ where: { id: store.id }, data: { plan: planKey } });
+      }
 
       const updated = await prisma.subscription.update({
         where: { storeId: store.id },
         data: {
-          status: stripeSub.status,
-          cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
-          currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-          currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+          stripeSubscriptionId: bestSub.id,
+          status: bestSub.status,
+          planKey: planKey || subscription.planKey,
+          billingInterval: billingInterval || subscription.billingInterval,
+          cancelAtPeriodEnd: bestSub.cancel_at_period_end,
+          currentPeriodStart: new Date(bestSub.current_period_start * 1000),
+          currentPeriodEnd: new Date(bestSub.current_period_end * 1000),
         },
       });
 

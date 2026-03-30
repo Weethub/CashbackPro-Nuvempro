@@ -70,6 +70,12 @@ router.post('/sync', async (req, res, next) => {
       return res.json({ plan: store.plan, synced: false, reason: 'no_customer' });
     }
 
+    // Otimização: se já tem assinatura ativa no banco com plano diferente de starter, retorna rápido
+    const dbSub = await prisma.subscription.findUnique({ where: { storeId: store.id } });
+    if (dbSub?.status === 'active' && dbSub?.planKey && dbSub.planKey === store.plan && store.plan !== 'starter') {
+      return res.json({ plan: store.plan, synced: false, reason: 'already_synced' });
+    }
+
     // Busca assinaturas ativas no Stripe
     const subscriptions = await stripe.subscriptions.list({
       customer: store.stripeCustomerId,

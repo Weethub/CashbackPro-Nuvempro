@@ -37,16 +37,13 @@ export default function BillingPage({ locked = false }) {
 
   useEffect(() => {
     loadPlans();
-    if (!locked) loadInvoices();
-
-    // Fallback: se voltou do Stripe com ?success=true, sincroniza o plano diretamente
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === 'true') {
-      syncAfterCheckout();
+    if (!locked) {
+      loadInvoices();
+      syncPlan(); // Sempre sincroniza ao carregar — garante plano atualizado mesmo sem webhook
     }
   }, [locked]);
 
-  const syncAfterCheckout = async () => {
+  const syncPlan = async () => {
     try {
       const res = await api.post('/api/billing/sync');
       if (res.data?.synced && res.data?.plan) {
@@ -56,7 +53,7 @@ export default function BillingPage({ locked = false }) {
         }
       }
     } catch {
-      // Silencioso — webhook pode ter funcionado
+      // Silencioso
     }
   };
 

@@ -55,9 +55,10 @@ router.post('/', async (req, res) => {
  * Handle checkout.session.completed
  */
 async function handleCheckoutCompleted(session) {
-  const storeId = parseInt(session.metadata?.storeId);
+  // Metadata gravado em stripe.js usa snake_case: store_id, billing_interval
+  const storeId = parseInt(session.metadata?.store_id);
   const planKey = session.metadata?.plan_key;
-  const billingInterval = session.metadata?.billingInterval;
+  const billingInterval = session.metadata?.billing_interval;
 
   if (!storeId || !planKey) {
     console.error('checkout.session.completed missing metadata:', session.metadata);
@@ -173,7 +174,8 @@ async function handleInvoicePaid(invoice) {
  * Handle customer.subscription.updated
  */
 async function handleSubscriptionUpdated(subscription) {
-  const storeId = parseInt(subscription.metadata?.storeId);
+  // Metadata gravado em stripe.js usa snake_case: store_id, billing_interval
+  const storeId = parseInt(subscription.metadata?.store_id);
   if (!storeId) return;
 
   const planKey = subscription.metadata?.plan_key;
@@ -183,7 +185,7 @@ async function handleSubscriptionUpdated(subscription) {
     update: {
       status: subscription.status,
       planKey: planKey || undefined,
-      billingInterval: subscription.metadata?.billingInterval || undefined,
+      billingInterval: subscription.metadata?.billing_interval || undefined,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
@@ -193,7 +195,7 @@ async function handleSubscriptionUpdated(subscription) {
       stripeSubscriptionId: subscription.id,
       status: subscription.status,
       planKey,
-      billingInterval: subscription.metadata?.billingInterval,
+      billingInterval: subscription.metadata?.billing_interval,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
@@ -215,7 +217,7 @@ async function handleSubscriptionUpdated(subscription) {
  * Handle customer.subscription.deleted
  */
 async function handleSubscriptionDeleted(subscription) {
-  const storeId = parseInt(subscription.metadata?.storeId);
+  const storeId = parseInt(subscription.metadata?.store_id);
   if (!storeId) return;
 
   await prisma.subscription.update({

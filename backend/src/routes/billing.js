@@ -131,12 +131,17 @@ router.get('/plans', async (req, res, next) => {
       const prices = plan.price || {};
       const isFree = Object.values(prices).every((v) => !v || v === 0);
 
-      // Normaliza features para array de strings
+      // Normaliza features para array de strings legíveis:
+      // - Array de strings: usa diretamente (formato correto)
+      // - Objeto JSON: converte entradas, filtra valores false/null
       let features = [];
       if (Array.isArray(plan.features)) {
         features = plan.features.map(String).filter(Boolean);
       } else if (plan.features && typeof plan.features === 'object') {
-        features = Object.values(plan.features).map(String).filter(Boolean);
+        features = Object.entries(plan.features)
+          .filter(([, v]) => v !== false && v !== null && v !== undefined && v !== '')
+          .map(([k, v]) => (v === true ? k : String(v)))
+          .filter(Boolean);
       }
 
       return {

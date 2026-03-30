@@ -217,17 +217,30 @@ export default function BillingPage({ locked = false }) {
         </Card>
       )}
 
-      {/* Interval toggle */}
+      {/* Interval toggle — calcula desconto comparando com preço mensal do primeiro plano pago */}
       <Box display="flex" gap="2" justifyContent="center">
-        {INTERVALS.map((intv) => (
-          <Button
-            key={intv}
-            appearance={interval === intv ? 'primary' : 'transparent'}
-            onClick={() => setInterval_(intv)}
-          >
-            {t(`billing.interval.${intv}`)}
-          </Button>
-        ))}
+        {INTERVALS.map((intv) => {
+          let discountLabel = '';
+          if (intv !== 'monthly' && plans.length > 0) {
+            const paidPlans = plans.filter(
+              (p) => !p.isFree && (p.price?.monthly || 0) > 0 && (p.price?.[intv] || 0) > 0
+            );
+            if (paidPlans.length > 0) {
+              const ref = paidPlans[0];
+              const discount = Math.round((1 - ref.price[intv] / ref.price.monthly) * 100);
+              if (discount > 0) discountLabel = ` -${discount}%`;
+            }
+          }
+          return (
+            <Button
+              key={intv}
+              appearance={interval === intv ? 'primary' : 'transparent'}
+              onClick={() => setInterval_(intv)}
+            >
+              {t(`billing.interval.${intv}`)}{discountLabel}
+            </Button>
+          );
+        })}
       </Box>
 
       {/* Plan cards */}
@@ -244,8 +257,15 @@ export default function BillingPage({ locked = false }) {
             const prices = plan.price || {};
             const priceValue = prices[interval] ?? prices.monthly ?? 0;
             const priceDisplay = formatPrice(priceValue, t);
-            const isCurrent = billingStatus?.plan?.toLowerCase() === plan.key.toLowerCase();
-            const isFreeplan = plan.isFree || !priceValue || priceValue === 0;
+            const isFreeplan = plan.isFree || !prices.monthly || prices.monthly === 0;
+
+            // isCurrent: plano E intervalo devem bater — Scale mensal não é "atual" na aba semestral
+            const isPlanMatch = billingStatus?.plan?.toLowerCase() === plan.key.toLowerCase();
+            const isCurrent = isPlanMatch && sub?.billingInterval === interval;
+
+            // Intervalo disponível = tem priceId configurado no Stripe (ou é free)
+            const intervalAvail = isFreeplan || (plan.intervals || []).includes(interval);
+
             const planName = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
 
             return (
@@ -267,7 +287,8 @@ export default function BillingPage({ locked = false }) {
                         ))}
                       </Box>
 
-                      {!isFreeplan && !isCurrent && (
+                      {/* Assinar: aparece quando não é o plano+intervalo atual E o intervalo tem preço configurado */}
+                      {!isFreeplan && !isCurrent && intervalAvail && (
                         <Button
                           appearance="primary"
                           onClick={() => handleCheckout(plan.key)}
@@ -275,6 +296,13 @@ export default function BillingPage({ locked = false }) {
                         >
                           {checkoutLoading === plan.key ? t('common.loading') : t('billing.checkout')}
                         </Button>
+                      )}
+
+                      {/* Intervalo não disponível para este plano */}
+                      {!isFreeplan && !isCurrent && !intervalAvail && (
+                        <Text fontSize="caption" color="neutral-textDisabled">
+                          {t('billing.notAvailableInterval')}
+                        </Text>
                       )}
 
                       {isCurrent && !isFreeplan && subStatus !== 'canceled' && (

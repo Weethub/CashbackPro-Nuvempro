@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.5] - 2026-03-30
+
+### Corrigido
+
+- **Sincronismo de planos com Stripe perde estado ao recarregar a página** — `syncToStripe` pulava silenciosamente a criação de novos preços se já havia um `stripePriceId` salvo, mesmo quando o valor do plano havia sido alterado; agora verifica via Stripe API se o ID ainda é válido e se o valor bate; se divergir ou estiver inativo, cria um novo Stripe Price
+- **`verify-stripe` (bulk) retornava sempre "Sincronizado"** — endpoint só checava se `stripePriceIds` existia no banco, sem consultar o Stripe; agora chama `stripe.prices.retrieve()` para cada ID, retornando `missing` se inválido/inativo e `mismatch` se o valor divergir
+- **PlansPage sem feedback contextual** — adicionadas dicas de ação nos status `mismatch` ("Preços alterados. Clique em Sincronizar Stripe") e `missing` para orientar o usuário
+
+---
+
 ## [1.3.4] - 2026-03-28
 
 ### Corrigido

@@ -31,7 +31,8 @@ export default function BillingPage({ locked = false }) {
   const [invoices, setInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(null);
-  const [portalLoading, setPortalLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
@@ -99,18 +100,21 @@ export default function BillingPage({ locked = false }) {
     }
   };
 
-  const handlePortal = async () => {
-    setPortalLoading(true);
+  const handleCancel = async () => {
+    setCancelLoading(true);
     setError(null);
     try {
-      const res = await api.post('/api/billing/portal');
-      if (res.data?.url) {
-        window.top.location.href = res.data.url;
+      await api.post('/api/billing/cancel');
+      setConfirmCancel(false);
+      setSuccessMsg(t('billing.cancelSuccess'));
+      if (setBillingStatus) {
+        setBillingStatus((prev) => ({ ...prev, status: 'canceled' }));
       }
     } catch (err) {
       setError(err.response?.data?.error || err.message);
+      setConfirmCancel(false);
     } finally {
-      setPortalLoading(false);
+      setCancelLoading(false);
     }
   };
 
@@ -148,13 +152,25 @@ export default function BillingPage({ locked = false }) {
                   <Text>{billingStatus.renewalDate}</Text>
                 </Box>
               )}
-              <Button
-                appearance="transparent"
-                onClick={handlePortal}
-                disabled={portalLoading}
-              >
-                {portalLoading ? t('common.loading') : t('billing.portal')}
-              </Button>
+              {billingStatus.plan !== 'starter' && billingStatus.status !== 'canceled' && (
+                <Box display="flex" gap="2" alignItems="center">
+                  {confirmCancel ? (
+                    <>
+                      <Text fontSize="caption" color="neutral-textLow">{t('billing.cancelConfirm')}</Text>
+                      <Button appearance="danger" onClick={handleCancel} disabled={cancelLoading}>
+                        {cancelLoading ? t('common.loading') : t('billing.cancelConfirmYes')}
+                      </Button>
+                      <Button appearance="transparent" onClick={() => setConfirmCancel(false)} disabled={cancelLoading}>
+                        {t('common.cancel')}
+                      </Button>
+                    </>
+                  ) : (
+                    <Button appearance="transparent" onClick={() => setConfirmCancel(true)}>
+                      {t('billing.cancelPlan')}
+                    </Button>
+                  )}
+                </Box>
+              )}
             </Box>
           </Card.Body>
         </Card>
@@ -220,14 +236,10 @@ export default function BillingPage({ locked = false }) {
                         </Button>
                       )}
 
-                      {isCurrent && !isFreeplan && (
-                        <Button
-                          appearance="transparent"
-                          onClick={handlePortal}
-                          disabled={portalLoading}
-                        >
-                          {t('billing.portal')}
-                        </Button>
+                      {isCurrent && !isFreeplan && billingStatus?.status !== 'canceled' && (
+                        <Text fontSize="caption" color="neutral-textLow">
+                          {t('billing.cancelHint')}
+                        </Text>
                       )}
                     </Box>
                   </Card.Body>

@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.6.1] - 2026-03-30
+
+### Corrigido
+
+- **"Erro interno do servidor" ao assinar com trial_mode=paid** — `discounts: [{coupon}]` falhava quando o `trial_coupon` no AdminConfig não era o ID exato do cupom Stripe (vs. promotion code). Substituído por `subscription_data.trial_period_days` nativo do Stripe: mais robusto, não requer cupom, compatível com `allow_promotion_codes`
+- **Features dos planos exibindo chaves brutas** (`analytics`, `500`, `priority`, `customBranding`) — seed armazenava features como objeto JSON `{maxProducts: 500, support: 'priority'}` em vez de array de strings legíveis. Corrigido para `['Tudo do Starter', 'Até 500 produtos', 'Analytics avançado', 'Suporte prioritário']`
+- **Admin Settings > Trial paid** — removido campo `trial_coupon` (não mais necessário); atualizado texto informativo explicando que `trial_period_days` é usado nativamente
+
+---
+
 ## [1.6.0] - 2026-03-30
 
 ### Adicionado

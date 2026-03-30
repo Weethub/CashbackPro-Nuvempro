@@ -43,24 +43,17 @@ const StripeService = {
    * @param {string} priceId
    * @param {string} planKey
    * @param {string} billingInterval
-   * @param {string|null} couponCode — quando fornecido, aplica o cupom automaticamente
-   *   (trial_mode=paid). Mutuamente exclusivo com allow_promotion_codes.
+   * @param {number|null} trialPeriodDays — quando > 0, aplica trial nativo do Stripe
+   *   (trial_mode=paid). Compatível com allow_promotion_codes (sem conflito).
    */
-  async createCheckoutSession(store, priceId, planKey, billingInterval, couponCode = null) {
+  async createCheckoutSession(store, priceId, planKey, billingInterval, trialPeriodDays = null) {
     const customer = await this.getOrCreateCustomer(store);
-
-    // Stripe não permite allow_promotion_codes + discounts ao mesmo tempo.
-    // Se há cupom de trial automático, aplica via discounts; caso contrário
-    // mantém allow_promotion_codes para o usuário digitar manualmente.
-    const promoOptions = couponCode
-      ? { discounts: [{ coupon: couponCode }] }
-      : { allow_promotion_codes: true };
 
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
       mode: 'subscription',
       payment_method_types: ['card'],
-      ...promoOptions,
+      allow_promotion_codes: true,  // sempre ativo — compatível com trial_period_days
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
         store_id: String(store.id),
@@ -68,6 +61,9 @@ const StripeService = {
         billing_interval: billingInterval || '',
       },
       subscription_data: {
+        // trial_period_days: nativo do Stripe — não requer cupom, status fica 'trialing'
+        // até o fim do período; compatível com allow_promotion_codes
+        ...(trialPeriodDays && trialPeriodDays > 0 ? { trial_period_days: trialPeriodDays } : {}),
         metadata: {
           app_id: process.env.NUVEMSHOP_APP_ID || '',
           app_name: process.env.APP_NAME || '',

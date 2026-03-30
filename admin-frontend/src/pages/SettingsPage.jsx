@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import adminApi from '../services/adminApi';
-import { Settings, Save, Loader2, Lock, Eye, EyeOff, Clock, Tag, AlertTriangle } from 'lucide-react';
+import { Settings, Save, Loader2, Lock, Eye, EyeOff, Clock, Tag } from 'lucide-react';
 import TemplateVersionCard from '../components/TemplateVersionCard';
 
 export default function SettingsPage() {
@@ -55,7 +55,6 @@ export default function SettingsPage() {
         updates: [
           { key: 'trial_mode', value: trialConfig.trial_mode, group: 'trial', label: 'Modo de Trial' },
           { key: 'trial_days', value: String(trialConfig.trial_days), group: 'trial', label: 'Duração do Trial (dias)' },
-          { key: 'trial_coupon', value: trialConfig.trial_coupon, group: 'trial', label: 'Cupom Stripe (trial paid)' },
         ],
       });
       setTrialSuccess('Configurações de trial salvas com sucesso.');
@@ -309,7 +308,7 @@ export default function SettingsPage() {
                 {
                   value: 'paid',
                   title: 'Trial com assinatura',
-                  desc: 'Usuário assina mas ganha X dias grátis via cupom Stripe automático.',
+                  desc: 'Usuário cadastra cartão mas só é cobrado após X dias. Status "trialing" no Stripe.',
                   color: 'border-violet-200 hover:border-violet-400',
                   active: 'border-violet-600 bg-violet-50',
                   icon: <Tag size={14} className="text-violet-500" />,
@@ -350,37 +349,22 @@ export default function SettingsPage() {
               <p className="text-xs text-gray-400 mt-1">
                 {trialConfig.trial_mode === 'free'
                   ? 'Novos clientes terão acesso gratuito por este período sem precisar de cartão.'
-                  : 'O cupom abaixo será aplicado automaticamente, oferecendo este período grátis.'}
+                  : 'O cliente cadastra o cartão e fica em status "trialing" no Stripe por este período antes da primeira cobrança. Pode cancelar antes.'}
               </p>
             </div>
           )}
 
-          {/* Cupom — visível apenas para paid */}
+          {/* Info modo paid */}
           {trialConfig.trial_mode === 'paid' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
-                <Tag size={14} />
-                Código do Cupom Stripe
-              </label>
-              <input
-                type="text"
-                value={trialConfig.trial_coupon}
-                onChange={(e) => setTrialConfig((p) => ({ ...p, trial_coupon: e.target.value.toUpperCase() }))}
-                placeholder="Ex: TRIAL14"
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 font-mono uppercase focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Crie o cupom na página{' '}
-                <a href="/coupons" className="text-violet-600 hover:underline">Cupons</a>.
-                Ele será aplicado automaticamente no checkout — o cliente não precisa digitar.
-              </p>
-
-              {/* Aviso modo paid */}
-              <div className="mt-3 flex gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-700">
-                  No modo <strong>trial com assinatura</strong>, o app exibirá "Assine e ganhe X dias grátis" nos planos pagos.
-                  O campo "Permitir cupons" é desativado no checkout quando este modo está ativo (Stripe não permite os dois ao mesmo tempo).
+            <div className="flex gap-2 bg-violet-50 border border-violet-200 rounded-lg p-3">
+              <Tag size={16} className="text-violet-500 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-violet-700 space-y-1">
+                <p>
+                  Os planos exibirão a badge <strong>"Assine e ganhe {trialConfig.trial_days} dias grátis"</strong>.
+                  O trial é aplicado via <code className="bg-violet-100 px-1 rounded">trial_period_days</code> nativo do Stripe — sem necessidade de cupom.
+                </p>
+                <p>
+                  O campo "Permitir cupons" no checkout continua ativo, então o cliente ainda pode inserir um cupom de desconto manualmente.
                 </p>
               </div>
             </div>

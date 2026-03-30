@@ -80,16 +80,17 @@ router.post('/checkout', checkoutLimiter, async (req, res, next) => {
       );
     }
 
-    // trial_mode=paid: aplica cupom automaticamente no checkout (sem cobrar por X dias)
-    const { trialMode, trialCoupon } = await getTrialConfig();
-    const autoCoupon = trialMode === 'paid' && trialCoupon ? trialCoupon : null;
+    // trial_mode=paid: usa trial_period_days nativo do Stripe (não requer cupom)
+    // Compatível com allow_promotion_codes — o cliente pode ainda digitar um cupom extra
+    const { trialMode, trialDays } = await getTrialConfig();
+    const trialPeriodDays = trialMode === 'paid' && trialDays > 0 ? trialDays : null;
 
     const session = await StripeService.createCheckoutSession(
       req.store,
       priceId,
       planKey,
       billingInterval,
-      autoCoupon
+      trialPeriodDays
     );
 
     res.json({ url: session.url, sessionId: session.id });

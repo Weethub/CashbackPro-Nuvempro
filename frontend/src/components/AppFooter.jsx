@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Text, Sidebar, Button, Title } from '@nimbus-ds/components';
 import TermsPage from '../pages/TermsPage.jsx';
+import { useNexo } from '../providers/NexoProvider.jsx';
 
 /* eslint-disable no-undef */
 const GIT_COMMIT = typeof __GIT_COMMIT__ !== 'undefined' ? __GIT_COMMIT__ : 'dev';
 
 export default function AppFooter() {
   const { t } = useTranslation();
+  const { termsData } = useNexo();
   const [termsOpen, setTermsOpen] = useState(false);
   const year = new Date().getFullYear();
 
@@ -47,9 +49,7 @@ export default function AppFooter() {
       </Box>
 
       <Sidebar open={termsOpen} onRemove={() => setTermsOpen(false)}>
-        <Box padding="4">
-          <TermsPage viewOnly />
-        </Box>
+        <TermsPage termsData={termsData} viewOnly />
       </Sidebar>
     </>
   );

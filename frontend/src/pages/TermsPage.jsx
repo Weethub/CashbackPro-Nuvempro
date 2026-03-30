@@ -57,6 +57,81 @@ export default function TermsPage({ termsData, onAccepted, viewOnly = false }) {
 
   const displayTitle = termsData?.title || t('terms.title');
 
+  const content = (
+    <Box display="flex" flexDirection="column" gap="4">
+      <Box display="flex" flexDirection="column" gap="1">
+        <Title as="h2">{displayTitle}</Title>
+        {termsData?.version && (
+          <Text fontSize="caption" color="neutral-textLow">
+            {`v${termsData.version}`}
+          </Text>
+        )}
+      </Box>
+
+      {!viewOnly && !scrolledToBottom && (
+        <Alert appearance="primary">
+          <Text>{t('terms.scrollHint')}</Text>
+        </Alert>
+      )}
+
+      <Box
+        ref={scrollRef}
+        onScroll={handleScroll}
+        overflow="auto"
+        maxHeight={viewOnly ? '100%' : '400px'}
+        padding="4"
+        borderColor="neutral-surfaceHighlight"
+        borderStyle="solid"
+        borderWidth="1"
+        borderRadius="2"
+      >
+        {hasDbContent ? (
+          /* Conteúdo do banco — suporta plain text e HTML sanitizado */
+          sanitizedContent.includes('<') ? (
+            <div
+              dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+              style={{ fontSize: '14px', lineHeight: '1.6' }}
+            />
+          ) : (
+            <Text style={{ whiteSpace: 'pre-wrap' }}>
+              {termsData.content}
+            </Text>
+          )
+        ) : (
+          /* Fallback: seções estáticas do i18n */
+          i18nSections.map((key) => (
+            <Box key={key} marginBottom="4">
+              <Title as="h4">{t(`terms.sections.${key}.title`)}</Title>
+              <Text>{t(`terms.sections.${key}.body`)}</Text>
+            </Box>
+          ))
+        )}
+      </Box>
+
+      {!viewOnly && error && (
+        <Alert appearance="danger">
+          <Text>{error}</Text>
+        </Alert>
+      )}
+
+      {!viewOnly && (
+        <Button
+          appearance="primary"
+          onClick={handleAccept}
+          disabled={!scrolledToBottom || submitting}
+        >
+          {submitting ? t('common.loading') : t('terms.accept')}
+        </Button>
+      )}
+    </Box>
+  );
+
+  // viewOnly: renderiza direto, sem wrapper de página cheia (ex: dentro de Sidebar)
+  if (viewOnly) {
+    return <Box padding="4">{content}</Box>;
+  }
+
+  // Modo gate: centralizado em tela cheia
   return (
     <Box
       display="flex"
@@ -67,73 +142,7 @@ export default function TermsPage({ termsData, onAccepted, viewOnly = false }) {
     >
       <Box maxWidth="640px" width="100%">
         <Card>
-          <Card.Header>
-            <Title as="h2">{displayTitle}</Title>
-            {termsData?.version && (
-              <Text fontSize="caption" color="neutral-textLow">
-                {`v${termsData.version}`}
-              </Text>
-            )}
-          </Card.Header>
-          <Card.Body>
-            <Box display="flex" flexDirection="column" gap="4">
-              {!viewOnly && !scrolledToBottom && (
-                <Alert appearance="primary">
-                  <Text>{t('terms.scrollHint')}</Text>
-                </Alert>
-              )}
-
-              <Box
-                ref={scrollRef}
-                onScroll={handleScroll}
-                overflow="auto"
-                maxHeight="400px"
-                padding="4"
-                borderColor="neutral-surfaceHighlight"
-                borderStyle="solid"
-                borderWidth="1"
-                borderRadius="2"
-              >
-                {hasDbContent ? (
-                  /* Conteúdo do banco — suporta plain text e HTML sanitizado */
-                  sanitizedContent.includes('<') ? (
-                    <div
-                      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-                      style={{ fontSize: '14px', lineHeight: '1.6' }}
-                    />
-                  ) : (
-                    <Text style={{ whiteSpace: 'pre-wrap' }}>
-                      {termsData.content}
-                    </Text>
-                  )
-                ) : (
-                  /* Fallback: seções estáticas do i18n */
-                  i18nSections.map((key) => (
-                    <Box key={key} marginBottom="4">
-                      <Title as="h4">{t(`terms.sections.${key}.title`)}</Title>
-                      <Text>{t(`terms.sections.${key}.body`)}</Text>
-                    </Box>
-                  ))
-                )}
-              </Box>
-
-              {!viewOnly && error && (
-                <Alert appearance="danger">
-                  <Text>{error}</Text>
-                </Alert>
-              )}
-
-              {!viewOnly && (
-                <Button
-                  appearance="primary"
-                  onClick={handleAccept}
-                  disabled={!scrolledToBottom || submitting}
-                >
-                  {submitting ? t('common.loading') : t('terms.accept')}
-                </Button>
-              )}
-            </Box>
-          </Card.Body>
+          <Card.Body>{content}</Card.Body>
         </Card>
       </Box>
     </Box>

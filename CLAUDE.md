@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.3.9**
+> Versão atual do template: **1.4.1**
 
 ---
 
@@ -207,6 +207,54 @@ isSubscribable && !isCurrent
 
 ---
 
+## Arquitetura de Termos de Uso (Gate obrigatório)
+
+O fluxo de aceite de termos bloqueia o app até o tenant aceitar a versão mais recente publicada.
+
+### Fluxo completo
+
+```
+1. NexoProvider → GET /api/terms/status
+   Resposta: { required, accepted, terms: { id, version, title, content, publishedAt } }
+
+2. Se accepted === false → App.jsx exibe TermsPage com termsData do contexto
+
+3. TermsPage exibe conteúdo real do banco (termsData.content)
+   — fallback para seções i18n se não houver termos publicados
+
+4. Usuário rola até o fim → botão "Aceitar" habilitado
+
+5. POST /api/terms/accept com { termsVersionId: termsData.id }
+   — OBRIGATÓRIO enviar termsVersionId, senão retorna 400
+
+6. onAccepted() → setTermsAccepted(true) → app liberado
+```
+
+### O que o NexoProvider expõe
+
+```javascript
+// Contexto NexoProvider:
+{
+  termsAccepted,      // boolean | null
+  setTermsAccepted,   // setter
+  termsData,          // { id, version, title, content, publishedAt } | null
+}
+```
+
+### Admin gerencia os termos
+
+- Criar rascunho: `POST /admin-api/terms` → `{ version, title, content }`
+- Editar rascunho: `PUT /admin-api/terms/:id`
+- Publicar: `POST /admin-api/terms/:id/publish` (role: proprietario)
+- A publicação ativa o gate para todos os tenants que ainda não aceitaram
+
+### Campos no Prisma
+
+- `TermsVersion.isPublished` (não `isActive`) — campo correto para verificar se está ativo
+- `TermsAcceptance` — unique em `[storeId, termsVersionId]`
+
+---
+
 ## Padrões de Código Obrigatórios
 
 Ver `STANDARDS.md` para checklist completo. Resumo:
@@ -214,6 +262,7 @@ Ver `STANDARDS.md` para checklist completo. Resumo:
 - Toda rota usa `try/catch` com `next(err)` e `AppError` para erros conhecidos
 - Formato de erro: `{ error, code, status }` — nunca mensagens hardcoded
 - Todas as rotas de dados paginados usam `parsePagination` + `paginatedResponse`
+- **Frontend admin: sempre `res.data.data` para acessar itens paginados** — nunca `res.data.campo || res.data` (tela branca)
 - Toda query de app filtra por `storeId` (isolamento de tenant)
 - Rate limiter em todas as rotas públicas
 - Strings de UI sempre via i18n (pt-BR, es-AR, es-MX) — nunca hardcoded no JSX
@@ -222,13 +271,26 @@ Ver `STANDARDS.md` para checklist completo. Resumo:
 
 ## Deploy
 
-| Serviço   | Onde          | O que sobe          |
-|-----------|---------------|---------------------|
-| Backend   | Railway       | `backend/`          |
-| Frontend  | Vercel        | `frontend/` (via `vercel.json` na raiz) |
-| Admin     | Vercel (separado) | `admin-frontend/` |
+| Serviço | Onde | O que sobe | Observação |
+|---------|------|------------|------------|
+| Backend | Railway | `backend/` | Redeploy via GraphQL API |
+| Frontend (app) | Vercel | `frontend/` (via `vercel.json` raiz) | Deploy via API com SHA |
+| Admin Frontend | Vercel (projeto separado) | `admin-frontend/` | **rootDirectory obrigatório** |
 
-### vercel.json (raiz do repo — Frontend)
+### ⚠️ Admin Frontend — rootDirectory crítico
+
+O projeto Vercel do admin-frontend DEVE ter `rootDirectory: "admin-frontend"` configurado.
+Sem isso, o Vercel usa o `vercel.json` da raiz, que builda o frontend principal (app Nuvemshop),
+e o admin exibirá "Este aplicativo deve ser acessado pelo painel da Nuvemshop."
+
+```bash
+# Configurar uma vez por projeto:
+curl -X PATCH "https://api.vercel.com/v9/projects/PROJ_ID" \
+  -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" \
+  -d '{"rootDirectory":"admin-frontend","framework":"vite"}'
+```
+
+### vercel.json (raiz do repo — Frontend principal)
 
 ```json
 {
@@ -238,17 +300,36 @@ Ver `STANDARDS.md` para checklist completo. Resumo:
 }
 ```
 
+### admin-frontend/vercel.json (Admin — próprio)
+
+```json
+{
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+### git config — Evitar bloqueio Vercel
+
+```bash
+# Usar sempre o noreply do GitHub para que Vercel associe o committer
+git config user.email "GITHUB_ID+username@users.noreply.github.com"
+git config user.name "username"
+```
+
 ---
 
 ## Histórico de Versões Recentes
 
 | Versão | O que mudou |
 |--------|-------------|
+| **1.4.1** | Fix: tela branca em Terms/FAQ/Logs/Segurança admin (`res.data.data`); `isPublished` no lugar de `isActive`; endpoints `/logs/usage` e `/logs/abuse` adicionados; `admin-frontend/vercel.json` com build própria |
+| **1.4.0** | Gate de Termos de Uso funcional: `NexoProvider` expõe `termsData`; `TermsPage` usa conteúdo do banco; `POST /terms/accept` envia `termsVersionId` corretamente |
 | **1.3.9** | Fix: botão "Cancelar" não aparecia após resubscrição — `syncPlan` agora re-busca billing status completo |
 | **1.3.8** | Fix: checkmarks vermelhos no admin pós auto-heal; checkout com auto-sync antes de falhar |
 | **1.3.7** | Refactor completo BillingPage — campos corretos, modal cancelar, badge cancelAtPeriodEnd, faturas com "Ver" |
-| **1.3.6** | Refactor completo fluxo Stripe — `syncToStripe` idempotente, verify-stripe com auto-heal |
-| **1.3.5** | Fix: sincronismo Stripe perdia estado ao recarregar página no admin |
 
 ---
 
@@ -297,4 +378,10 @@ cd backend && npm test
 
 ---
 
-*Atualizado em: 2026-03-30 | Versão: 1.3.9*
+- **`paginatedResponse`** retorna `{ data, meta }` — no frontend admin usar sempre `res.data.data`, nunca `res.data.campo || res.data`
+- **`TermsVersion.isPublished`** é o campo correto (não `isActive`)
+- **Admin frontend** é acessado diretamente via URL, sem restrição de iframe — o `NexoProvider` que bloqueia acesso direto existe apenas no `frontend/`, não no `admin-frontend/`
+
+---
+
+*Atualizado em: 2026-03-30 | Versão: 1.4.1*

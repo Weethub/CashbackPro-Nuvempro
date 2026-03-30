@@ -241,6 +241,28 @@ router.get('/', async (req, res) => {
 />
 ```
 
+### ⚠️ Consumo Correto no Frontend (Admin)
+
+`paginatedResponse` sempre retorna `{ data: [], meta: {} }`.
+**NUNCA** use `res.data.items || res.data` — isso retorna o objeto inteiro e `.map()` nele causa crash silencioso (tela branca).
+
+```javascript
+// ✅ CORRETO — sempre usar res.data.data
+const fetchItems = async () => {
+  const res = await adminApi.get('/endpoint');
+  setItems(res.data.data || []);          // array de itens
+  setMeta(res.data.meta || {});           // { page, limit, total, totalPages }
+};
+
+// ❌ ERRADO — res.data é { data:[], meta:{} }, não um array
+setItems(res.data.items || res.data || []); // crash: {}.map is not a function
+setItems(res.data || []);                   // crash: idem
+```
+
+**Por que isso causa tela branca?**
+`res.data` é um objeto `{ data: [], meta: {} }`. É truthy, então o `|| []` nunca é atingido.
+O estado recebe um objeto. Quando o componente chama `.map()` no estado → `TypeError` → React renderiza nada (sem ErrorBoundary = tela branca).
+
 ---
 
 ## 4. Seguranca
@@ -536,6 +558,111 @@ O badge de versao na sidebar compara a versao local com o GitHub Releases via AP
 
 ---
 
+## 7. Deploy — Regras Críticas
+
+### 7.1 Git — Autor de Commit
+
+O Vercel usa o email do committer para associar ao GitHub. Email errado = **deploy bloqueado**.
+
+```bash
+# Configurar SEMPRE antes de commitar neste repo:
+git config user.email "6935080+eriveltoncabral@users.noreply.github.com"
+git config user.name "eriveltoncabral"
+```
+
+> O ID `6935080` é o ID GitHub do usuário. Para encontrar: `GET https://api.github.com/users/{username}`
+
+---
+
+### 7.2 Vercel — Dois Projetos Separados
+
+O monorepo tem **dois** projetos Vercel distintos. Cada um **deve** ter seu `rootDirectory` configurado corretamente:
+
+| Projeto | rootDirectory | Build | URL |
+|---------|--------------|-------|-----|
+| `frontend` | *(raiz)* | usa `vercel.json` raiz | `frontend-eriveltoncabral.vercel.app` |
+| `admin-frontend` | **`admin-frontend`** | usa `admin-frontend/vercel.json` | `admin-frontend-six-nu.vercel.app` |
+
+#### ⚠️ Problema crítico: rootDirectory ausente no admin-frontend
+
+Se `rootDirectory` do projeto `admin-frontend` no Vercel for `null`:
+- Vercel usa o `vercel.json` da **raiz** do repo
+- A raiz builda o **frontend principal** (app Nuvemshop)
+- O admin-frontend servirá o app e mostrará: *"Este aplicativo deve ser acessado pelo painel da Nuvemshop."*
+
+**Correção via API:**
+```bash
+curl -X PATCH "https://api.vercel.com/v9/projects/PROJETO_ID" \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"rootDirectory":"admin-frontend","framework":"vite"}'
+```
+
+O `admin-frontend/vercel.json` deve ter:
+```json
+{
+  "buildCommand": "npm install && npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+---
+
+### 7.3 Deploy Manual via API (sem auto-deploy GitHub)
+
+Os projetos Vercel deste template não têm link automático com GitHub.
+**Todo deploy requer chamada manual à API.**
+
+```bash
+SHA=$(git rev-parse HEAD)
+
+# Frontend principal
+curl -X POST "https://api.vercel.com/v13/deployments?projectId=PROJ_FRONTEND_ID" \
+  -H "Authorization: Bearer VERCEL_TOKEN" -H "Content-Type: application/json" \
+  -d "{\"name\":\"frontend\",\"target\":\"production\",\"gitSource\":{\"type\":\"github\",\"repoId\":REPO_ID,\"ref\":\"main\",\"sha\":\"$SHA\"}}"
+
+# Admin frontend
+curl -X POST "https://api.vercel.com/v13/deployments?projectId=PROJ_ADMIN_ID" \
+  -H "Authorization: Bearer VERCEL_TOKEN" -H "Content-Type: application/json" \
+  -d "{\"name\":\"admin-frontend\",\"target\":\"production\",\"gitSource\":{\"type\":\"github\",\"repoId\":REPO_ID,\"ref\":\"main\",\"sha\":\"$SHA\"}}"
+
+# Backend (Railway)
+curl -X POST "https://backboard.railway.com/graphql/v2" \
+  -H "Authorization: Bearer RAILWAY_TOKEN" -H "Content-Type: application/json" \
+  -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"SERVICE_ID\", environmentId: \"ENV_ID\") }"}'
+```
+
+---
+
+### 7.4 Admin Frontend — Acesso Direto (sem iframe)
+
+O admin frontend é uma aplicação **separada** do app embedado na Nuvemshop.
+- **Não tem** restrição de iframe
+- **Não usa** Nexo SDK
+- Acessado diretamente via URL do navegador
+- Autenticado por login próprio (`/login`) com JWT admin
+
+O `NexoProvider` (que bloqueia acesso direto com "Este aplicativo deve ser acessado...") existe **apenas no `frontend/`**, não no `admin-frontend/`.
+
+---
+
+### Checklist de Deploy
+
+```
+[ ] git config user.email correto (noreply GitHub)
+[ ] version.js e CHANGELOG.md atualizados
+[ ] commit e push para main
+[ ] Vercel frontend: deploy via API com SHA correto
+[ ] Vercel admin-frontend: rootDirectory="admin-frontend" configurado
+[ ] Vercel admin-frontend: deploy via API com SHA correto
+[ ] Railway backend: serviceInstanceRedeploy disparado
+[ ] Verificar STATUS: READY nos 3 serviços
+```
+
+---
+
 ## Resumo — Validacao Rapida
 
 Antes de fazer deploy, confirme:
@@ -545,10 +672,14 @@ Antes de fazer deploy, confirme:
 [ ] AppError usado em todas as rotas
 [ ] Rate limiters configurados (5 camadas)
 [ ] Paginacao usa parsePagination + paginatedResponse
+[ ] Frontend admin usa res.data.data (nunca res.data.campo || res.data)
 [ ] Respostas paginadas retornam { data, meta }
 [ ] helmet() no server.js com CSP
 [ ] DOMPurify no frontend
 [ ] CORS whitelist configurado
 [ ] 10+ smoke tests passando
 [ ] .env nao esta no git
+[ ] git config user.email com noreply GitHub (evita bloqueio Vercel)
+[ ] Vercel admin-frontend tem rootDirectory="admin-frontend"
+[ ] Deploy dos 3 serviços: frontend, admin-frontend, backend (Railway)
 ```

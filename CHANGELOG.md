@@ -6,6 +6,28 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.5.0] - 2026-03-30
+
+### Adicionado
+
+- **Gate de assinatura obrigatória** — quando não há plano free e o tenant não tem assinatura ativa, o app bloqueia o acesso e exibe a página de planos
+  - `GET /api/billing/status` agora retorna `hasAccess: boolean`
+  - `hasAccess = true` quando: assinatura ativa/trialing no Stripe, trial da loja ainda vigente, ou plano atual marcado como `isFree` no banco
+  - `App.jsx` Gate 2 usa `billingStatus.hasAccess === false` para bloquear
+- **Cupom no checkout Stripe** — `createCheckoutSession` agora inclui `allow_promotion_codes: true`; campo de cupom aparece nativamente na página de pagamento do Stripe
+- **BillingPage modo locked melhorado**:
+  - Sync automático ao montar: tenta `POST /billing/sync` para detectar assinaturas recém-criadas no Stripe (webhook ainda não processado)
+  - Botão "Já assinei — verificar acesso": dispara sync + recarrega `billingStatus` completo via `refreshStatus`
+  - Se a assinatura for detectada, `hasAccess` passa a `true` e o gate é liberado automaticamente
+- **NexoProvider** expõe `refreshStatus` no contexto (chama `loadStatus` que re-busca billing + terms)
+
+### Corrigido
+
+- **Link do termo no rodapé** — `AppFooter` agora passa `termsData` do contexto para `TermsPage`, exibindo o conteúdo real do banco em vez do fallback i18n
+- **Layout do TermsPage no Sidebar** — modo `viewOnly` usa `<Box padding="4">` simples, sem `minHeight="100vh"` e centralização vertical que causavam espaçamento excessivo
+
+---
+
 ## [1.4.1] - 2026-03-30
 
 ### Corrigido

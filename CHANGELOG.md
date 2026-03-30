@@ -6,6 +6,23 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.5.1] - 2026-03-30
+
+### Corrigido
+
+- **Bug crítico: `GET /api/billing/status` retornava 500** — `select: { isFree: true }` no Prisma lançava erro porque `isFree` não é campo do schema `AdminPlan` (é calculado). Causava `loadStatus` falhar silenciosamente, deixando `billingStatus=null` e `termsData=null`
+- **Gate de assinatura não bloqueava** — com `billingStatus=null`, `billingStatus?.hasAccess === false` é `undefined === false` = false, gate nunca disparava
+- **Termos no rodapé mostravam fallback i18n** — `termsData=null` (mesmo erro acima), TermsPage usava seções estáticas em vez do conteúdo do banco
+- **`trialActive` agora respeita `TRIAL_DAYS` do `.env`** — se `TRIAL_DAYS=0` (ou não definido), trial não concede acesso ao app; usuário deve assinar um plano
+
+### Técnico
+
+- `isFree` calculado corretamente: `select: { price: true }` + `Object.values(price).every(v => !v || v === 0)`
+- Comentário de aviso no código sobre `isFree` não ser campo Prisma
+- `TRIAL_DAYS=0` configurado no Railway (produção) para forçar assinatura imediata
+
+---
+
 ## [1.5.0] - 2026-03-30
 
 ### Adicionado

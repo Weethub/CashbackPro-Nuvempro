@@ -95,4 +95,109 @@ router.get('/errors', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /admin-api/logs/usage — API usage logs (store activity)
+ * Query: ?page=1&limit=25
+ */
+router.get('/usage', async (req, res, next) => {
+  try {
+    const { page, limit, skip } = parsePagination(req.query);
+
+    const [logs, total] = await Promise.all([
+      prisma.adminLog.findMany({
+        where: {
+          action: { in: ['api_request', 'billing_checkout', 'billing_cancel', 'billing_sync', 'terms_accept'] },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          action: true,
+          entity: true,
+          entityId: true,
+          createdAt: true,
+          ipAddress: true,
+          severity: true,
+          details: true,
+        },
+      }),
+      prisma.adminLog.count({
+        where: {
+          action: { in: ['api_request', 'billing_checkout', 'billing_cancel', 'billing_sync', 'terms_accept'] },
+        },
+      }),
+    ]);
+
+    const mapped = logs.map((l) => ({
+      id: l.id,
+      timestamp: l.createdAt,
+      storeId: l.details?.storeId || null,
+      endpoint: l.details?.endpoint || l.action,
+      method: l.details?.method || null,
+      responseTime: l.details?.responseTime || null,
+      statusCode: l.details?.statusCode || null,
+      requestCount: l.details?.requestCount || null,
+      severity: l.severity,
+    }));
+
+    res.json(paginatedResponse(mapped, total, { page, limit }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /admin-api/logs/abuse — Abuse and rate-limit logs
+ * Query: ?page=1&limit=25
+ */
+router.get('/abuse', async (req, res, next) => {
+  try {
+    const { page, limit, skip } = parsePagination(req.query);
+
+    const [logs, total] = await Promise.all([
+      prisma.adminLog.findMany({
+        where: {
+          severity: { in: ['warning', 'error'] },
+          action: {
+            in: [
+              'login_failed', 'rate_limit_exceeded', 'unauthorized_access',
+              'impersonate_store', 'suspicious_activity',
+            ],
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.adminLog.count({
+        where: {
+          severity: { in: ['warning', 'error'] },
+          action: {
+            in: [
+              'login_failed', 'rate_limit_exceeded', 'unauthorized_access',
+              'impersonate_store', 'suspicious_activity',
+            ],
+          },
+        },
+      }),
+    ]);
+
+    const mapped = logs.map((l) => ({
+      id: l.id,
+      timestamp: l.createdAt,
+      severity: l.severity,
+      type: l.action,
+      storeId: l.details?.storeId || null,
+      ip: l.ipAddress,
+      description: l.details?.message || l.action,
+      blocked: l.severity === 'error',
+    }));
+
+    res.json(paginatedResponse(mapped, total, { page, limit }));
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

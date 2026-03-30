@@ -19,7 +19,7 @@ export default function TermsPage() {
       setLoading(true);
       setError('');
       const res = await adminApi.get('/terms');
-      setVersions(res.data.terms || res.data || []);
+      setVersions(res.data.data || []);
     } catch {
       setError('Erro ao carregar termos.');
     } finally {
@@ -95,13 +95,13 @@ export default function TermsPage() {
               <div
                 key={id}
                 className={`bg-white rounded-xl shadow-sm border-l-4 p-6 ${
-                  term.isActive ? 'border-emerald-500' : 'border-gray-300'
+                  term.isPublished ? 'border-emerald-500' : 'border-gray-300'
                 }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
-                    <div className={`p-2.5 rounded-lg ${term.isActive ? 'bg-emerald-50' : 'bg-gray-50'}`}>
-                      <FileText size={20} className={term.isActive ? 'text-emerald-500' : 'text-gray-400'} />
+                    <div className={`p-2.5 rounded-lg ${term.isPublished ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                      <FileText size={20} className={term.isPublished ? 'text-emerald-500' : 'text-gray-400'} />
                     </div>
                     <div>
                       <div className="flex items-center gap-3">
@@ -109,7 +109,7 @@ export default function TermsPage() {
                         <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-mono">
                           v{term.version}
                         </span>
-                        {term.isActive && (
+                        {term.isPublished && (
                           <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-xs font-medium">
                             <CheckCircle size={12} /> Ativa
                           </span>
@@ -133,7 +133,7 @@ export default function TermsPage() {
                     >
                       <Pencil size={16} />
                     </button>
-                    {!term.isActive && (
+                    {!term.isPublished && (
                       <button
                         onClick={() => handlePublish(term)}
                         disabled={publishLoading === id}

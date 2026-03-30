@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.4.1] - 2026-03-30
+
+### Corrigido
+
+- **Tela branca em Termos, FAQ, Logs e Segurança no admin** — 3 páginas usavam `res.data.terms/faqs/admins` que é `undefined` pois `paginatedResponse` retorna `{ data, meta }`. Corrigido para `res.data.data`; componentes paravam de chamar `.map()` em objeto e travavam silenciosamente
+- **TermsPage admin exibia badge/cor errada** — campo `term.isActive` não existe no banco; corrigido para `term.isPublished`
+- **Logs: tabs "Uso" e "Abuso" retornavam 404** — endpoints `GET /admin-api/logs/usage` e `GET /admin-api/logs/abuse` adicionados ao backend
+
+---
+
 ## [1.4.0] - 2026-03-30
 
 ### Corrigido / Implementado

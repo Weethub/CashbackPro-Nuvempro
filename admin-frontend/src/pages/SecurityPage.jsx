@@ -52,7 +52,7 @@ export default function SecurityPage() {
       setLoading(true);
       setError('');
       const res = await adminApi.get('/security/admins');
-      setAdmins(res.data.admins || res.data || []);
+      setAdmins(res.data.data || []);
     } catch {
       setError('Erro ao carregar administradores.');
     } finally {

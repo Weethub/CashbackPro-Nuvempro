@@ -35,7 +35,7 @@ export default function FaqPage() {
       const params = {};
       if (category !== 'all') params.category = category;
       const res = await adminApi.get('/faq', { params });
-      setFaqs(res.data.faqs || res.data || []);
+      setFaqs(res.data.data || []);
     } catch {
       setError('Erro ao carregar FAQ.');
     } finally {

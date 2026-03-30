@@ -6,6 +6,20 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.5.2] - 2026-03-30
+
+### Corrigido
+
+- **Plano desativado no admin voltava após deploy** — `seed-admin.js` incluía `isActive` no `update` do upsert, forçando `isActive: true` nos planos padrão a cada seed. Removido `isActive` do `update` (preservado apenas no `create` para novos planos)
+- **Desativar plano no admin não arquivava no Stripe** — produtos e preços continuavam ativos no Stripe permitindo novas assinaturas mesmo após desativação
+
+### Adicionado
+
+- **`adminPlanService.archiveInStripe(plan)`** — arquiva o produto Stripe e todos os seus preços ativos; chamado automaticamente ao desativar um plano
+- **PUT `/admin-api/plans/:id` com `isActive: false`** — agora chama `archiveInStripe` em vez de `syncToStripe`; `deactivate()` também chama `archiveInStripe`
+
+---
+
 ## [1.5.1] - 2026-03-30
 
 ### Corrigido

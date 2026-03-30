@@ -263,11 +263,20 @@ router.put('/:id', requireRole('gerente'), async (req, res, next) => {
       ipAddress: req.ip,
     });
 
-    // Auto-sync com Stripe após edição
-    try {
-      plan = await adminPlanService.syncToStripe(planRecord.id);
-    } catch {
-      // Stripe não configurado ou erro temporário — retorna plano sem sync
+    // Se isActive mudou para false → arquiva produto/preços no Stripe (sem novas assinaturas)
+    // Se isActive continua true ou foi ativado → sincroniza/cria no Stripe normalmente
+    if (data.isActive === false) {
+      try {
+        await adminPlanService.archiveInStripe(planRecord);
+      } catch {
+        // Stripe não configurado ou erro temporário — ignora
+      }
+    } else {
+      try {
+        plan = await adminPlanService.syncToStripe(planRecord.id);
+      } catch {
+        // Stripe não configurado ou erro temporário — retorna plano sem sync
+      }
     }
 
     res.json({ plan: normalizePlan(plan) });

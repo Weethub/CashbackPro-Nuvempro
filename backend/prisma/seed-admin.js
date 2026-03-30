@@ -99,12 +99,14 @@ async function main() {
     const upserted = await prisma.adminPlan.upsert({
       where: { appId_name: { appId: plan.appId, name: plan.name } },
       update: {
+        // IMPORTANTE: isActive NÃO é atualizado pelo seed para preservar configurações do admin.
+        // Se o admin desativou um plano, o seed não deve reativá-lo.
+        // Somente o painel admin deve controlar isActive.
         stripePriceIds: plan.stripePriceIds,
         features: plan.features,
         price: plan.price,
         commissionRate: plan.commissionRate,
         revenueShareRate: plan.revenueShareRate,
-        isActive: plan.isActive,
         sortOrder: plan.sortOrder,
       },
       create: plan,

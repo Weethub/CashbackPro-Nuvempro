@@ -120,11 +120,60 @@ const adminPlanService = {
     return prisma.adminPlan.update({ where: { id }, data });
   },
 
-  /** Deactivate a plan (soft delete). */
+  /** Deactivate a plan (soft delete) + arquiva produto e preços no Stripe. */
   async deactivate(id) {
     const plan = await prisma.adminPlan.findUnique({ where: { id } });
     if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
+
+    // Arquiva o produto e todos os preços ativos no Stripe (não-bloqueante)
+    await this.archiveInStripe(plan).catch((err) =>
+      console.warn(`[deactivate] Stripe archive falhou para plano ${plan.name}:`, err.message)
+    );
+
     return prisma.adminPlan.update({ where: { id }, data: { isActive: false } });
+  },
+
+  /**
+   * Arquiva o produto Stripe do plano e todos os seus preços ativos.
+   * Chamado ao desativar um plano para evitar novas assinaturas via Stripe.
+   * Não lança erro se o produto não existir ou se o Stripe não estiver configurado.
+   */
+  async archiveInStripe(plan) {
+    // Busca o produto Stripe pelo ID do plano no banco
+    let product = null;
+    try {
+      const byId = await stripe.products.search({
+        query: `metadata['admin_plan_id']:'${plan.id}'`,
+      });
+      if (byId.data.length > 0) {
+        product = byId.data[0];
+      } else {
+        // Fallback: busca por plan_key + app_id
+        const byKey = await stripe.products.search({
+          query: `metadata['plan_key']:'${plan.name}' AND metadata['app_id']:'${plan.appId}'`,
+        });
+        if (byKey.data.length > 0) product = byKey.data[0];
+      }
+    } catch {
+      return; // Stripe não configurado — ignora silenciosamente
+    }
+
+    if (!product) return; // Produto não existe no Stripe — nada a fazer
+
+    // Arquiva todos os preços ativos do produto
+    const activePrices = await stripe.prices.list({
+      product: product.id,
+      active: true,
+      limit: 100,
+    });
+    for (const price of activePrices.data) {
+      await stripe.prices.update(price.id, { active: false });
+    }
+
+    // Arquiva o produto
+    await stripe.products.update(product.id, { active: false });
+
+    console.log(`[archiveInStripe] Produto ${product.id} e ${activePrices.data.length} preço(s) arquivados para plano "${plan.name}".`);
   },
 
   /**

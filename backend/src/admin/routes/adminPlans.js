@@ -157,7 +157,33 @@ router.get('/verify-stripe', async (req, res, next) => {
       } else if (!hasPriceIds) {
         verifications[key] = { status: 'missing', reason: 'Ainda nao sincronizado com Stripe' };
       } else {
-        verifications[key] = { status: 'synced', stripePriceIds };
+        // Verifica com o Stripe API se os IDs são válidos e os valores batem
+        let allValid = true;
+        let hasMismatch = false;
+        for (const [interval, priceId] of Object.entries(stripePriceIds)) {
+          if (!priceId) continue;
+          try {
+            const stripePrice = await stripe.prices.retrieve(priceId);
+            if (!stripePrice.active) {
+              allValid = false;
+              break;
+            }
+            const dbAmount = Math.round(((plan.price || {})[interval] || 0) * 100);
+            if (dbAmount > 0 && stripePrice.unit_amount !== dbAmount) {
+              hasMismatch = true;
+            }
+          } catch {
+            allValid = false;
+            break;
+          }
+        }
+        if (!allValid) {
+          verifications[key] = { status: 'missing', reason: 'Price IDs invalidos ou inativos no Stripe' };
+        } else if (hasMismatch) {
+          verifications[key] = { status: 'mismatch', reason: 'Precos divergentes entre banco e Stripe' };
+        } else {
+          verifications[key] = { status: 'synced', stripePriceIds };
+        }
       }
     }
 

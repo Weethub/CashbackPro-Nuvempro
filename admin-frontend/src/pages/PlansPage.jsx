@@ -174,9 +174,21 @@ export default function PlansPage() {
                 </div>
 
                 {/* Stripe Sync Status */}
-                <div className="flex items-center gap-2 mb-4 text-sm">
-                  <SyncIcon size={16} className={sync.color} />
-                  <span className="text-gray-600">{sync.label}</span>
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 text-sm">
+                    <SyncIcon size={16} className={sync.color} />
+                    <span className="text-gray-600">{sync.label}</span>
+                  </div>
+                  {stripeStatus[key] === 'mismatch' && (
+                    <p className="text-xs text-amber-600 mt-1 ml-6">
+                      Precos alterados. Clique em "Sincronizar Stripe" para atualizar.
+                    </p>
+                  )}
+                  {stripeStatus[key] === 'missing' && (
+                    <p className="text-xs text-red-500 mt-1 ml-6">
+                      Clique em "Sincronizar Stripe" para criar os precos no Stripe.
+                    </p>
+                  )}
                 </div>
 
                 {/* Prices */}

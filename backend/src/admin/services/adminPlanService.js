@@ -105,8 +105,19 @@ const adminPlanService = {
       const amount = prices[key];
       if (!amount || amount <= 0) continue;
 
-      // Only create if no existing price ID
-      if (stripePriceIds[key]) continue;
+      // Check if existing price is still valid and matches the current amount
+      if (stripePriceIds[key]) {
+        try {
+          const existingPrice = await stripe.prices.retrieve(stripePriceIds[key]);
+          const expectedAmount = Math.round(amount * 100);
+          if (existingPrice.active && existingPrice.unit_amount === expectedAmount) {
+            continue; // Price is valid and matches, no need to create new one
+          }
+          // Price is inactive or amount diverged — fall through to create a new price
+        } catch {
+          // Price ID is invalid (e.g. deleted from Stripe) — fall through to create
+        }
+      }
 
       const stripePrice = await stripe.prices.create({
         product: product.id,

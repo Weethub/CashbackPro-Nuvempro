@@ -55,11 +55,9 @@ router.get('/', async (req, res, next) => {
     const { status } = req.query;
 
     const where = {};
-    if (status) {
-      where.status = status;
-    }
+    if (status) where.status = status;
 
-    const [subscriptions, total] = await Promise.all([
+    const [subscriptions, total, activeSubs, canceledCount, plans] = await Promise.all([
       prisma.subscription.findMany({
         where,
         include: {
@@ -70,9 +68,39 @@ router.get('/', async (req, res, next) => {
         take: limit,
       }),
       prisma.subscription.count({ where }),
+      prisma.subscription.findMany({
+        where: { status: { in: ['active', 'trialing'] } },
+        select: { planKey: true, billingInterval: true },
+      }),
+      prisma.subscription.count({ where: { status: 'canceled' } }),
+      prisma.adminPlan.findMany({ select: { name: true, price: true } }),
     ]);
 
-    res.json(paginatedResponse(subscriptions, total, { page, limit }));
+    // MRR/ARR
+    const planPriceMap = {};
+    plans.forEach((p) => { planPriceMap[p.name] = p.price; });
+    let mrr = 0;
+    for (const sub of activeSubs) {
+      const price = planPriceMap[sub.planKey];
+      if (price && typeof price === 'object') {
+        if (sub.billingInterval === 'monthly') mrr += price.monthly || 0;
+        else if (sub.billingInterval === 'semestral') mrr += (price.semestral || 0) / 6;
+        else if (sub.billingInterval === 'annual') mrr += (price.annual || 0) / 12;
+      }
+    }
+    mrr = Math.round(mrr * 100) / 100;
+    const arr = Math.round(mrr * 12 * 100) / 100;
+
+    // Flatten storeName
+    const data = subscriptions.map(({ store, ...s }) => ({
+      ...s,
+      storeName: store?.name || `Loja #${s.storeId}`,
+    }));
+
+    const response = paginatedResponse(data, total, { page, limit });
+    response.metrics = { mrr, arr, active: activeSubs.length, canceled: canceledCount };
+
+    res.json(response);
   } catch (err) {
     next(err);
   }

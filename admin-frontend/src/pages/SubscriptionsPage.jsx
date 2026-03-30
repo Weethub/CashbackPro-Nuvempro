@@ -48,8 +48,8 @@ export default function SubscriptionsPage() {
   const handleExtendTrial = async (sub) => {
     if (!confirm(`Estender trial para ${sub.storeName || sub.storeId}?`)) return;
     try {
-      setActionLoading(sub.id || sub._id);
-      await adminApi.post(`/subscriptions/${sub.id || sub._id}/extend-trial`, { days: 7 });
+      setActionLoading(sub.storeId || sub.id);
+      await adminApi.post(`/subscriptions/${sub.storeId}/extend-trial`, { days: 7 });
       await fetchSubscriptions(meta.page);
     } catch (err) {
       alert(err.response?.data?.error || 'Erro ao estender trial.');
@@ -62,8 +62,8 @@ export default function SubscriptionsPage() {
   const handleCancel = async (sub) => {
     if (!confirm(`Cancelar assinatura de ${sub.storeName || sub.storeId}?`)) return;
     try {
-      setActionLoading(sub.id || sub._id);
-      await adminApi.post(`/subscriptions/${sub.id || sub._id}/cancel`);
+      setActionLoading(sub.storeId || sub.id);
+      await adminApi.post(`/subscriptions/${sub.storeId}/cancel`);
       await fetchSubscriptions(meta.page);
     } catch (err) {
       alert(err.response?.data?.error || 'Erro ao cancelar.');
@@ -103,16 +103,16 @@ export default function SubscriptionsPage() {
       key: 'actions',
       label: '',
       render: (_, row) => {
-        const id = row.id || row._id;
+        const key = row.storeId || row.id;
         return (
           <div className="relative">
             <button
-              onClick={(e) => { e.stopPropagation(); setActionMenu(actionMenu === id ? null : id); }}
+              onClick={(e) => { e.stopPropagation(); setActionMenu(actionMenu === key ? null : key); }}
               className="p-1.5 rounded-lg hover:bg-gray-100"
             >
-              {actionLoading === id ? <Loader2 size={16} className="animate-spin" /> : <MoreVertical size={16} />}
+              {actionLoading === key ? <Loader2 size={16} className="animate-spin" /> : <MoreVertical size={16} />}
             </button>
-            {actionMenu === id && (
+            {actionMenu === key && (
               <div className="absolute right-0 top-8 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1 w-44">
                 <button
                   onClick={() => handleExtendTrial(row)}

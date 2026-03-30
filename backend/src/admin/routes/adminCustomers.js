@@ -13,27 +13,82 @@ const router = express.Router();
  */
 router.get('/dashboard', async (req, res, next) => {
   try {
-    const [totalStores, activeSubscriptions, trialStores, starterStores] = await Promise.all([
+    const now = new Date();
+
+    const [totalStores, activeSubscriptions, trialStores, expiredStores, activeSubs] = await Promise.all([
       prisma.store.count(),
-      prisma.subscription.count({ where: { status: 'active' } }),
-      prisma.store.count({ where: { plan: 'starter', trialEndsAt: { gt: new Date() } } }),
-      prisma.store.count({ where: { plan: 'starter' } }),
+      prisma.subscription.count({ where: { status: { in: ['active', 'trialing'] } } }),
+      prisma.store.count({
+        where: {
+          OR: [
+            { trialEndsAt: { gt: now } },
+            { subscription: { is: { status: 'trialing' } } },
+          ],
+        },
+      }),
+      prisma.store.count({
+        where: {
+          trialEndsAt: { not: null, lte: now },
+          subscription: { is: null },
+        },
+      }),
+      prisma.subscription.findMany({
+        where: { status: { in: ['active', 'trialing'] } },
+        select: { planKey: true, billingInterval: true },
+      }),
     ]);
 
-    const recentStores = await prisma.store.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-      select: { id: true, name: true, domain: true, plan: true, createdAt: true },
+    // MRR — calculado via preço do plano x intervalo
+    const plans = await prisma.adminPlan.findMany({ select: { name: true, price: true } });
+    const planPriceMap = {};
+    plans.forEach((p) => { planPriceMap[p.name] = p.price; });
+
+    let mrr = 0;
+    for (const sub of activeSubs) {
+      const price = planPriceMap[sub.planKey];
+      if (price && typeof price === 'object') {
+        if (sub.billingInterval === 'monthly') mrr += price.monthly || 0;
+        else if (sub.billingInterval === 'semestral') mrr += (price.semestral || 0) / 6;
+        else if (sub.billingInterval === 'annual') mrr += (price.annual || 0) / 12;
+      }
+    }
+    mrr = Math.round(mrr * 100) / 100;
+
+    // Instalações mensais — últimos 6 meses
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const recentCreated = await prisma.store.findMany({
+      where: { createdAt: { gte: sixMonthsAgo } },
+      select: { createdAt: true },
     });
+    const monthMap = {};
+    recentCreated.forEach((s) => {
+      const key = s.createdAt.toISOString().slice(0, 7);
+      monthMap[key] = (monthMap[key] || 0) + 1;
+    });
+    const monthlyInstalls = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const key = d.toISOString().slice(0, 7);
+      const label = d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+      monthlyInstalls.push({ month: label, installs: monthMap[key] || 0 });
+    }
+
+    // Distribuição de assinaturas por plano
+    const subsByPlan = await prisma.subscription.groupBy({
+      by: ['planKey'],
+      where: { status: { in: ['active', 'trialing'] } },
+      _count: { planKey: true },
+    });
+    const subscriptionDistribution = subsByPlan
+      .filter((s) => s.planKey)
+      .map((s) => ({ plan: s.planKey, count: s._count.planKey }));
 
     res.json({
-      metrics: {
-        totalStores,
-        activeSubscriptions,
-        trialStores,
-        starterStores,
-      },
-      recentStores,
+      stats: { totalStores, activeSubscriptions, trialStores, expiredStores, mrr },
+      monthlyInstalls,
+      subscriptionDistribution,
     });
   } catch (err) {
     next(err);

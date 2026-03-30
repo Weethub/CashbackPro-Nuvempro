@@ -78,10 +78,21 @@ export default function BillingPage({ locked = false }) {
   const syncPlan = async () => {
     try {
       const res = await api.post('/api/billing/sync');
-      if (res.data?.synced && res.data?.plan) {
-        setSuccessMsg(t('billing.syncSuccess', { plan: res.data.plan }));
-        if (setBillingStatus) {
-          setBillingStatus((prev) => ({ ...prev, plan: res.data.plan }));
+      if (res.data?.synced) {
+        // Re-fetch full billing status so subscription.cancelAtPeriodEnd reflects new subscription
+        try {
+          const statusRes = await api.get('/api/billing/status');
+          if (statusRes.data && setBillingStatus) {
+            setBillingStatus(statusRes.data);
+          }
+        } catch {
+          // fallback: update only plan
+          if (res.data.plan && setBillingStatus) {
+            setBillingStatus((prev) => ({ ...prev, plan: res.data.plan }));
+          }
+        }
+        if (res.data.plan) {
+          setSuccessMsg(t('billing.syncSuccess', { plan: res.data.plan }));
         }
       }
     } catch {

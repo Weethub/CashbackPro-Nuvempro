@@ -6,6 +6,14 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.9] - 2026-03-30
+
+### Corrigido
+
+- **Botão "Cancelar assinatura" não aparecia após nova assinatura** — `BillingPage.syncPlan` agora re-busca o status completo (`/api/billing/status`) após detectar sync bem-sucedido, garantindo que `subscription.cancelAtPeriodEnd` seja atualizado na UI depois de uma resubscrição
+
+---
+
 ## [1.3.8] - 2026-03-30
 
 ### Corrigido

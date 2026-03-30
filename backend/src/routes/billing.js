@@ -3,9 +3,8 @@ const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { checkoutLimiter } = require('../middleware/rateLimiter');
-const { StripeService } = require('../config/stripe');
-// plans.js (env-var based) mantido apenas para compatibilidade legada
-// O checkout e o listing agora usam os IDs do banco (adminPlan.stripePriceIds)
+const { StripeService, stripe } = require('../config/stripe');
+const adminPlanService = require('../admin/services/adminPlanService');
 
 const router = express.Router();
 
@@ -33,8 +32,19 @@ router.post('/checkout', checkoutLimiter, async (req, res, next) => {
       throw new AppError('Plano nao encontrado.', 400, 'PLAN_NOT_FOUND');
     }
 
-    const stripePriceIds = plan.stripePriceIds || {};
-    const priceId = stripePriceIds[billingInterval];
+    let stripePriceIds = plan.stripePriceIds || {};
+    let priceId = stripePriceIds[billingInterval];
+
+    // Se o priceId não está no banco, tenta sincronizar com o Stripe antes de falhar
+    if (!priceId) {
+      try {
+        const synced = await adminPlanService.syncToStripe(plan.id);
+        stripePriceIds = synced.stripePriceIds || {};
+        priceId = stripePriceIds[billingInterval];
+      } catch {
+        // Stripe não configurado ou sem produto — deixa cair no erro abaixo
+      }
+    }
 
     if (!priceId) {
       throw new AppError(
@@ -203,6 +213,20 @@ router.get('/plans', async (req, res, next) => {
       where: { appId: appSlug, isActive: true },
       orderBy: { sortOrder: 'asc' },
     });
+
+    // Auto-heal: para planos pagos sem stripePriceIds, busca no Stripe e salva no banco
+    for (const plan of dbPlans) {
+      const hasPriceIds = Object.values(plan.stripePriceIds || {}).some(Boolean);
+      const hasPrices = Object.values(plan.price || {}).some((v) => v > 0);
+      if (hasPrices && !hasPriceIds) {
+        try {
+          const synced = await adminPlanService.syncToStripe(plan.id);
+          plan.stripePriceIds = synced.stripePriceIds;
+        } catch {
+          // Stripe não configurado ou plano sem produto — segue sem sync
+        }
+      }
+    }
 
     const plans = dbPlans.map((plan) => {
       // Intervalos configurados = aqueles que têm priceId no Stripe

@@ -80,6 +80,9 @@ export default function PlansPage() {
         status[key] = val.status || val;
       }
       setStripeStatus(status);
+      // Re-fetch plans para pegar stripePriceIds atualizados pelo auto-heal
+      const refreshRes = await adminApi.get('/plans');
+      setPlans(refreshRes.data.plans || refreshRes.data || []);
     } catch {
       for (const plan of plansList) {
         const key = plan.key || plan.id;

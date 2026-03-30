@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.8] - 2026-03-30
+
+### Corrigido
+
+- **Checkmarks de preço permanecem vermelhos no admin mesmo após sincronismo** — `PlansPage` agora re-busca os planos do banco após o `verify-stripe` concluir, garantindo que os `stripePriceIds` auto-reparados sejam refletidos na UI
+- **Erro "Preco nao configurado" no checkout mesmo com plano existente no Stripe** — `POST /api/billing/checkout` agora tenta `syncToStripe` automaticamente se o `stripePriceId` não for encontrado no banco antes de retornar erro
+- **`GET /api/billing/plans` não mostrava planos assinables sem `stripePriceIds`** — endpoint agora faz auto-heal para planos pagos com `stripePriceIds` vazios, buscando e salvando os IDs do Stripe transparentemente
+
+---
+
 ## [1.3.7] - 2026-03-30
 
 ### Corrigido / Refatorado

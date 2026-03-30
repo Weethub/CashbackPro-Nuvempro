@@ -8,6 +8,12 @@ const { stripe } = require('../../config/stripe');
 
 const router = express.Router();
 
+const intervalMap = {
+  monthly:   { interval: 'month', interval_count: 1 },
+  semestral: { interval: 'month', interval_count: 6 },
+  annual:    { interval: 'year',  interval_count: 1 },
+};
+
 /**
  * Resolve um plano pelo param da rota: aceita ID numérico ou planKey (nome string).
  */
@@ -25,37 +31,31 @@ async function resolvePlan(param) {
 }
 
 /**
+ * Normalize a plan row: expose `prices` as alias for `price` for frontend compatibility.
+ */
+function normalizePlan(plan) {
+  return { ...plan, key: plan.name, prices: plan.price };
+}
+
+/**
  * GET /admin-api/plans/stripe-account
- * Retorna informações da conta Stripe configurada:
- * modo (test/live), nome, email e país.
  * Rota definida ANTES de /:id para evitar conflito de params.
  */
 router.get('/stripe-account', async (req, res, next) => {
   try {
     const key = process.env.STRIPE_SECRET_KEY || '';
 
-    // Detecta o modo pelo prefixo da chave
     let mode = 'unknown';
     if (key.startsWith('sk_live_') || key.startsWith('rk_live_')) mode = 'live';
     else if (key.startsWith('sk_test_') || key.startsWith('rk_test_')) mode = 'test';
 
-    // Chave não configurada (demo/placeholder)
     const isConfigured = key.length > 20 && !key.includes('CHANGE_ME') && !key.includes('demo');
 
     if (!isConfigured) {
-      return res.json({
-        configured: false,
-        mode,
-        accountName: null,
-        email: null,
-        country: null,
-        accountId: null,
-      });
+      return res.json({ configured: false, mode, accountName: null, email: null, country: null, accountId: null });
     }
 
-    // Consulta a conta na API Stripe
     const account = await stripe.accounts.retrieve();
-
     res.json({
       configured: true,
       mode,
@@ -65,25 +65,9 @@ router.get('/stripe-account', async (req, res, next) => {
       accountId: account.id || null,
     });
   } catch (err) {
-    // Stripe retornou erro (chave inválida, etc.)
-    res.json({
-      configured: false,
-      mode: 'unknown',
-      accountName: null,
-      email: null,
-      country: null,
-      accountId: null,
-      error: err.message,
-    });
+    res.json({ configured: false, mode: 'unknown', accountName: null, email: null, country: null, accountId: null, error: err.message });
   }
 });
-
-/**
- * Normalize a plan row: expose `prices` as alias for `price` for frontend compatibility.
- */
-function normalizePlan(plan) {
-  return { ...plan, key: plan.name, prices: plan.price };
-}
 
 /**
  * GET /admin-api/plans — List all plans
@@ -100,17 +84,16 @@ router.get('/', async (req, res, next) => {
 
 /**
  * POST /admin-api/plans — Create a plan
+ * Após criar, sincroniza automaticamente com o Stripe (se configurado).
  */
 router.post('/', requireRole('gerente'), async (req, res, next) => {
   try {
     const { name, features, prices, price, commissionRate, revenueShareRate, sortOrder } = req.body;
     const appId = process.env.APP_SLUG || 'meuapp';
 
-    if (!name) {
-      throw new AppError('Nome do plano e obrigatorio.', 400, 'MISSING_NAME');
-    }
+    if (!name) throw new AppError('Nome do plano e obrigatorio.', 400, 'MISSING_NAME');
 
-    const plan = await adminPlanService.create({
+    let plan = await adminPlanService.create({
       appId,
       name,
       features: features || {},
@@ -129,6 +112,13 @@ router.post('/', requireRole('gerente'), async (req, res, next) => {
       ipAddress: req.ip,
     });
 
+    // Auto-sync com Stripe após criação
+    try {
+      plan = await adminPlanService.syncToStripe(plan.id);
+    } catch {
+      // Stripe não configurado ou erro temporário — retorna plano sem sync
+    }
+
     res.status(201).json({ plan: normalizePlan(plan) });
   } catch (err) {
     next(err);
@@ -136,7 +126,12 @@ router.post('/', requireRole('gerente'), async (req, res, next) => {
 });
 
 /**
- * GET /admin-api/plans/verify-stripe — Verify all plans Stripe price IDs at once
+ * GET /admin-api/plans/verify-stripe — Verifica todos os planos no Stripe
+ *
+ * Busca o produto Stripe de cada plano por metadata (admin_plan_id / plan_key+app_id).
+ * Se encontrar o produto mas os IDs no banco estiverem errados, corrige automaticamente (auto-heal).
+ * Retorna: synced | mismatch | missing para cada plano.
+ *
  * Rota definida ANTES de /:id para evitar conflito de params.
  */
 router.get('/verify-stripe', async (req, res, next) => {
@@ -146,44 +141,89 @@ router.get('/verify-stripe', async (req, res, next) => {
     const verifications = {};
 
     for (const plan of plans) {
-      const key = plan.name; // frontend usa plan.name (ex: "growth") como chave
-      const stripePriceIds = plan.stripePriceIds || {};
+      const key = plan.name;
       const hasPrices = plan.price && Object.values(plan.price).some((v) => v > 0);
-      const hasPriceIds = Object.values(stripePriceIds).some(Boolean);
 
       if (!hasPrices) {
-        // Plano gratuito (sem preços): não precisa de Stripe
         verifications[key] = { status: 'synced', reason: 'Plano gratuito' };
-      } else if (!hasPriceIds) {
-        verifications[key] = { status: 'missing', reason: 'Ainda nao sincronizado com Stripe' };
-      } else {
-        // Verifica com o Stripe API se os IDs são válidos e os valores batem
-        let allValid = true;
-        let hasMismatch = false;
-        for (const [interval, priceId] of Object.entries(stripePriceIds)) {
-          if (!priceId) continue;
-          try {
-            const stripePrice = await stripe.prices.retrieve(priceId);
-            if (!stripePrice.active) {
-              allValid = false;
-              break;
-            }
-            const dbAmount = Math.round(((plan.price || {})[interval] || 0) * 100);
-            if (dbAmount > 0 && stripePrice.unit_amount !== dbAmount) {
-              hasMismatch = true;
-            }
-          } catch {
-            allValid = false;
-            break;
-          }
-        }
-        if (!allValid) {
-          verifications[key] = { status: 'missing', reason: 'Price IDs invalidos ou inativos no Stripe' };
-        } else if (hasMismatch) {
-          verifications[key] = { status: 'mismatch', reason: 'Precos divergentes entre banco e Stripe' };
+        continue;
+      }
+
+      // Busca o produto no Stripe pela metadata do plano
+      let product = null;
+      try {
+        const byId = await stripe.products.search({
+          query: `metadata['admin_plan_id']:'${plan.id}'`,
+        });
+        if (byId.data.length > 0) {
+          product = byId.data[0];
         } else {
-          verifications[key] = { status: 'synced', stripePriceIds };
+          // Fallback: busca por plan_key + app_id
+          const byKey = await stripe.products.search({
+            query: `metadata['plan_key']:'${plan.name}' AND metadata['app_id']:'${plan.appId}'`,
+          });
+          if (byKey.data.length > 0) product = byKey.data[0];
         }
+      } catch {
+        verifications[key] = { status: 'missing', reason: 'Erro ao consultar o Stripe' };
+        continue;
+      }
+
+      if (!product) {
+        verifications[key] = { status: 'missing', reason: 'Produto nao encontrado no Stripe' };
+        continue;
+      }
+
+      // Lista preços ativos do produto
+      const activePrices = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
+
+      let hasMismatch = false;
+      let allConfigured = true;
+      const foundPriceIds = {};
+
+      for (const [intervalKey, config] of Object.entries(intervalMap)) {
+        const dbAmount = (plan.price || {})[intervalKey];
+        if (!dbAmount || dbAmount <= 0) continue;
+
+        const expectedAmount = Math.round(dbAmount * 100);
+        const match = activePrices.data.find(
+          (p) =>
+            p.recurring?.interval === config.interval &&
+            p.recurring?.interval_count === config.interval_count &&
+            p.currency === 'brl'
+        );
+
+        if (!match) {
+          allConfigured = false;
+          break;
+        }
+
+        foundPriceIds[intervalKey] = match.id;
+
+        if (match.unit_amount !== expectedAmount) {
+          hasMismatch = true;
+        }
+      }
+
+      if (!allConfigured) {
+        verifications[key] = { status: 'missing', reason: 'Precos nao configurados no Stripe' };
+        continue;
+      }
+
+      // Auto-heal: atualiza o banco se os IDs encontrados no Stripe divergem do que está salvo
+      const currentIds = plan.stripePriceIds || {};
+      const idsOutdated = Object.entries(foundPriceIds).some(([k, v]) => currentIds[k] !== v);
+      if (idsOutdated) {
+        await prisma.adminPlan.update({
+          where: { id: plan.id },
+          data: { stripePriceIds: { ...currentIds, ...foundPriceIds } },
+        });
+      }
+
+      if (hasMismatch) {
+        verifications[key] = { status: 'mismatch', reason: 'Precos divergentes entre banco e Stripe' };
+      } else {
+        verifications[key] = { status: 'synced', stripePriceIds: foundPriceIds };
       }
     }
 
@@ -195,7 +235,7 @@ router.get('/verify-stripe', async (req, res, next) => {
 
 /**
  * PUT /admin-api/plans/:id — Update a plan
- * Aceita ID numérico ou planKey (nome string).
+ * Após salvar, sincroniza automaticamente com o Stripe (se configurado).
  */
 router.put('/:id', requireRole('gerente'), async (req, res, next) => {
   try {
@@ -212,7 +252,7 @@ router.put('/:id', requireRole('gerente'), async (req, res, next) => {
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
     if (isActive !== undefined) data.isActive = isActive;
 
-    const plan = await adminPlanService.update(planRecord.id, data);
+    let plan = await adminPlanService.update(planRecord.id, data);
 
     await adminLogService.log({
       adminId: req.admin.id,
@@ -223,6 +263,13 @@ router.put('/:id', requireRole('gerente'), async (req, res, next) => {
       ipAddress: req.ip,
     });
 
+    // Auto-sync com Stripe após edição
+    try {
+      plan = await adminPlanService.syncToStripe(planRecord.id);
+    } catch {
+      // Stripe não configurado ou erro temporário — retorna plano sem sync
+    }
+
     res.json({ plan: normalizePlan(plan) });
   } catch (err) {
     next(err);
@@ -231,7 +278,6 @@ router.put('/:id', requireRole('gerente'), async (req, res, next) => {
 
 /**
  * POST /admin-api/plans/:id/deactivate — Deactivate a plan
- * Aceita ID numérico ou planKey (nome string).
  */
 router.post('/:id/deactivate', requireRole('gerente'), async (req, res, next) => {
   try {
@@ -253,8 +299,7 @@ router.post('/:id/deactivate', requireRole('gerente'), async (req, res, next) =>
 });
 
 /**
- * POST /admin-api/plans/:id/sync-stripe — Sync plan to Stripe
- * Aceita ID numérico ou planKey (nome string).
+ * POST /admin-api/plans/:id/sync-stripe — Sync manual com Stripe
  */
 router.post('/:id/sync-stripe', requireRole('proprietario'), async (req, res, next) => {
   try {
@@ -277,8 +322,7 @@ router.post('/:id/sync-stripe', requireRole('proprietario'), async (req, res, ne
 });
 
 /**
- * GET /admin-api/plans/:id/verify-stripe — Verify Stripe price IDs
- * Aceita ID numérico ou planKey (nome string).
+ * GET /admin-api/plans/:id/verify-stripe — Verify individual plan
  */
 router.get('/:id/verify-stripe', async (req, res, next) => {
   try {

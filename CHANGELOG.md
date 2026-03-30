@@ -6,6 +6,18 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.6] - 2026-03-30
+
+### Alterado
+
+- **Fluxo de sincronismo de planos com Stripe completamente refatorado**
+  - `verify-stripe` agora busca o produto no Stripe pela **metadata** (`admin_plan_id` / fallback `plan_key+app_id`) em vez de depender dos IDs salvos no banco; se encontrar o produto mas os IDs estiverem desatualizados no banco, corrige automaticamente (**auto-heal**)
+  - `syncToStripe` busca preço ativo com mesmo valor e intervalo antes de criar um novo; arquiva preços obsoletos do mesmo intervalo; garante idempotência total
+  - Criar ou editar um plano agora **auto-sincroniza com o Stripe** imediatamente (falha silenciosa se Stripe não estiver configurado)
+  - Status `mismatch` retornado quando o produto existe no Stripe mas os valores divergem do banco
+
+---
+
 ## [1.3.5] - 2026-03-30
 
 ### Corrigido

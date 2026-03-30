@@ -2,10 +2,105 @@ const prisma = require('../../lib/prisma');
 const { stripe } = require('../../config/stripe');
 const { AppError } = require('../../lib/errors');
 
+const intervalMap = {
+  monthly:  { interval: 'month', interval_count: 1 },
+  semestral: { interval: 'month', interval_count: 6 },
+  annual:   { interval: 'year',  interval_count: 1 },
+};
+
+/**
+ * Localiza o produto Stripe do plano pela metadata admin_plan_id.
+ * Fallback: busca por plan_key + app_id (para planos migrados ou re-criados no banco).
+ * Se não encontrar, cria um novo produto.
+ */
+async function findOrCreateStripeProduct(plan, appName, appSlug) {
+  const productName = `${appName} - ${plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}`;
+  const metadata = {
+    plan_key:      plan.name,
+    admin_plan_id: String(plan.id),
+    app_id:        plan.appId,
+    app_name:      appName,
+    app_slug:      appSlug,
+  };
+
+  // 1. Busca pelo ID do plano no banco (mais confiável)
+  const byId = await stripe.products.search({
+    query: `metadata['admin_plan_id']:'${plan.id}'`,
+  });
+  if (byId.data.length > 0) {
+    const product = byId.data[0];
+    await stripe.products.update(product.id, { name: productName, metadata });
+    return product;
+  }
+
+  // 2. Fallback: busca pelo plan_key + app_id (planos que perderam o ID no banco)
+  const byKey = await stripe.products.search({
+    query: `metadata['plan_key']:'${plan.name}' AND metadata['app_id']:'${plan.appId}'`,
+  });
+  if (byKey.data.length > 0) {
+    const product = byKey.data[0];
+    await stripe.products.update(product.id, { name: productName, metadata });
+    return product;
+  }
+
+  // 3. Cria novo produto
+  return stripe.products.create({ name: productName, metadata });
+}
+
+/**
+ * Para um produto Stripe e um intervalo, localiza o preço ativo que bate com
+ * o valor esperado. Se não existir, arquiva preços antigos do mesmo intervalo
+ * e cria um novo.
+ */
+async function findOrCreateStripePrice(product, intervalKey, amount, plan, appSlug) {
+  const config = intervalMap[intervalKey];
+  const expectedAmount = Math.round(amount * 100); // centavos
+
+  // Lista todos os preços ativos do produto
+  const activePrices = await stripe.prices.list({
+    product: product.id,
+    active: true,
+    limit: 100,
+  });
+
+  // Procura preço ativo com mesmo intervalo e mesmo valor
+  const matching = activePrices.data.find(
+    (p) =>
+      p.unit_amount === expectedAmount &&
+      p.recurring?.interval === config.interval &&
+      p.recurring?.interval_count === config.interval_count &&
+      p.currency === 'brl'
+  );
+  if (matching) return matching;
+
+  // Arquiva preços do mesmo intervalo que não batem (valor diferente)
+  const stale = activePrices.data.filter(
+    (p) =>
+      p.recurring?.interval === config.interval &&
+      p.recurring?.interval_count === config.interval_count
+  );
+  for (const p of stale) {
+    await stripe.prices.update(p.id, { active: false });
+  }
+
+  // Cria novo preço
+  return stripe.prices.create({
+    product: product.id,
+    unit_amount: expectedAmount,
+    currency: 'brl',
+    recurring: { interval: config.interval, interval_count: config.interval_count },
+    metadata: {
+      plan_key:        plan.name,
+      admin_plan_id:   String(plan.id),
+      app_id:          plan.appId,
+      app_slug:        appSlug,
+      billing_interval: intervalKey,
+    },
+  });
+}
+
 const adminPlanService = {
-  /**
-   * List all plans for an app.
-   */
+  /** List all plans for an app. */
   async list(appId) {
     return prisma.adminPlan.findMany({
       where: { appId },
@@ -13,149 +108,61 @@ const adminPlanService = {
     });
   },
 
-  /**
-   * Create a new plan.
-   */
+  /** Create a new plan. */
   async create(data) {
     return prisma.adminPlan.create({ data });
   },
 
-  /**
-   * Update an existing plan.
-   */
+  /** Update an existing plan. */
   async update(id, data) {
     const plan = await prisma.adminPlan.findUnique({ where: { id } });
-    if (!plan) {
-      throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
-    }
+    if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
     return prisma.adminPlan.update({ where: { id }, data });
   },
 
-  /**
-   * Deactivate a plan (soft delete).
-   */
+  /** Deactivate a plan (soft delete). */
   async deactivate(id) {
     const plan = await prisma.adminPlan.findUnique({ where: { id } });
-    if (!plan) {
-      throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
-    }
-    return prisma.adminPlan.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
+    return prisma.adminPlan.update({ where: { id }, data: { isActive: false } });
   },
 
   /**
-   * Sync plan prices to Stripe — creates Stripe Products and Prices.
-   * Updates stripePriceIds in the database.
+   * Sincroniza o plano com o Stripe:
+   * - Busca ou cria o produto no Stripe (por metadata)
+   * - Para cada intervalo com preço > 0, busca ou cria o preço correto
+   * - Arquiva preços desatualizados
+   * - Salva os stripePriceIds no banco
    */
   async syncToStripe(id) {
     const plan = await prisma.adminPlan.findUnique({ where: { id } });
-    if (!plan) {
-      throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
-    }
+    if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
 
-    const prices = plan.price || {};
+    const prices  = plan.price || {};
     const appName = process.env.APP_NAME || 'MeuApp';
     const appSlug = process.env.APP_SLUG || plan.appId;
 
-    // Create or find Stripe product
-    const productName = `${appName} - ${plan.name.charAt(0).toUpperCase() + plan.name.slice(1)}`;
+    const product = await findOrCreateStripeProduct(plan, appName, appSlug);
 
-    let product;
-    const existingProducts = await stripe.products.search({
-      query: `metadata['admin_plan_id']:'${plan.id}'`,
-    });
+    const stripePriceIds = {};
 
-    if (existingProducts.data.length > 0) {
-      product = existingProducts.data[0];
-      // Update metadata to keep in sync
-      await stripe.products.update(product.id, {
-        name: productName,
-        metadata: {
-          plan_key: plan.name,
-          admin_plan_id: String(plan.id),
-          app_id: plan.appId,
-          app_name: appName,
-          app_slug: appSlug,
-        },
-      });
-    } else {
-      product = await stripe.products.create({
-        name: productName,
-        metadata: {
-          plan_key: plan.name,
-          admin_plan_id: String(plan.id),
-          app_id: plan.appId,
-          app_name: appName,
-          app_slug: appSlug,
-        },
-      });
-    }
-
-    const intervalMap = {
-      monthly: { interval: 'month', interval_count: 1 },
-      semestral: { interval: 'month', interval_count: 6 },
-      annual: { interval: 'year', interval_count: 1 },
-    };
-
-    const stripePriceIds = { ...(plan.stripePriceIds || {}) };
-
-    for (const [key, config] of Object.entries(intervalMap)) {
-      const amount = prices[key];
+    for (const intervalKey of Object.keys(intervalMap)) {
+      const amount = prices[intervalKey];
       if (!amount || amount <= 0) continue;
 
-      // Check if existing price is still valid and matches the current amount
-      if (stripePriceIds[key]) {
-        try {
-          const existingPrice = await stripe.prices.retrieve(stripePriceIds[key]);
-          const expectedAmount = Math.round(amount * 100);
-          if (existingPrice.active && existingPrice.unit_amount === expectedAmount) {
-            continue; // Price is valid and matches, no need to create new one
-          }
-          // Price is inactive or amount diverged — fall through to create a new price
-        } catch {
-          // Price ID is invalid (e.g. deleted from Stripe) — fall through to create
-        }
-      }
-
-      const stripePrice = await stripe.prices.create({
-        product: product.id,
-        unit_amount: Math.round(amount * 100),
-        currency: 'brl',
-        recurring: {
-          interval: config.interval,
-          interval_count: config.interval_count,
-        },
-        metadata: {
-          plan_key: plan.name,
-          admin_plan_id: String(plan.id),
-          app_id: plan.appId,
-          app_slug: appSlug,
-          billing_interval: key,
-        },
-      });
-
-      stripePriceIds[key] = stripePrice.id;
+      const stripePrice = await findOrCreateStripePrice(product, intervalKey, amount, plan, appSlug);
+      stripePriceIds[intervalKey] = stripePrice.id;
     }
 
-    // Update plan with new price IDs
-    const updated = await prisma.adminPlan.update({
-      where: { id },
-      data: { stripePriceIds },
-    });
-
-    return updated;
+    return prisma.adminPlan.update({ where: { id }, data: { stripePriceIds } });
   },
 
   /**
-   * Verify that all Stripe price IDs in a plan are valid.
+   * Verifica os IDs do Stripe para um plano específico (chamada individual).
    */
   async verifyStripeIds(id) {
     const plan = await prisma.adminPlan.findUnique({ where: { id } });
-    if (!plan) {
-      throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
-    }
+    if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
 
     const stripePriceIds = plan.stripePriceIds || {};
     const results = {};
@@ -165,7 +172,6 @@ const adminPlanService = {
         results[interval] = { valid: false, reason: 'No price ID configured' };
         continue;
       }
-
       try {
         const price = await stripe.prices.retrieve(priceId);
         results[interval] = {

@@ -14,8 +14,25 @@ const router = express.Router();
 router.get('/dashboard', async (req, res, next) => {
   try {
     const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sixtyDaysAgo = new Date(now);
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-    const [totalStores, activeSubscriptions, trialStores, expiredStores, activeSubs] = await Promise.all([
+    const [
+      totalStores,
+      activeSubscriptions,
+      trialStores,
+      expiredStores,
+      activeSubs,
+      storesCurr,
+      storesPrev,
+      subsCurr,
+      subsPrev,
+      invCurr,
+      invPrev,
+      goalConfigs,
+    ] = await Promise.all([
       prisma.store.count(),
       prisma.subscription.count({ where: { status: { in: ['active', 'trialing'] } } }),
       prisma.store.count({
@@ -36,13 +53,25 @@ router.get('/dashboard', async (req, res, next) => {
         where: { status: { in: ['active', 'trialing'] } },
         select: { planKey: true, billingInterval: true },
       }),
+      // Period comparison — new stores
+      prisma.store.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.store.count({ where: { createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Period comparison — new active subs
+      prisma.subscription.count({ where: { status: { in: ['active', 'trialing'] }, createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.subscription.count({ where: { status: { in: ['active', 'trialing'] }, createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Period comparison — invoices (MRR proxy)
+      prisma.invoice.aggregate({ _sum: { amountPaid: true }, where: { status: 'paid', createdAt: { gte: thirtyDaysAgo } } }),
+      prisma.invoice.aggregate({ _sum: { amountPaid: true }, where: { status: 'paid', createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo } } }),
+      // Goals
+      prisma.adminConfig.findMany({
+        where: { key: { in: ['goal_stores', 'goal_subs', 'goal_trial', 'goal_mrr', 'server_cost'] } },
+      }),
     ]);
 
-    // MRR — calculado via preço do plano x intervalo
+    // MRR — via planKey x billingInterval x preço do AdminPlan
     const plans = await prisma.adminPlan.findMany({ select: { name: true, price: true } });
     const planPriceMap = {};
     plans.forEach((p) => { planPriceMap[p.name] = p.price; });
-
     let mrr = 0;
     for (const sub of activeSubs) {
       const price = planPriceMap[sub.planKey];
@@ -53,6 +82,27 @@ router.get('/dashboard', async (req, res, next) => {
       }
     }
     mrr = Math.round(mrr * 100) / 100;
+
+    // Goals map
+    const goalMap = {};
+    goalConfigs.forEach((c) => { goalMap[c.key] = parseFloat(c.value) || 0; });
+    const serverCost = goalMap['server_cost'] || 0;
+    const netMargin = Math.round((mrr - serverCost) * 100) / 100;
+    const marginPct = mrr > 0 ? Math.round(((mrr - serverCost) / mrr) * 100) : null;
+
+    // Period trends (% vs mês anterior)
+    const trendPct = (curr, prev) => {
+      if (!prev && !curr) return 0;
+      if (!prev) return 100;
+      return Math.round(((curr - prev) / prev) * 100);
+    };
+    const mrrCurr = invCurr._sum.amountPaid || 0;
+    const mrrPrev = invPrev._sum.amountPaid || 0;
+    const prevPeriod = {
+      storesTrend: trendPct(storesCurr, storesPrev),
+      subsTrend: trendPct(subsCurr, subsPrev),
+      mrrTrend: trendPct(mrrCurr, mrrPrev),
+    };
 
     // Instalações mensais — últimos 6 meses
     const sixMonthsAgo = new Date();
@@ -87,6 +137,9 @@ router.get('/dashboard', async (req, res, next) => {
 
     res.json({
       stats: { totalStores, activeSubscriptions, trialStores, expiredStores, mrr },
+      goals: goalMap,
+      prevPeriod,
+      margin: { net: netMargin, pct: marginPct, serverCost },
       monthlyInstalls,
       subscriptionDistribution,
     });

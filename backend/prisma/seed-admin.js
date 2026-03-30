@@ -146,6 +146,24 @@ async function main() {
     console.log(`Config upserted: ${cfg.key}`);
   }
 
+  // Goal defaults (dashboard targets + server cost)
+  const goalDefaults = [
+    { key: 'goal_stores', value: '0', group: 'goals', label: 'Meta de Lojas (total)' },
+    { key: 'goal_subs', value: '0', group: 'goals', label: 'Meta de Assinaturas Ativas' },
+    { key: 'goal_trial', value: '0', group: 'goals', label: 'Meta de Em Trial' },
+    { key: 'goal_mrr', value: '0', group: 'goals', label: 'Meta de MRR (R$)' },
+    { key: 'server_cost', value: '0', group: 'goals', label: 'Custo de Servidor Mensal (R$)' },
+  ];
+
+  for (const cfg of goalDefaults) {
+    await prisma.adminConfig.upsert({
+      where: { key: cfg.key },
+      update: {},
+      create: cfg,
+    });
+    console.log(`Config upserted: ${cfg.key}`);
+  }
+
   console.log('Seed completed successfully.');
 }
 

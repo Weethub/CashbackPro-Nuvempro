@@ -306,25 +306,18 @@ router.get('/plans', async (req, res, next) => {
 /**
  * GET /api/billing/invoices — List store invoices
  *
- * Estratégia de fallback: se o banco está vazio (webhook não chegou) e a loja tem
- * stripeCustomerId, busca as faturas direto no Stripe e salva no banco para cache futuro.
- * Isso garante que faturas apareçam mesmo sem o webhook configurado.
+ * Sempre sincroniza com o Stripe antes de retornar (upsert idempotente).
+ * Garante que novas faturas apareçam mesmo sem o webhook configurado ou após
+ * troca de plano, cancelamento e resubscrição.
  */
 router.get('/invoices', async (req, res, next) => {
   try {
-    let invoices = await prisma.invoice.findMany({
-      where: { storeId: req.store.id },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
-
-    // Fallback: banco vazio + tem cliente Stripe → busca diretamente na API do Stripe
-    if (invoices.length === 0 && req.store.stripeCustomerId) {
+    // Sync com Stripe sempre que há stripeCustomerId
+    if (req.store.stripeCustomerId) {
       try {
         const stripeInvoices = await stripe.invoices.list({
           customer: req.store.stripeCustomerId,
           limit: 50,
-          expand: ['data.subscription'],
         });
 
         for (const inv of stripeInvoices.data) {
@@ -352,20 +345,18 @@ router.get('/invoices', async (req, res, next) => {
             },
           });
         }
-
-        // Re-busca do banco após sync
-        invoices = await prisma.invoice.findMany({
-          where: { storeId: req.store.id },
-          orderBy: { createdAt: 'desc' },
-          take: 50,
-        });
-
-        console.log(`[invoices] Sync fallback: ${invoices.length} fatura(s) salvas para store ${req.store.id}`);
       } catch (err) {
-        // Stripe não configurado ou erro — retorna o que o banco tem (vazio)
-        console.warn('[invoices] Fallback Stripe falhou:', err.message);
+        // Stripe não configurado ou erro — segue retornando o que tiver no banco
+        console.warn('[invoices] Sync Stripe falhou:', err.message);
       }
     }
+
+    // Retorna do banco (já atualizado pelo sync acima)
+    const invoices = await prisma.invoice.findMany({
+      where: { storeId: req.store.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
 
     res.json({ invoices });
   } catch (err) {

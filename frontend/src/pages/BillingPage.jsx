@@ -337,11 +337,11 @@ export default function BillingPage({ locked = false }) {
                         }).format(inv.amountPaid ?? 0)}
                       </Table.Cell>
                       <Table.Cell>
-                        <Badge appearance={inv.status === 'paid' ? 'success' : 'warning'}>
+                        <Tag appearance={inv.status === 'paid' ? 'success' : 'warning'}>
                           {inv.status === 'paid'
                             ? t('billing.invoices.paid')
                             : t('billing.invoices.pending')}
-                        </Badge>
+                        </Tag>
                       </Table.Cell>
                       <Table.Cell>
                         {(inv.invoiceUrl || inv.invoicePdf) ? (

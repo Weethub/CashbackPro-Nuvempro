@@ -6,6 +6,24 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.3.7] - 2026-03-30
+
+### Corrigido / Refatorado
+
+- **`BillingPage` completamente refatorado**
+  - Corrigido `billingStatus.status` → `billingStatus.subscription.status` (campo inexistente)
+  - Corrigido `billingStatus.renewalDate` → `billingStatus.subscription.currentPeriodEnd` (campo inexistente)
+  - Corrigido `inv.date` / `inv.amount` → `inv.createdAt` / `inv.amountPaid` (faturas não renderizavam)
+  - Adicionado botão **"Ver"** nas faturas com link para recibo no Stripe (`invoiceUrl` / `invoicePdf`)
+  - Cancelamento agora abre **modal de confirmação** em vez de UI inline
+  - Plano atual exibe badge "Cancelamento agendado" quando `cancelAtPeriodEnd = true`
+  - Seletor de intervalo mostra apenas intervalos configurados no Stripe (`plan.intervals`)
+  - Plano atual destaca com tag "Plano atual" e exibe botão "Cancelar" em vez de "Assinar"
+  - Intervalo `/mês` exibido ao lado do preço
+  - i18n atualizado nos 3 locales (pt-BR, es-AR, es-MX) com novas chaves
+
+---
+
 ## [1.3.6] - 2026-03-30
 
 ### Alterado

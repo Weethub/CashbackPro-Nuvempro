@@ -150,11 +150,23 @@
     "checkout": "Assinar",
     "portal": "Gerenciar assinatura",
     "cancel": "Cancelar plano",
+    "cancelPlan": "Cancelar assinatura",
+    "cancelScheduled": "Cancelamento agendado",
+    "subscribedUntil": "Ativo até",
+    "perMonth": "/mês",
+    "notAvailableInterval": "Indisponível neste período",
+    "cancelModal": {
+      "title": "Cancelar assinatura",
+      "body": "Tem certeza? O acesso continua até o fim do período pago.",
+      "confirm": "Sim, cancelar"
+    },
     "invoices": {
       "title": "Faturas",
       "date": "Data",
       "amount": "Valor",
       "status": "Status",
+      "receipt": "Recibo",
+      "view": "Ver",
       "paid": "Pago",
       "pending": "Pendente",
       "noInvoices": "Nenhuma fatura encontrada."

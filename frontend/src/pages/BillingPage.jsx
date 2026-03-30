@@ -1,30 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Card, Button, Text, Title, Tag, Badge, Alert, Table, Spinner } from '@nimbus-ds/components';
 import { useNexo } from '../providers/NexoProvider.jsx';
 import api from '../services/api.js';
 
-const INTERVALS = ['monthly', 'semestral', 'annual'];
+const INTERVAL_ORDER = ['monthly', 'semestral', 'annual'];
 
-function formatPrice(value, t) {
-  if (value == null || value === 0) return t('billing.free');
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+function formatCurrency(value) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
 }
 
-function StatusBadge({ status, t }) {
+function formatDate(isoString) {
+  if (!isoString) return null;
+  return new Date(isoString).toLocaleDateString('pt-BR');
+}
+
+function SubStatusBadge({ status, cancelAtPeriodEnd, t }) {
+  if (cancelAtPeriodEnd) {
+    return <Badge appearance="warning">{t('billing.cancelScheduled')}</Badge>;
+  }
   const map = {
-    active: { appearance: 'success', label: t('billing.status.active') },
-    canceled: { appearance: 'danger', label: t('billing.status.canceled') },
-    past_due: { appearance: 'warning', label: t('billing.status.pastDue') },
-    trialing: { appearance: 'primary', label: t('billing.status.trialing') },
+    active:   { appearance: 'success', key: 'billing.status.active' },
+    canceled: { appearance: 'danger',  key: 'billing.status.canceled' },
+    past_due: { appearance: 'warning', key: 'billing.status.pastDue' },
+    trialing: { appearance: 'primary', key: 'billing.status.trialing' },
   };
   const cfg = map[status] || map.active;
-  return <Badge appearance={cfg.appearance}>{cfg.label}</Badge>;
+  return <Badge appearance={cfg.appearance}>{t(cfg.key)}</Badge>;
 }
 
 export default function BillingPage({ locked = false }) {
   const { t } = useTranslation();
   const { billingStatus, setBillingStatus } = useNexo();
+
   const [interval, setInterval_] = useState('monthly');
   const [plans, setPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -32,15 +40,38 @@ export default function BillingPage({ locked = false }) {
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
-  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+
+  // Derived from billingStatus (shape: { plan, trialEndsAt, subscription: { status, currentPeriodEnd, cancelAtPeriodEnd, ... } })
+  const currentPlan      = billingStatus?.plan;
+  const subscription     = billingStatus?.subscription;
+  const subStatus        = subscription?.status || 'none';
+  const cancelAtEnd      = subscription?.cancelAtPeriodEnd || false;
+  const renewalDate      = formatDate(subscription?.currentPeriodEnd);
+  const hasActiveSub     = subStatus === 'active' || subStatus === 'trialing';
+  const isPaidPlan       = currentPlan && currentPlan !== 'starter';
+
+  // Only show interval tabs for intervals configured in at least one plan
+  const availableIntervals = useMemo(() => {
+    const all = new Set();
+    plans.forEach((p) => (p.intervals || []).forEach((i) => all.add(i)));
+    return INTERVAL_ORDER.filter((i) => all.has(i));
+  }, [plans]);
+
+  // Auto-select first available interval when plans load
+  useEffect(() => {
+    if (availableIntervals.length > 0 && !availableIntervals.includes(interval)) {
+      setInterval_(availableIntervals[0]);
+    }
+  }, [availableIntervals]);
 
   useEffect(() => {
     loadPlans();
     if (!locked) {
       loadInvoices();
-      syncPlan(); // Sempre sincroniza ao carregar — garante plano atualizado mesmo sem webhook
+      syncPlan();
     }
   }, [locked]);
 
@@ -50,11 +81,11 @@ export default function BillingPage({ locked = false }) {
       if (res.data?.synced && res.data?.plan) {
         setSuccessMsg(t('billing.syncSuccess', { plan: res.data.plan }));
         if (setBillingStatus) {
-          setBillingStatus((prev) => ({ ...prev, plan: res.data.plan, status: 'active' }));
+          setBillingStatus((prev) => ({ ...prev, plan: res.data.plan }));
         }
       }
     } catch {
-      // Silencioso
+      // Silencioso — sync é apenas fallback
     }
   };
 
@@ -64,7 +95,7 @@ export default function BillingPage({ locked = false }) {
       const res = await api.get('/api/billing/plans');
       setPlans(res.data?.plans || []);
     } catch {
-      // Silent — plans are not critical
+      // silent
     } finally {
       setLoadingPlans(false);
     }
@@ -76,7 +107,7 @@ export default function BillingPage({ locked = false }) {
       const res = await api.get('/api/billing/invoices');
       setInvoices(res.data?.invoices || []);
     } catch {
-      // Invoices are optional
+      // silent
     } finally {
       setLoadingInvoices(false);
     }
@@ -86,10 +117,7 @@ export default function BillingPage({ locked = false }) {
     setCheckoutLoading(planKey);
     setError(null);
     try {
-      const res = await api.post('/api/billing/checkout', {
-        planKey,
-        billingInterval: interval,
-      });
+      const res = await api.post('/api/billing/checkout', { planKey, billingInterval: interval });
       if (res.data?.url) {
         window.top.location.href = res.data.url;
       }
@@ -105,14 +133,17 @@ export default function BillingPage({ locked = false }) {
     setError(null);
     try {
       await api.post('/api/billing/cancel');
-      setConfirmCancel(false);
+      setShowCancelModal(false);
       setSuccessMsg(t('billing.cancelSuccess'));
       if (setBillingStatus) {
-        setBillingStatus((prev) => ({ ...prev, status: 'canceled' }));
+        setBillingStatus((prev) => ({
+          ...prev,
+          subscription: { ...prev?.subscription, cancelAtPeriodEnd: true },
+        }));
       }
     } catch (err) {
       setError(err.response?.data?.error || err.message);
-      setConfirmCancel(false);
+      setShowCancelModal(false);
     } finally {
       setCancelLoading(false);
     }
@@ -123,7 +154,7 @@ export default function BillingPage({ locked = false }) {
       <Title as="h2">{t('billing.title')}</Title>
 
       {successMsg && (
-        <Alert appearance="success">
+        <Alert appearance="success" onRemove={() => setSuccessMsg(null)}>
           <Text>{successMsg}</Text>
         </Alert>
       )}
@@ -134,41 +165,35 @@ export default function BillingPage({ locked = false }) {
         </Alert>
       )}
 
-      {/* Current status card (when not locked) */}
-      {!locked && billingStatus && billingStatus.plan && (
+      {error && (
+        <Alert appearance="danger" onRemove={() => setError(null)}>
+          <Text>{error}</Text>
+        </Alert>
+      )}
+
+      {/* Plano atual — exibido quando há assinatura ativa */}
+      {!locked && isPaidPlan && (
         <Card>
           <Card.Body>
-            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="2">
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="3">
               <Box display="flex" flexDirection="column" gap="1">
-                <Text fontWeight="bold">{t('billing.status.currentPlan')}</Text>
+                <Text fontWeight="bold" fontSize="caption" color="neutral-textLow">
+                  {t('billing.status.currentPlan')}
+                </Text>
                 <Box display="flex" gap="2" alignItems="center">
-                  <Title as="h3">{billingStatus.plan}</Title>
-                  <StatusBadge status={billingStatus.status} t={t} />
+                  <Title as="h3">
+                    {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)}
+                  </Title>
+                  <SubStatusBadge status={subStatus} cancelAtPeriodEnd={cancelAtEnd} t={t} />
                 </Box>
               </Box>
-              {billingStatus.renewalDate && (
+
+              {renewalDate && (
                 <Box display="flex" flexDirection="column" gap="1">
-                  <Text fontWeight="bold">{t('billing.status.renewalDate')}</Text>
-                  <Text>{billingStatus.renewalDate}</Text>
-                </Box>
-              )}
-              {billingStatus.plan !== 'starter' && billingStatus.status !== 'canceled' && (
-                <Box display="flex" gap="2" alignItems="center">
-                  {confirmCancel ? (
-                    <>
-                      <Text fontSize="caption" color="neutral-textLow">{t('billing.cancelConfirm')}</Text>
-                      <Button appearance="danger" onClick={handleCancel} disabled={cancelLoading}>
-                        {cancelLoading ? t('common.loading') : t('billing.cancelConfirmYes')}
-                      </Button>
-                      <Button appearance="transparent" onClick={() => setConfirmCancel(false)} disabled={cancelLoading}>
-                        {t('common.cancel')}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button appearance="transparent" onClick={() => setConfirmCancel(true)}>
-                      {t('billing.cancelPlan')}
-                    </Button>
-                  )}
+                  <Text fontWeight="bold" fontSize="caption" color="neutral-textLow">
+                    {cancelAtEnd ? t('billing.subscribedUntil') : t('billing.status.renewalDate')}
+                  </Text>
+                  <Text>{renewalDate}</Text>
                 </Box>
               )}
             </Box>
@@ -176,36 +201,34 @@ export default function BillingPage({ locked = false }) {
         </Card>
       )}
 
-      {/* Interval toggle */}
-      <Box display="flex" gap="2" justifyContent="center">
-        {INTERVALS.map((intv) => (
-          <Button
-            key={intv}
-            appearance={interval === intv ? 'primary' : 'transparent'}
-            onClick={() => setInterval_(intv)}
-          >
-            {t(`billing.interval.${intv}`)}
-          </Button>
-        ))}
-      </Box>
+      {/* Seletor de intervalo */}
+      {availableIntervals.length > 1 && (
+        <Box display="flex" gap="2" justifyContent="center">
+          {availableIntervals.map((intv) => (
+            <Button
+              key={intv}
+              appearance={interval === intv ? 'primary' : 'transparent'}
+              onClick={() => setInterval_(intv)}
+            >
+              {t(`billing.interval.${intv}`)}
+            </Button>
+          ))}
+        </Box>
+      )}
 
-      {/* Plan cards */}
+      {/* Cards dos planos */}
       {loadingPlans ? (
-        <Box display="flex" justifyContent="center" padding="4">
+        <Box display="flex" justifyContent="center" padding="6">
           <Spinner />
         </Box>
       ) : (
         <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center">
           {plans.map((plan) => {
-            const features = Array.isArray(plan.features)
-              ? plan.features
-              : Object.values(plan.features || {});
-            const prices = plan.price || {};
-            const priceValue = prices[interval] ?? prices.monthly ?? 0;
-            const priceDisplay = formatPrice(priceValue, t);
-            const isCurrent = billingStatus?.plan?.toLowerCase() === plan.key.toLowerCase();
-            const isFreeplan = plan.isFree || !priceValue || priceValue === 0;
-            const planName = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
+            const priceValue      = (plan.price || {})[interval] ?? (plan.price || {}).monthly ?? 0;
+            const intervalAvail   = plan.isFree || (plan.intervals || []).includes(interval);
+            const isCurrent       = currentPlan?.toLowerCase() === plan.key.toLowerCase();
+            const planName        = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
+            const isSubscribable  = !plan.isFree && intervalAvail && plan.configured;
 
             return (
               <Box key={plan.key} width="280px">
@@ -213,33 +236,66 @@ export default function BillingPage({ locked = false }) {
                   <Card.Header>
                     <Box display="flex" justifyContent="space-between" alignItems="center">
                       <Title as="h3">{planName}</Title>
-                      {isCurrent && <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>}
+                      {isCurrent && (
+                        <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>
+                      )}
                     </Box>
                   </Card.Header>
                   <Card.Body>
                     <Box display="flex" flexDirection="column" gap="3">
-                      <Title as="h2">{priceDisplay}</Title>
-
-                      <Box display="flex" flexDirection="column" gap="1">
-                        {features.map((feat, idx) => (
-                          <Text key={idx}>{feat}</Text>
-                        ))}
+                      {/* Preço */}
+                      <Box display="flex" alignItems="baseline" gap="1">
+                        {plan.isFree ? (
+                          <Title as="h2">{t('billing.free')}</Title>
+                        ) : intervalAvail && priceValue > 0 ? (
+                          <>
+                            <Title as="h2">{formatCurrency(priceValue)}</Title>
+                            <Text fontSize="caption" color="neutral-textLow">
+                              {t('billing.perMonth')}
+                            </Text>
+                          </>
+                        ) : (
+                          <Text color="neutral-textLow">{t('billing.notAvailableInterval')}</Text>
+                        )}
                       </Box>
 
-                      {!isFreeplan && !isCurrent && (
+                      {/* Features */}
+                      {plan.features.length > 0 && (
+                        <Box display="flex" flexDirection="column" gap="1">
+                          {plan.features.map((feat, idx) => (
+                            <Text key={idx} fontSize="caption">
+                              • {feat}
+                            </Text>
+                          ))}
+                        </Box>
+                      )}
+
+                      {/* Botão de ação */}
+                      {isSubscribable && !isCurrent && (
                         <Button
                           appearance="primary"
                           onClick={() => handleCheckout(plan.key)}
-                          disabled={checkoutLoading === plan.key}
+                          disabled={!!checkoutLoading}
                         >
-                          {checkoutLoading === plan.key ? t('common.loading') : t('billing.checkout')}
+                          {checkoutLoading === plan.key
+                            ? t('common.loading')
+                            : t('billing.checkout')}
                         </Button>
                       )}
 
-                      {isCurrent && !isFreeplan && billingStatus?.status !== 'canceled' && (
-                        <Text fontSize="caption" color="neutral-textLow">
-                          {t('billing.cancelHint')}
-                        </Text>
+                      {isCurrent && hasActiveSub && !cancelAtEnd && !plan.isFree && (
+                        <Button
+                          appearance="danger"
+                          onClick={() => setShowCancelModal(true)}
+                        >
+                          {t('billing.cancelPlan')}
+                        </Button>
+                      )}
+
+                      {isCurrent && cancelAtEnd && (
+                        <Box display="flex" justifyContent="center">
+                          <Tag appearance="warning">{t('billing.cancelScheduled')}</Tag>
+                        </Box>
                       )}
                     </Box>
                   </Card.Body>
@@ -250,13 +306,7 @@ export default function BillingPage({ locked = false }) {
         </Box>
       )}
 
-      {error && (
-        <Alert appearance="danger">
-          <Text>{error}</Text>
-        </Alert>
-      )}
-
-      {/* Invoices table (when not locked) */}
+      {/* Faturas */}
       {!locked && (
         <Card>
           <Card.Header>
@@ -276,19 +326,35 @@ export default function BillingPage({ locked = false }) {
                     <Table.Cell as="th">{t('billing.invoices.date')}</Table.Cell>
                     <Table.Cell as="th">{t('billing.invoices.amount')}</Table.Cell>
                     <Table.Cell as="th">{t('billing.invoices.status')}</Table.Cell>
+                    <Table.Cell as="th">{t('billing.invoices.receipt')}</Table.Cell>
                   </Table.Row>
                 </Table.Head>
                 <Table.Body>
-                  {invoices.map((inv, idx) => (
-                    <Table.Row key={idx}>
-                      <Table.Cell>{inv.date}</Table.Cell>
-                      <Table.Cell>{inv.amount}</Table.Cell>
+                  {invoices.map((inv) => (
+                    <Table.Row key={inv.id || inv.stripeInvoiceId}>
+                      <Table.Cell>{formatDate(inv.createdAt)}</Table.Cell>
+                      <Table.Cell>{formatCurrency(inv.amountPaid)}</Table.Cell>
                       <Table.Cell>
                         <Badge appearance={inv.status === 'paid' ? 'success' : 'warning'}>
                           {inv.status === 'paid'
                             ? t('billing.invoices.paid')
                             : t('billing.invoices.pending')}
                         </Badge>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {(inv.invoiceUrl || inv.invoicePdf) ? (
+                          <a
+                            href={inv.invoiceUrl || inv.invoicePdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Button appearance="transparent" size="small">
+                              {t('billing.invoices.view')}
+                            </Button>
+                          </a>
+                        ) : (
+                          <Text fontSize="caption" color="neutral-textLow">—</Text>
+                        )}
                       </Table.Cell>
                     </Table.Row>
                   ))}
@@ -297,6 +363,51 @@ export default function BillingPage({ locked = false }) {
             )}
           </Card.Body>
         </Card>
+      )}
+
+      {/* Modal de confirmação de cancelamento */}
+      {showCancelModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+        >
+          <div style={{ maxWidth: '420px', width: '100%' }}>
+            <Card>
+              <Card.Header>
+                <Title as="h3">{t('billing.cancelModal.title')}</Title>
+              </Card.Header>
+              <Card.Body>
+                <Box display="flex" flexDirection="column" gap="4">
+                  <Text>{t('billing.cancelModal.body')}</Text>
+                  <Box display="flex" gap="2" justifyContent="flex-end">
+                    <Button
+                      appearance="transparent"
+                      onClick={() => setShowCancelModal(false)}
+                      disabled={cancelLoading}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      appearance="danger"
+                      onClick={handleCancel}
+                      disabled={cancelLoading}
+                    >
+                      {cancelLoading ? t('common.loading') : t('billing.cancelModal.confirm')}
+                    </Button>
+                  </Box>
+                </Box>
+              </Card.Body>
+            </Card>
+          </div>
+        </div>
       )}
     </Box>
   );

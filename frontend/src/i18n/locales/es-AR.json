@@ -107,10 +107,16 @@
     "free": "Gratis",
     "syncSuccess": "Plan actualizado a {{plan}} con \u00e9xito!",
     "cancelPlan": "Cancelar suscripci\u00f3n",
-    "cancelConfirm": "\u00bfEst\u00e1s seguro? El acceso contin\u00faa hasta el fin del per\u00edodo.",
-    "cancelConfirmYes": "S\u00ed, cancelar",
+    "cancelScheduled": "Cancelaci\u00f3n programada",
+    "subscribedUntil": "Activo hasta",
+    "perMonth": "/mes",
+    "notAvailableInterval": "No disponible en este per\u00edodo",
+    "cancelModal": {
+      "title": "Cancelar suscripci\u00f3n",
+      "body": "\u00bfEst\u00e1s seguro? El acceso contin\u00faa hasta el fin del per\u00edodo pagado.",
+      "confirm": "S\u00ed, cancelar"
+    },
     "cancelSuccess": "Suscripci\u00f3n cancelada. El acceso contin\u00faa hasta el fin del per\u00edodo pagado.",
-    "cancelHint": "Para cancelar, usa el bot\u00f3n de arriba.",
     "plans": {
       "starter": {
         "name": "Starter",
@@ -155,6 +161,8 @@
       "date": "Fecha",
       "amount": "Monto",
       "status": "Estado",
+      "receipt": "Recibo",
+      "view": "Ver",
       "paid": "Pagado",
       "pending": "Pendiente",
       "noInvoices": "No se encontraron facturas."

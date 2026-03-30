@@ -41,6 +41,7 @@ export default function NexoProvider({ children }) {
   const [store, setStore] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
   const [termsAccepted, setTermsAccepted] = useState(null);
+  const [termsData, setTermsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const refreshInterval = useRef(null);
@@ -56,7 +57,10 @@ export default function NexoProvider({ children }) {
         api.get('/api/terms/status'),
       ]);
       if (billingRes.data) setBillingStatus(billingRes.data);
-      if (termsRes.data) setTermsAccepted(termsRes.data.accepted);
+      if (termsRes.data) {
+        setTermsAccepted(termsRes.data.accepted);
+        setTermsData(termsRes.data.terms || null);
+      }
     } catch (err) {
       console.error('Failed to load status:', err);
     }
@@ -186,6 +190,7 @@ export default function NexoProvider({ children }) {
       setBillingStatus,
       termsAccepted,
       setTermsAccepted,
+      termsData,
       loading,
       error,
     }}>

@@ -1,9 +1,18 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Card, Button, Text, Title, Alert } from '@nimbus-ds/components';
+import DOMPurify from 'dompurify';
 import api from '../services/api.js';
 
-export default function TermsPage({ onAccepted, viewOnly = false }) {
+/**
+ * TermsPage — exibe os termos de uso e solicita aceite antes de liberar o app.
+ *
+ * Props:
+ *   termsData   — objeto retornado por GET /api/terms/status: { id, version, title, content, publishedAt }
+ *   onAccepted  — callback chamado após aceite bem-sucedido
+ *   viewOnly    — se true, oculta o botão de aceite (ex: visualização nas configurações)
+ */
+export default function TermsPage({ termsData, onAccepted, viewOnly = false }) {
   const { t } = useTranslation();
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -21,19 +30,32 @@ export default function TermsPage({ onAccepted, viewOnly = false }) {
   }, []);
 
   const handleAccept = async () => {
+    if (!termsData?.id) {
+      setError(t('terms.error'));
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      await api.post('/api/terms/accept');
+      await api.post('/api/terms/accept', { termsVersionId: termsData.id });
       if (onAccepted) onAccepted();
-    } catch (err) {
+    } catch {
       setError(t('terms.error'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const sections = ['s1', 's2', 's3', 's4', 's5', 's6'];
+  // Se há conteúdo no banco, renderiza direto (plain text ou HTML sanitizado)
+  const hasDbContent = termsData?.content;
+  const sanitizedContent = hasDbContent
+    ? DOMPurify.sanitize(termsData.content)
+    : null;
+
+  // Fallback: seções estáticas do i18n
+  const i18nSections = ['s1', 's2', 's3', 's4', 's5', 's6'];
+
+  const displayTitle = termsData?.title || t('terms.title');
 
   return (
     <Box
@@ -46,11 +68,16 @@ export default function TermsPage({ onAccepted, viewOnly = false }) {
       <Box maxWidth="640px" width="100%">
         <Card>
           <Card.Header>
-            <Title as="h2">{t('terms.title')}</Title>
+            <Title as="h2">{displayTitle}</Title>
+            {termsData?.version && (
+              <Text fontSize="caption" color="neutral-textLow">
+                {`v${termsData.version}`}
+              </Text>
+            )}
           </Card.Header>
           <Card.Body>
             <Box display="flex" flexDirection="column" gap="4">
-              {!scrolledToBottom && (
+              {!viewOnly && !scrolledToBottom && (
                 <Alert appearance="primary">
                   <Text>{t('terms.scrollHint')}</Text>
                 </Alert>
@@ -67,12 +94,27 @@ export default function TermsPage({ onAccepted, viewOnly = false }) {
                 borderWidth="1"
                 borderRadius="2"
               >
-                {sections.map((key) => (
-                  <Box key={key} marginBottom="4">
-                    <Title as="h4">{t(`terms.sections.${key}.title`)}</Title>
-                    <Text>{t(`terms.sections.${key}.body`)}</Text>
-                  </Box>
-                ))}
+                {hasDbContent ? (
+                  /* Conteúdo do banco — suporta plain text e HTML sanitizado */
+                  sanitizedContent.includes('<') ? (
+                    <div
+                      dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+                      style={{ fontSize: '14px', lineHeight: '1.6' }}
+                    />
+                  ) : (
+                    <Text style={{ whiteSpace: 'pre-wrap' }}>
+                      {termsData.content}
+                    </Text>
+                  )
+                ) : (
+                  /* Fallback: seções estáticas do i18n */
+                  i18nSections.map((key) => (
+                    <Box key={key} marginBottom="4">
+                      <Title as="h4">{t(`terms.sections.${key}.title`)}</Title>
+                      <Text>{t(`terms.sections.${key}.body`)}</Text>
+                    </Box>
+                  ))
+                )}
               </Box>
 
               {!viewOnly && error && (

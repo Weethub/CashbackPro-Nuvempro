@@ -11,7 +11,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Settings from './pages/Settings.jsx';
 
 export default function App() {
-  const { store, billingStatus, termsAccepted, setTermsAccepted, loading: nexoLoading } = useNexo();
+  const { store, billingStatus, termsAccepted, setTermsAccepted, termsData, loading: nexoLoading } = useNexo();
   const { profile, loading: profileLoading, hasProfile, refetch: refetchProfile } = useProfile();
 
   if (nexoLoading || profileLoading) {
@@ -22,6 +22,7 @@ export default function App() {
   if (termsAccepted === false) {
     return (
       <TermsPage
+        termsData={termsData}
         onAccepted={() => setTermsAccepted(true)}
       />
     );

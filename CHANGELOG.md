@@ -6,6 +6,20 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.4.0] - 2026-03-30
+
+### Corrigido / Implementado
+
+- **Gate de Termos de Uso funcional** — fluxo completo de aceite de termos agora funciona corretamente:
+  - `NexoProvider` agora expõe `termsData` (objeto completo com `id`, `title`, `content`, `version`) além do boolean `termsAccepted`
+  - `TermsPage` agora exibe o conteúdo real do banco de dados (gerenciado pelo admin) em vez de texto estático de i18n
+  - `POST /api/terms/accept` agora recebe corretamente o `termsVersionId` — bug anterior causava erro 400 sempre
+  - Suporte a conteúdo plain text (`white-space: pre-wrap`) e HTML sanitizado (DOMPurify) do banco
+  - Fallback para seções estáticas do i18n caso não haja termos publicados no banco
+  - Versão e título do termo exibidos na interface
+
+---
+
 ## [1.3.9] - 2026-03-30
 
 ### Corrigido

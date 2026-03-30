@@ -70,9 +70,15 @@ router.post('/sync', async (req, res, next) => {
       return res.json({ plan: store.plan, synced: false, reason: 'no_customer' });
     }
 
-    // Otimização: se já tem assinatura ativa no banco com plano diferente de starter, retorna rápido
+    // Otimização: pula sync se já tem assinatura ativa e não está pendente de cancelamento
     const dbSub = await prisma.subscription.findUnique({ where: { storeId: store.id } });
-    if (dbSub?.status === 'active' && dbSub?.planKey && dbSub.planKey === store.plan && store.plan !== 'starter') {
+    if (
+      dbSub?.status === 'active' &&
+      !dbSub?.cancelAtPeriodEnd &&
+      dbSub?.planKey &&
+      dbSub.planKey === store.plan &&
+      store.plan !== 'starter'
+    ) {
       return res.json({ plan: store.plan, synced: false, reason: 'already_synced' });
     }
 
@@ -88,7 +94,9 @@ router.post('/sync', async (req, res, next) => {
       return res.json({ plan: store.plan, synced: false, reason: 'no_active_subscription' });
     }
 
-    const sub = subscriptions.data[0];
+    // Prefere assinatura sem cancelamento pendente (a nova, após resubscrição)
+    const sub =
+      subscriptions.data.find((s) => !s.cancel_at_period_end) || subscriptions.data[0];
     const planKey = sub.metadata?.plan_key;
     const billingInterval = sub.metadata?.billing_interval;
 

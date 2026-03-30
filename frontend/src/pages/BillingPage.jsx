@@ -317,19 +317,45 @@ export default function BillingPage({ locked = false }) {
                     <Table.Cell as="th">{t('billing.invoices.date')}</Table.Cell>
                     <Table.Cell as="th">{t('billing.invoices.amount')}</Table.Cell>
                     <Table.Cell as="th">{t('billing.invoices.status')}</Table.Cell>
+                    <Table.Cell as="th">{t('billing.invoices.receipt')}</Table.Cell>
                   </Table.Row>
                 </Table.Head>
                 <Table.Body>
                   {invoices.map((inv, idx) => (
                     <Table.Row key={idx}>
-                      <Table.Cell>{inv.date}</Table.Cell>
-                      <Table.Cell>{inv.amount}</Table.Cell>
+                      <Table.Cell>
+                        {inv.createdAt
+                          ? new Date(inv.createdAt).toLocaleDateString()
+                          : inv.periodStart
+                          ? new Date(inv.periodStart).toLocaleDateString()
+                          : '—'}
+                      </Table.Cell>
+                      <Table.Cell>
+                        {new Intl.NumberFormat('pt-BR', {
+                          style: 'currency',
+                          currency: inv.currency?.toUpperCase() || 'BRL',
+                        }).format(inv.amountPaid ?? 0)}
+                      </Table.Cell>
                       <Table.Cell>
                         <Badge appearance={inv.status === 'paid' ? 'success' : 'warning'}>
                           {inv.status === 'paid'
                             ? t('billing.invoices.paid')
                             : t('billing.invoices.pending')}
                         </Badge>
+                      </Table.Cell>
+                      <Table.Cell>
+                        {(inv.invoiceUrl || inv.invoicePdf) ? (
+                          <a
+                            href={inv.invoiceUrl || inv.invoicePdf}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'inherit', fontSize: '13px' }}
+                          >
+                            {t('billing.invoices.view')}
+                          </a>
+                        ) : (
+                          <Text fontSize="caption" color="neutral-textDisabled">—</Text>
+                        )}
                       </Table.Cell>
                     </Table.Row>
                   ))}

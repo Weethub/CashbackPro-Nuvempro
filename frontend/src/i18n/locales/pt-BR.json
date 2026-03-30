@@ -90,7 +90,9 @@
   },
   "billing": {
     "title": "Planos e Cobran\u00e7a",
-    "locked": "Escolha um plano para continuar usando o aplicativo.",
+    "locked": "Escolha um plano para liberar o acesso ao aplicativo. Se você já assinou, clique em verificar abaixo.",
+    "lockedVerify": "Já assinei — verificar acesso",
+    "verifying": "Verificando...",
     "status": {
       "currentPlan": "Plano atual",
       "renewalDate": "Data de renova\u00e7\u00e3o",

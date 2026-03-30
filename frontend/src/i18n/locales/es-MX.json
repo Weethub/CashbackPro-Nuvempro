@@ -90,7 +90,9 @@
   },
   "billing": {
     "title": "Planes y Facturaci\u00f3n",
-    "locked": "Elige un plan para seguir usando la aplicaci\u00f3n.",
+    "locked": "Elige un plan para habilitar el acceso a la aplicaci\u00f3n. Si ya te suscribiste, haz clic en verificar.",
+    "lockedVerify": "Ya me suscrib\u00ed \u2014 verificar acceso",
+    "verifying": "Verificando...",
     "status": {
       "currentPlan": "Plan actual",
       "renewalDate": "Fecha de renovaci\u00f3n",

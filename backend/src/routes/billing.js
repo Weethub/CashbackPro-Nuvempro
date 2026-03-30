@@ -152,14 +152,41 @@ router.post('/sync', async (req, res, next) => {
 
 /**
  * GET /api/billing/status — Get current subscription status
+ *
+ * hasAccess = true quando:
+ *   - Assinatura está ativa ou em trial no Stripe
+ *   - Store ainda está no período de trial (trialEndsAt no futuro)
+ *   - Plano atual do store é marcado como isFree no banco
+ * hasAccess = false → App.jsx exibe BillingPage locked (gate de assinatura)
  */
 router.get('/status', async (req, res, next) => {
   try {
+    const appSlug = process.env.APP_SLUG || 'meuapp';
     const status = await StripeService.getSubscriptionStatus(req.store);
+
+    // Assinatura ativa no Stripe
+    const subActive = ['active', 'trialing'].includes(status.status);
+
+    // Trial da loja ainda vigente
+    const trialActive =
+      req.store.trialEndsAt && new Date(req.store.trialEndsAt) > new Date();
+
+    // Verifica se o plano atual do store é free no banco
+    let isFreePlan = false;
+    if (req.store.plan) {
+      const plan = await prisma.adminPlan.findFirst({
+        where: { appId: appSlug, name: req.store.plan, isActive: true },
+        select: { isFree: true },
+      });
+      isFreePlan = plan?.isFree || false;
+    }
+
+    const hasAccess = isFreePlan || !!trialActive || subActive;
 
     res.json({
       plan: req.store.plan,
       trialEndsAt: req.store.trialEndsAt,
+      hasAccess,
       subscription: status,
     });
   } catch (err) {

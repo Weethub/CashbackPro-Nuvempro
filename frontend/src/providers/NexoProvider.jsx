@@ -188,6 +188,7 @@ export default function NexoProvider({ children }) {
       store,
       billingStatus,
       setBillingStatus,
+      refreshStatus: loadStatus,    // recarrega billing + terms do backend
       termsAccepted,
       setTermsAccepted,
       termsData,

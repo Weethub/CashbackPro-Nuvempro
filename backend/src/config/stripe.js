@@ -46,6 +46,7 @@ const StripeService = {
       customer: customer.id,
       mode: 'subscription',
       payment_method_types: ['card'],
+      allow_promotion_codes: true,   // aceita cupons cadastrados no Stripe/admin
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
         store_id: String(store.id),

@@ -8,7 +8,6 @@ import TermsPage from './pages/TermsPage.jsx';
 import BillingPage from './pages/BillingPage.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 import Dashboard from './pages/Dashboard.jsx';
-import Settings from './pages/Settings.jsx';
 
 export default function App() {
   const { store, billingStatus, termsAccepted, setTermsAccepted, termsData, loading: nexoLoading } = useNexo();
@@ -42,8 +41,8 @@ export default function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
-        <Route path="settings" element={<Settings />} />
         <Route path="billing" element={<BillingPage />} />
+        {/* Adicione aqui as rotas específicas do seu app */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

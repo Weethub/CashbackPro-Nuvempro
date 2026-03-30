@@ -203,7 +203,8 @@
     "welcome": "Bem-vindo ao seu painel!"
   },
   "settings": {
-    "title": "Configura\u00e7\u00f5es"
+    "title": "Configura\u00e7\u00f5es",
+    "placeholder": "Adicione aqui as configura\u00e7\u00f5es do seu app."
   },
   "footer": {
     "rights": "Todos os direitos reservados",

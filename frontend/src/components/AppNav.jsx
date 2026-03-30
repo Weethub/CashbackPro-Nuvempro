@@ -40,13 +40,7 @@ export default function AppNav() {
           >
             {t('nav.dashboard')}
           </Button>
-          <Button
-            appearance={isActive('/settings') ? 'primary' : 'transparent'}
-            onClick={() => navigate('/settings')}
-          >
-            {t('nav.settings')}
-          </Button>
-          {/* Placeholder for app-specific nav items */}
+          {/* Adicione aqui os itens de nav específicos do seu app */}
         </Box>
 
         {/* Right nav */}

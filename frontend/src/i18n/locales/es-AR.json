@@ -199,7 +199,8 @@
     "welcome": "\u00a1Bienvenido a tu panel!"
   },
   "settings": {
-    "title": "Configuraci\u00f3n"
+    "title": "Configuraci\u00f3n",
+    "placeholder": "Agrega aqu\u00ed las configuraciones de tu app."
   },
   "footer": {
     "rights": "Todos los derechos reservados",

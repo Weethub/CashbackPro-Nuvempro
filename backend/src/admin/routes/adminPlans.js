@@ -1,4 +1,5 @@
 const express = require('express');
+const prisma = require('../../lib/prisma');
 const { AppError } = require('../../lib/errors');
 const { requireRole } = require('../middleware/requireRole');
 const adminPlanService = require('../services/adminPlanService');
@@ -6,6 +7,22 @@ const adminLogService = require('../services/adminLogService');
 const { stripe } = require('../../config/stripe');
 
 const router = express.Router();
+
+/**
+ * Resolve um plano pelo param da rota: aceita ID numérico ou planKey (nome string).
+ */
+async function resolvePlan(param) {
+  const numId = parseInt(param);
+  if (!isNaN(numId)) {
+    const plan = await prisma.adminPlan.findUnique({ where: { id: numId } });
+    if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
+    return plan;
+  }
+  const appId = process.env.APP_SLUG || 'meuapp';
+  const plan = await prisma.adminPlan.findFirst({ where: { appId, name: param } });
+  if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
+  return plan;
+}
 
 /**
  * GET /admin-api/plans/stripe-account
@@ -152,10 +169,11 @@ router.get('/verify-stripe', async (req, res, next) => {
 
 /**
  * PUT /admin-api/plans/:id — Update a plan
+ * Aceita ID numérico ou planKey (nome string).
  */
 router.put('/:id', requireRole('gerente'), async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
+    const planRecord = await resolvePlan(req.params.id);
     const { name, features, prices, price, commissionRate, revenueShareRate, sortOrder, isActive } = req.body;
 
     const data = {};
@@ -168,13 +186,13 @@ router.put('/:id', requireRole('gerente'), async (req, res, next) => {
     if (sortOrder !== undefined) data.sortOrder = sortOrder;
     if (isActive !== undefined) data.isActive = isActive;
 
-    const plan = await adminPlanService.update(id, data);
+    const plan = await adminPlanService.update(planRecord.id, data);
 
     await adminLogService.log({
       adminId: req.admin.id,
       action: 'update_plan',
       entity: 'admin_plan',
-      entityId: id,
+      entityId: planRecord.id,
       details: data,
       ipAddress: req.ip,
     });
@@ -187,17 +205,18 @@ router.put('/:id', requireRole('gerente'), async (req, res, next) => {
 
 /**
  * POST /admin-api/plans/:id/deactivate — Deactivate a plan
+ * Aceita ID numérico ou planKey (nome string).
  */
 router.post('/:id/deactivate', requireRole('gerente'), async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
-    const plan = await adminPlanService.deactivate(id);
+    const planRecord = await resolvePlan(req.params.id);
+    const plan = await adminPlanService.deactivate(planRecord.id);
 
     await adminLogService.log({
       adminId: req.admin.id,
       action: 'deactivate_plan',
       entity: 'admin_plan',
-      entityId: id,
+      entityId: planRecord.id,
       ipAddress: req.ip,
     });
 
@@ -209,26 +228,11 @@ router.post('/:id/deactivate', requireRole('gerente'), async (req, res, next) =>
 
 /**
  * POST /admin-api/plans/:id/sync-stripe — Sync plan to Stripe
- * Aceita tanto ID numérico quanto planKey (nome string).
+ * Aceita ID numérico ou planKey (nome string).
  */
 router.post('/:id/sync-stripe', requireRole('proprietario'), async (req, res, next) => {
   try {
-    const param = req.params.id;
-    const numId = parseInt(param);
-    const prisma = require('../../lib/prisma');
-
-    let planRecord;
-    if (!isNaN(numId)) {
-      planRecord = await prisma.adminPlan.findUnique({ where: { id: numId } });
-    } else {
-      const appId = process.env.APP_SLUG || 'meuapp';
-      planRecord = await prisma.adminPlan.findFirst({ where: { appId, name: param } });
-    }
-
-    if (!planRecord) {
-      throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
-    }
-
+    const planRecord = await resolvePlan(req.params.id);
     const plan = await adminPlanService.syncToStripe(planRecord.id);
 
     await adminLogService.log({
@@ -248,11 +252,12 @@ router.post('/:id/sync-stripe', requireRole('proprietario'), async (req, res, ne
 
 /**
  * GET /admin-api/plans/:id/verify-stripe — Verify Stripe price IDs
+ * Aceita ID numérico ou planKey (nome string).
  */
 router.get('/:id/verify-stripe', async (req, res, next) => {
   try {
-    const id = parseInt(req.params.id);
-    const result = await adminPlanService.verifyStripeIds(id);
+    const planRecord = await resolvePlan(req.params.id);
+    const result = await adminPlanService.verifyStripeIds(planRecord.id);
     res.json(result);
   } catch (err) {
     next(err);

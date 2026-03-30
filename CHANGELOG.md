@@ -6,6 +6,18 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.6.3] - 2026-03-30
+
+### Adicionado
+
+- **Aviso de trial ativo na BillingPage** — quando `subscription.status === 'trialing'`, o card de status exibe:
+  - Label "Trial ativo até" (em vez de "Data de renovação") com a data da primeira cobrança
+  - Alert informativo: "Nenhuma cobrança até {{date}}. Após essa data, a assinatura será renovada automaticamente."
+  - Dica de cancelamento: "Se não quiser ser cobrado, cancele antes de {{date}}."
+- **i18n** — chaves `billing.status.trialEnd`, `billing.trialActiveTitle`, `billing.trialActiveNotice`, `billing.trialActiveCancelHint` em pt-BR, es-AR, es-MX
+
+---
+
 ## [1.6.2] - 2026-03-30
 
 ### Corrigido

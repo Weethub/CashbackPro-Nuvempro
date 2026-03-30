@@ -183,38 +183,57 @@ export default function BillingPage({ locked = false }) {
       {!locked && billingStatus && billingStatus.plan && (
         <Card>
           <Card.Body>
-            <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="2">
-              <Box display="flex" flexDirection="column" gap="1">
-                <Text fontWeight="bold">{t('billing.status.currentPlan')}</Text>
-                <Box display="flex" gap="2" alignItems="center">
-                  <Title as="h3">{billingStatus.plan}</Title>
-                  <StatusBadge status={subStatus} t={t} />
-                </Box>
-              </Box>
-              {renewalDate && (
+            <Box display="flex" flexDirection="column" gap="3">
+              <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap="2">
                 <Box display="flex" flexDirection="column" gap="1">
-                  <Text fontWeight="bold">{t('billing.status.renewalDate')}</Text>
-                  <Text>{renewalDate}</Text>
+                  <Text fontWeight="bold">{t('billing.status.currentPlan')}</Text>
+                  <Box display="flex" gap="2" alignItems="center">
+                    <Title as="h3">{billingStatus.plan}</Title>
+                    <StatusBadge status={subStatus} t={t} />
+                  </Box>
                 </Box>
-              )}
-              {billingStatus.plan !== 'starter' && subStatus !== 'canceled' && (
-                <Box display="flex" gap="2" alignItems="center">
-                  {confirmCancel ? (
-                    <>
-                      <Text fontSize="caption" color="neutral-textLow">{t('billing.cancelConfirm')}</Text>
-                      <Button appearance="danger" onClick={handleCancel} disabled={cancelLoading}>
-                        {cancelLoading ? t('common.loading') : t('billing.cancelConfirmYes')}
+                {renewalDate && (
+                  <Box display="flex" flexDirection="column" gap="1" alignItems="flex-end">
+                    <Text fontWeight="bold">
+                      {sub?.status === 'trialing'
+                        ? t('billing.status.trialEnd')
+                        : t('billing.status.renewalDate')}
+                    </Text>
+                    <Text>{renewalDate}</Text>
+                  </Box>
+                )}
+                {billingStatus.plan !== 'starter' && subStatus !== 'canceled' && (
+                  <Box display="flex" gap="2" alignItems="center">
+                    {confirmCancel ? (
+                      <>
+                        <Text fontSize="caption" color="neutral-textLow">{t('billing.cancelConfirm')}</Text>
+                        <Button appearance="danger" onClick={handleCancel} disabled={cancelLoading}>
+                          {cancelLoading ? t('common.loading') : t('billing.cancelConfirmYes')}
+                        </Button>
+                        <Button appearance="transparent" onClick={() => setConfirmCancel(false)} disabled={cancelLoading}>
+                          {t('common.cancel')}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button appearance="transparent" onClick={() => setConfirmCancel(true)}>
+                        {t('billing.cancelPlan')}
                       </Button>
-                      <Button appearance="transparent" onClick={() => setConfirmCancel(false)} disabled={cancelLoading}>
-                        {t('common.cancel')}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button appearance="transparent" onClick={() => setConfirmCancel(true)}>
-                      {t('billing.cancelPlan')}
-                    </Button>
-                  )}
-                </Box>
+                    )}
+                  </Box>
+                )}
+              </Box>
+
+              {/* Aviso de trial ativo — só aparece quando status=trialing */}
+              {sub?.status === 'trialing' && renewalDate && (
+                <Alert appearance="primary">
+                  <Box display="flex" flexDirection="column" gap="1">
+                    <Text fontWeight="bold">{t('billing.trialActiveTitle')}</Text>
+                    <Text>{t('billing.trialActiveNotice', { date: renewalDate })}</Text>
+                    <Text fontSize="caption" color="neutral-textLow">
+                      {t('billing.trialActiveCancelHint', { date: renewalDate })}
+                    </Text>
+                  </Box>
+                </Alert>
               )}
             </Box>
           </Card.Body>

@@ -99,8 +99,12 @@
       "active": "Activo",
       "canceled": "Cancelado",
       "pastDue": "Pago pendiente",
-      "trialing": "Per\u00edodo de prueba"
+      "trialing": "Per\u00edodo de prueba",
+      "trialEnd": "Trial activo hasta"
     },
+    "trialActiveTitle": "Est\u00e1s en el per\u00edodo de prueba",
+    "trialActiveNotice": "Sin cobros hasta el {{date}}. Despu\u00e9s de esa fecha, la suscripci\u00f3n se renovar\u00e1 autom\u00e1ticamente.",
+    "trialActiveCancelHint": "Si no quieres ser cobrado, cancela antes del {{date}}.",
     "interval": {
       "monthly": "Mensual",
       "semestral": "Semestral",

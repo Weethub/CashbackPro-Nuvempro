@@ -99,8 +99,12 @@
       "active": "Ativo",
       "canceled": "Cancelado",
       "pastDue": "Pagamento pendente",
-      "trialing": "Per\u00edodo de teste"
+      "trialing": "Per\u00edodo de teste",
+      "trialEnd": "Trial ativo at\u00e9"
     },
+    "trialActiveTitle": "Voc\u00ea est\u00e1 no per\u00edodo de teste",
+    "trialActiveNotice": "Nenhuma cobran\u00e7a at\u00e9 {{date}}. Ap\u00f3s essa data, a assinatura ser\u00e1 renovada automaticamente.",
+    "trialActiveCancelHint": "Se n\u00e3o quiser ser cobrado, cancele antes de {{date}}.",
     "interval": {
       "monthly": "Mensal",
       "semestral": "Semestral",

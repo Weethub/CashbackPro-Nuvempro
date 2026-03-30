@@ -167,21 +167,30 @@ router.get('/status', async (req, res, next) => {
     // Assinatura ativa no Stripe
     const subActive = ['active', 'trialing'].includes(status.status);
 
-    // Trial da loja ainda vigente
+    // Trial da loja ainda vigente — só conta se TRIAL_DAYS > 0 no .env
+    // Se TRIAL_DAYS=0 (ou não definido), trial não concede acesso: usuário deve assinar
+    const trialDaysEnv = parseInt(process.env.TRIAL_DAYS) || 0;
     const trialActive =
-      req.store.trialEndsAt && new Date(req.store.trialEndsAt) > new Date();
+      trialDaysEnv > 0 &&
+      !!req.store.trialEndsAt &&
+      new Date(req.store.trialEndsAt) > new Date();
 
-    // Verifica se o plano atual do store é free no banco
+    // Verifica se o plano atual do store é free no banco.
+    // ATENÇÃO: isFree NÃO é campo do schema Prisma — é calculado a partir do JSON price.
+    // Nunca usar select: { isFree: true } — lança erro Prisma.
     let isFreePlan = false;
     if (req.store.plan) {
       const plan = await prisma.adminPlan.findFirst({
         where: { appId: appSlug, name: req.store.plan, isActive: true },
-        select: { isFree: true },
+        select: { price: true },
       });
-      isFreePlan = plan?.isFree || false;
+      if (plan?.price && typeof plan.price === 'object') {
+        const priceValues = Object.values(plan.price);
+        isFreePlan = priceValues.length > 0 && priceValues.every((v) => !v || v === 0);
+      }
     }
 
-    const hasAccess = isFreePlan || !!trialActive || subActive;
+    const hasAccess = isFreePlan || trialActive || subActive;
 
     res.json({
       plan: req.store.plan,

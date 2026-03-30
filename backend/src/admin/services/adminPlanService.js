@@ -207,6 +207,27 @@ const adminPlanService = {
   },
 
   /**
+   * Remove o plano do banco e arquiva produto/preços no Stripe.
+   * Não é possível remover um produto Stripe que tenha assinaturas ativas —
+   * nesses casos o produto é apenas arquivado (active: false) e os preços também.
+   */
+  async deletePlan(id) {
+    const plan = await prisma.adminPlan.findUnique({ where: { id } });
+    if (!plan) throw new AppError('Plano nao encontrado.', 404, 'PLAN_NOT_FOUND');
+
+    // Arquiva produto e preços no Stripe antes de remover do banco (não-bloqueante)
+    await this.archiveInStripe(plan).catch((err) =>
+      console.warn(`[deletePlan] Stripe archive falhou para plano ${plan.name}:`, err.message)
+    );
+
+    // Remove do banco (hard delete)
+    await prisma.adminPlan.delete({ where: { id } });
+
+    console.log(`[deletePlan] Plano "${plan.name}" (id: ${id}) removido do banco.`);
+    return { deleted: true, name: plan.name };
+  },
+
+  /**
    * Verifica os IDs do Stripe para um plano específico (chamada individual).
    */
   async verifyStripeIds(id) {

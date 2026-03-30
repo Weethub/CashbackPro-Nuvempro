@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Plus,
   Pencil,
+  Trash2,
   X,
   DollarSign,
   Percent,
@@ -17,6 +18,7 @@ import {
   Zap,
   Building2,
   ExternalLink,
+  AlertOctagon,
 } from 'lucide-react';
 
 const syncIcons = {
@@ -36,6 +38,8 @@ export default function PlansPage() {
   const [editingPlan, setEditingPlan] = useState(null);
   const [stripeAccount, setStripeAccount] = useState(null);
   const [stripeAccountLoading, setStripeAccountLoading] = useState(true);
+  const [confirmDeletePlan, setConfirmDeletePlan] = useState(null); // plan object
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -129,6 +133,20 @@ export default function PlansPage() {
     setShowForm(true);
   };
 
+  const handleDeleteConfirm = async () => {
+    if (!confirmDeletePlan) return;
+    setDeleteLoading(true);
+    try {
+      await adminApi.delete(`/plans/${confirmDeletePlan.key || confirmDeletePlan.id}`);
+      setConfirmDeletePlan(null);
+      await fetchPlans();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao remover plano.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -169,11 +187,31 @@ export default function PlansPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <CreditCard size={20} className="text-violet-500" />
-                    <h3 className="text-lg font-bold text-gray-900">{plan.name || key}</h3>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">{plan.name || key}</h3>
+                      {!plan.isActive && (
+                        <span className="text-xs font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                          Inativo
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <button onClick={() => openEdit(plan)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
-                    <Pencil size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEdit(plan)}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                      title="Editar plano"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeletePlan(plan)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500"
+                      title="Remover plano"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Stripe Sync Status */}
@@ -257,7 +295,17 @@ export default function PlansPage() {
       {/* Stripe Account Info */}
       <StripeAccountBanner account={stripeAccount} loading={stripeAccountLoading} />
 
-      {/* Modal */}
+      {/* Modal de confirmação de exclusão */}
+      {confirmDeletePlan && (
+        <DeleteConfirmModal
+          plan={confirmDeletePlan}
+          loading={deleteLoading}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setConfirmDeletePlan(null)}
+        />
+      )}
+
+      {/* Modal de criação/edição */}
       {showForm && (
         <PlanForm
           plan={editingPlan}
@@ -368,6 +416,59 @@ function PriceRow({ label, value, priceId, stripeStatus }) {
         ) : (
           <XCircle size={14} className="text-red-400" />
         )}
+      </div>
+    </div>
+  );
+}
+
+function DeleteConfirmModal({ plan, loading, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="p-6">
+          {/* Ícone de alerta */}
+          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-100 mx-auto mb-4">
+            <AlertOctagon size={24} className="text-red-600" />
+          </div>
+
+          <h2 className="text-lg font-bold text-gray-900 text-center mb-2">
+            Remover plano "{plan.name || plan.key}"?
+          </h2>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-sm text-amber-800 space-y-1">
+            <p className="font-semibold">Esta ação é irreversível. Serão removidos:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+              <li>O plano do banco de dados</li>
+              <li>O produto no Stripe (arquivado)</li>
+              <li>Todos os preços ativos no Stripe (arquivados)</li>
+            </ul>
+            <p className="mt-2 text-amber-600">
+              Assinaturas existentes neste plano <strong>não são canceladas</strong> — continuam até o fim do período.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              disabled={loading}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Trash2 size={16} />
+              )}
+              {loading ? 'Removendo...' : 'Sim, remover'}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

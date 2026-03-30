@@ -331,6 +331,30 @@ router.post('/:id/sync-stripe', requireRole('proprietario'), async (req, res, ne
 });
 
 /**
+ * DELETE /admin-api/plans/:id — Remove o plano do banco e arquiva no Stripe.
+ * Requer role proprietario (ação destrutiva irreversível).
+ */
+router.delete('/:id', requireRole('proprietario'), async (req, res, next) => {
+  try {
+    const planRecord = await resolvePlan(req.params.id);
+    const result = await adminPlanService.deletePlan(planRecord.id);
+
+    await adminLogService.log({
+      adminId: req.admin.id,
+      action: 'delete_plan',
+      entity: 'admin_plan',
+      entityId: planRecord.id,
+      details: { name: planRecord.name },
+      ipAddress: req.ip,
+    });
+
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /admin-api/plans/:id/verify-stripe — Verify individual plan
  */
 router.get('/:id/verify-stripe', async (req, res, next) => {

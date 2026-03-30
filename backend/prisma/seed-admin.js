@@ -114,6 +114,37 @@ async function main() {
     console.log(`Plan upserted: ${upserted.name} (id: ${upserted.id})`);
   }
 
+  // Upsert trial config defaults — só cria se não existe; nunca sobrescreve valores do admin
+  const trialDefaults = [
+    {
+      key: 'trial_mode',
+      value: 'none',
+      group: 'trial',
+      label: 'Modo de Trial (none | free | paid)',
+    },
+    {
+      key: 'trial_days',
+      value: '7',
+      group: 'trial',
+      label: 'Duração do Trial (dias)',
+    },
+    {
+      key: 'trial_coupon',
+      value: '',
+      group: 'trial',
+      label: 'Código do Cupom Stripe (trial_mode=paid)',
+    },
+  ];
+
+  for (const cfg of trialDefaults) {
+    await prisma.adminConfig.upsert({
+      where: { key: cfg.key },
+      update: {}, // nunca sobrescreve — admin gerencia via painel
+      create: cfg,
+    });
+    console.log(`Config upserted: ${cfg.key}`);
+  }
+
   console.log('Seed completed successfully.');
 }
 

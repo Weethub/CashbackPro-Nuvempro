@@ -6,6 +6,24 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.6.0] - 2026-03-30
+
+### Adicionado
+
+- **Duas modalidades de Trial configuráveis pelo admin** (Settings → Período de Trial):
+  - `none` — sem trial; usuário assina imediatamente para acessar
+  - `free` — X dias grátis sem cartão; banner de contagem regressiva no app; ao expirar, redireciona para assinar
+  - `paid` — usuário assina mas recebe X dias grátis via cupom Stripe automático; planos exibem badge "Assine e ganhe X dias grátis"; cupom aplicado automaticamente no checkout
+- **`GET /api/billing/status`** — retorna `trialMode`, `trialDaysLeft` para o frontend
+- **`GET /api/billing/plans`** — retorna `trialMode`, `trialDays` para badges nos cartões de plano
+- **`POST /api/billing/checkout`** — aplica cupom automaticamente quando `trial_mode=paid`; `discounts` e `allow_promotion_codes` são mutuamente exclusivos no Stripe — selecionado automaticamente
+- **`AdminConfig` com defaults de trial** — seed cria `trial_mode=none`, `trial_days=7`, `trial_coupon=''`
+- **Banner de trial no app** — aparece dentro do app (não bloqueia) quando `trial_mode=free`; mostra dias restantes e botão "Ver planos"
+- **SettingsPage admin** — seção "Período de Trial" com cards de seleção de modo, input de dias e campo de cupom (com aviso sobre `allow_promotion_codes`)
+- **i18n** — chaves `trial.*` adicionadas em pt-BR, es-AR, es-MX
+
+---
+
 ## [1.5.5] - 2026-03-30
 
 ### Corrigido

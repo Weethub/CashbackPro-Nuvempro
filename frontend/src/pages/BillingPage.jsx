@@ -35,6 +35,8 @@ export default function BillingPage({ locked = false }) {
 
   const [interval, setInterval_] = useState('monthly');
   const [plans, setPlans] = useState([]);
+  const [trialMode, setTrialMode] = useState('none');
+  const [trialDays, setTrialDays] = useState(0);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [invoices, setInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
@@ -90,6 +92,8 @@ export default function BillingPage({ locked = false }) {
     try {
       const res = await api.get('/api/billing/plans');
       setPlans(res.data?.plans || []);
+      setTrialMode(res.data?.trialMode || 'none');
+      setTrialDays(res.data?.trialDays || 0);
     } catch {
       // Silent — plans are not critical
     } finally {
@@ -280,6 +284,18 @@ export default function BillingPage({ locked = false }) {
                   <Card.Body>
                     <Box display="flex" flexDirection="column" gap="3">
                       <Title as="h2">{priceDisplay}</Title>
+
+                      {/* Badge de trial: só em planos pagos e quando trial está configurado */}
+                      {!isFreeplan && trialMode === 'paid' && trialDays > 0 && (
+                        <Tag appearance="warning">
+                          {t('trial.paidBadge', { days: trialDays })}
+                        </Tag>
+                      )}
+                      {!isFreeplan && trialMode === 'free' && trialDays > 0 && (
+                        <Tag appearance="primary">
+                          {t('trial.freeBadge', { days: trialDays })}
+                        </Tag>
+                      )}
 
                       <Box display="flex" flexDirection="column" gap="1">
                         {features.map((feat, idx) => (

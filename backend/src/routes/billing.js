@@ -12,6 +12,32 @@ const router = express.Router();
 router.use(requireAuth);
 
 /**
+ * Lê a configuração de trial do AdminConfig.
+ * Retorna { trialMode, trialDays, trialCoupon } com defaults seguros.
+ *
+ * trialMode: 'none' | 'free' | 'paid'
+ *   - none: sem trial; usuário precisa assinar para acessar
+ *   - free: X dias grátis sem cartão; banner de contagem regressiva no app
+ *   - paid: usuário assina mas recebe X dias grátis via cupom Stripe automático
+ */
+async function getTrialConfig() {
+  try {
+    const configs = await prisma.adminConfig.findMany({
+      where: { key: { in: ['trial_mode', 'trial_days', 'trial_coupon'] } },
+    });
+    const map = {};
+    for (const c of configs) map[c.key] = c.value;
+    return {
+      trialMode: map['trial_mode'] || 'none',
+      trialDays: parseInt(map['trial_days']) || 7,
+      trialCoupon: map['trial_coupon'] || '',
+    };
+  } catch {
+    return { trialMode: 'none', trialDays: 7, trialCoupon: '' };
+  }
+}
+
+/**
  * POST /api/billing/checkout — Create Stripe Checkout Session
  * Usa stripePriceIds do banco (preenchido ao sincronizar com Stripe no admin).
  */
@@ -54,11 +80,16 @@ router.post('/checkout', checkoutLimiter, async (req, res, next) => {
       );
     }
 
+    // trial_mode=paid: aplica cupom automaticamente no checkout (sem cobrar por X dias)
+    const { trialMode, trialCoupon } = await getTrialConfig();
+    const autoCoupon = trialMode === 'paid' && trialCoupon ? trialCoupon : null;
+
     const session = await StripeService.createCheckoutSession(
       req.store,
       priceId,
       planKey,
-      billingInterval
+      billingInterval,
+      autoCoupon
     );
 
     res.json({ url: session.url, sessionId: session.id });
@@ -154,9 +185,11 @@ router.post('/sync', async (req, res, next) => {
  * GET /api/billing/status — Get current subscription status
  *
  * hasAccess = true quando:
- *   - Assinatura está ativa ou em trial no Stripe
- *   - Store ainda está no período de trial (trialEndsAt no futuro)
- *   - Plano atual do store é marcado como isFree no banco
+ *   - Plano do store é free (price=0)
+ *   - Assinatura ativa ou em trial no Stripe (subActive)
+ *   - trial_mode=free E trialEndsAt ainda não expirou
+ *
+ * Retorna também: trialMode, trialDaysLeft
  * hasAccess = false → App.jsx exibe BillingPage locked (gate de assinatura)
  */
 router.get('/status', async (req, res, next) => {
@@ -164,16 +197,19 @@ router.get('/status', async (req, res, next) => {
     const appSlug = process.env.APP_SLUG || 'meuapp';
     const status = await StripeService.getSubscriptionStatus(req.store);
 
-    // Assinatura ativa no Stripe
+    // Assinatura ativa no Stripe (inclui status 'trialing' do cupom paid)
     const subActive = ['active', 'trialing'].includes(status.status);
 
-    // Trial da loja ainda vigente — só conta se TRIAL_DAYS > 0 no .env
-    // Se TRIAL_DAYS=0 (ou não definido), trial não concede acesso: usuário deve assinar
-    const trialDaysEnv = parseInt(process.env.TRIAL_DAYS) || 0;
-    const trialActive =
-      trialDaysEnv > 0 &&
-      !!req.store.trialEndsAt &&
-      new Date(req.store.trialEndsAt) > new Date();
+    // Lê configuração de trial do banco
+    const { trialMode, trialDays } = await getTrialConfig();
+
+    // Trial gratuito (sem cartão) — só aplica quando trial_mode=free
+    const now = new Date();
+    const trialEndsAt = req.store.trialEndsAt ? new Date(req.store.trialEndsAt) : null;
+    const trialActive = trialMode === 'free' && !!trialEndsAt && trialEndsAt > now;
+    const trialDaysLeft = trialActive
+      ? Math.max(0, Math.ceil((trialEndsAt - now) / (1000 * 60 * 60 * 24)))
+      : 0;
 
     // Verifica se o plano atual do store é free no banco.
     // ATENÇÃO: isFree NÃO é campo do schema Prisma — é calculado a partir do JSON price.
@@ -190,11 +226,15 @@ router.get('/status', async (req, res, next) => {
       }
     }
 
-    const hasAccess = isFreePlan || trialActive || subActive;
+    // hasAccess: plano free ou assinatura ativa ou (trial_mode=free e dentro do prazo)
+    const hasAccess = isFreePlan || subActive || (trialMode === 'free' && trialActive);
 
     res.json({
       plan: req.store.plan,
       trialEndsAt: req.store.trialEndsAt,
+      trialMode,
+      trialDays,
+      trialDaysLeft,
       hasAccess,
       subscription: status,
     });
@@ -297,7 +337,10 @@ router.get('/plans', async (req, res, next) => {
       };
     });
 
-    res.json({ plans });
+    // Inclui configuração de trial para o frontend exibir badges nos planos
+    const { trialMode, trialDays } = await getTrialConfig();
+
+    res.json({ plans, trialMode, trialDays });
   } catch (err) {
     next(err);
   }

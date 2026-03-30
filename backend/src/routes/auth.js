@@ -29,8 +29,17 @@ router.get('/callback', authLimiter, async (req, res, next) => {
       storeInfo = {};
     }
 
-    // Upsert store
-    const trialDays = parseInt(process.env.TRIAL_DAYS) || 7;
+    // Lê configuração de trial do AdminConfig (fallback para TRIAL_DAYS do .env)
+    let trialDays = parseInt(process.env.TRIAL_DAYS) || 7;
+    try {
+      const trialConfigs = await prisma.adminConfig.findMany({
+        where: { key: { in: ['trial_mode', 'trial_days'] } },
+      });
+      const cfgMap = {};
+      for (const c of trialConfigs) cfgMap[c.key] = c.value;
+      if (cfgMap['trial_days']) trialDays = parseInt(cfgMap['trial_days']) || trialDays;
+    } catch { /* usa fallback */ }
+
     const trialEndsAt = new Date();
     trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
@@ -135,7 +144,12 @@ router.post('/dev-token', async (req, res, next) => {
 
     if (!store) {
       // Create a dev store
-      const trialDays = parseInt(process.env.TRIAL_DAYS) || 7;
+      let devTrialDays = parseInt(process.env.TRIAL_DAYS) || 7;
+      try {
+        const tc = await prisma.adminConfig.findFirst({ where: { key: 'trial_days' } });
+        if (tc?.value) devTrialDays = parseInt(tc.value) || devTrialDays;
+      } catch { /* usa fallback */ }
+      const trialDays = devTrialDays;
       const trialEndsAt = new Date();
       trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 

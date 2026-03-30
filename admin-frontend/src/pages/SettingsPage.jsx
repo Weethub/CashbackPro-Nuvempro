@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import adminApi from '../services/adminApi';
-import { Settings, Save, Loader2, Lock, Eye, EyeOff } from 'lucide-react';
+import { Settings, Save, Loader2, Lock, Eye, EyeOff, Clock, Tag, AlertTriangle } from 'lucide-react';
 import TemplateVersionCard from '../components/TemplateVersionCard';
 
 export default function SettingsPage() {
@@ -12,6 +12,12 @@ export default function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [dirty, setDirty] = useState({});
 
+  // Trial config
+  const [trialConfig, setTrialConfig] = useState({ trial_mode: 'none', trial_days: '7', trial_coupon: '' });
+  const [trialSaving, setTrialSaving] = useState(false);
+  const [trialSuccess, setTrialSuccess] = useState('');
+  const [trialError, setTrialError] = useState('');
+
   // Change password
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [showPw, setShowPw] = useState({ current: false, new: false, confirm: false });
@@ -21,7 +27,45 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchSettings();
+    fetchTrialConfig();
   }, []);
+
+  const fetchTrialConfig = async () => {
+    try {
+      const res = await adminApi.get('/config');
+      const raw = res.data?.raw || [];
+      const map = {};
+      for (const c of raw) map[c.key] = c.value;
+      setTrialConfig({
+        trial_mode: map['trial_mode'] || 'none',
+        trial_days: map['trial_days'] || '7',
+        trial_coupon: map['trial_coupon'] || '',
+      });
+    } catch {
+      // silencioso — usa defaults
+    }
+  };
+
+  const handleSaveTrialConfig = async () => {
+    setTrialSaving(true);
+    setTrialError('');
+    setTrialSuccess('');
+    try {
+      await adminApi.put('/config', {
+        updates: [
+          { key: 'trial_mode', value: trialConfig.trial_mode, group: 'trial', label: 'Modo de Trial' },
+          { key: 'trial_days', value: String(trialConfig.trial_days), group: 'trial', label: 'Duração do Trial (dias)' },
+          { key: 'trial_coupon', value: trialConfig.trial_coupon, group: 'trial', label: 'Cupom Stripe (trial paid)' },
+        ],
+      });
+      setTrialSuccess('Configurações de trial salvas com sucesso.');
+      setTimeout(() => setTrialSuccess(''), 3000);
+    } catch (err) {
+      setTrialError(err.response?.data?.error || 'Erro ao salvar configurações de trial.');
+    } finally {
+      setTrialSaving(false);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
@@ -222,6 +266,138 @@ export default function SettingsPage() {
           Nenhuma configuracao encontrada.
         </div>
       )}
+
+      {/* ─── Trial Period Config ─── */}
+      <div className="bg-white rounded-xl shadow-sm p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-1 flex items-center gap-2">
+          <Clock size={18} className="text-violet-500" />
+          Período de Trial
+        </h3>
+        <p className="text-sm text-gray-500 mb-5">
+          Defina como novos clientes experimentam o app antes de pagar.
+        </p>
+
+        {trialError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm mb-4">{trialError}</div>
+        )}
+        {trialSuccess && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-2 rounded-lg text-sm mb-4">{trialSuccess}</div>
+        )}
+
+        <div className="space-y-5">
+          {/* Modo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Modo de Trial</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                {
+                  value: 'none',
+                  title: 'Desativado',
+                  desc: 'Usuário deve assinar imediatamente para acessar o app.',
+                  color: 'border-gray-200 hover:border-gray-400',
+                  active: 'border-gray-700 bg-gray-50',
+                  icon: null,
+                },
+                {
+                  value: 'free',
+                  title: 'Trial gratuito',
+                  desc: 'X dias grátis sem cartão. Aviso de contagem regressiva no app.',
+                  color: 'border-blue-200 hover:border-blue-400',
+                  active: 'border-blue-600 bg-blue-50',
+                  icon: <Clock size={14} className="text-blue-500" />,
+                },
+                {
+                  value: 'paid',
+                  title: 'Trial com assinatura',
+                  desc: 'Usuário assina mas ganha X dias grátis via cupom Stripe automático.',
+                  color: 'border-violet-200 hover:border-violet-400',
+                  active: 'border-violet-600 bg-violet-50',
+                  icon: <Tag size={14} className="text-violet-500" />,
+                },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setTrialConfig((p) => ({ ...p, trial_mode: opt.value }))}
+                  className={`text-left p-4 rounded-xl border-2 transition-all ${
+                    trialConfig.trial_mode === opt.value ? opt.active : `border-gray-200 ${opt.color}`
+                  }`}
+                >
+                  <div className="flex items-center gap-2 font-semibold text-sm text-gray-800 mb-1">
+                    {opt.icon}
+                    {opt.title}
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">{opt.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Dias — visível para free e paid */}
+          {trialConfig.trial_mode !== 'none' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Duração do Trial (dias)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="365"
+                value={trialConfig.trial_days}
+                onChange={(e) => setTrialConfig((p) => ({ ...p, trial_days: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-32 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                {trialConfig.trial_mode === 'free'
+                  ? 'Novos clientes terão acesso gratuito por este período sem precisar de cartão.'
+                  : 'O cupom abaixo será aplicado automaticamente, oferecendo este período grátis.'}
+              </p>
+            </div>
+          )}
+
+          {/* Cupom — visível apenas para paid */}
+          {trialConfig.trial_mode === 'paid' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <Tag size={14} />
+                Código do Cupom Stripe
+              </label>
+              <input
+                type="text"
+                value={trialConfig.trial_coupon}
+                onChange={(e) => setTrialConfig((p) => ({ ...p, trial_coupon: e.target.value.toUpperCase() }))}
+                placeholder="Ex: TRIAL14"
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 font-mono uppercase focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Crie o cupom na página{' '}
+                <a href="/coupons" className="text-violet-600 hover:underline">Cupons</a>.
+                Ele será aplicado automaticamente no checkout — o cliente não precisa digitar.
+              </p>
+
+              {/* Aviso modo paid */}
+              <div className="mt-3 flex gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <AlertTriangle size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  No modo <strong>trial com assinatura</strong>, o app exibirá "Assine e ganhe X dias grátis" nos planos pagos.
+                  O campo "Permitir cupons" é desativado no checkout quando este modo está ativo (Stripe não permite os dois ao mesmo tempo).
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex items-center gap-3">
+          <button
+            onClick={handleSaveTrialConfig}
+            disabled={trialSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors text-sm font-medium"
+          >
+            {trialSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            Salvar Configuração de Trial
+          </button>
+        </div>
+      </div>
 
       {/* Template Version */}
       <TemplateVersionCard />

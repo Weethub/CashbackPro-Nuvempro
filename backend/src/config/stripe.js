@@ -38,15 +38,29 @@ const StripeService = {
   /**
    * Create a Stripe Checkout Session.
    * Includes plan_key in metadata for webhook processing.
+   *
+   * @param {object} store
+   * @param {string} priceId
+   * @param {string} planKey
+   * @param {string} billingInterval
+   * @param {string|null} couponCode — quando fornecido, aplica o cupom automaticamente
+   *   (trial_mode=paid). Mutuamente exclusivo com allow_promotion_codes.
    */
-  async createCheckoutSession(store, priceId, planKey, billingInterval) {
+  async createCheckoutSession(store, priceId, planKey, billingInterval, couponCode = null) {
     const customer = await this.getOrCreateCustomer(store);
+
+    // Stripe não permite allow_promotion_codes + discounts ao mesmo tempo.
+    // Se há cupom de trial automático, aplica via discounts; caso contrário
+    // mantém allow_promotion_codes para o usuário digitar manualmente.
+    const promoOptions = couponCode
+      ? { discounts: [{ coupon: couponCode }] }
+      : { allow_promotion_codes: true };
 
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
       mode: 'subscription',
       payment_method_types: ['card'],
-      allow_promotion_codes: true,   // aceita cupons cadastrados no Stripe/admin
+      ...promoOptions,
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
         store_id: String(store.id),

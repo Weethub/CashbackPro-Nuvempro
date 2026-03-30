@@ -210,6 +210,13 @@
     "rights": "Todos os direitos reservados",
     "terms": "Termos de Uso e Privacidade"
   },
+  "trial": {
+    "bannerFree": "Você está no período de teste gratuito. Restam {{days}} dias.",
+    "bannerFreeOne": "Seu período de teste gratuito termina amanhã.",
+    "bannerAction": "Ver planos",
+    "paidBadge": "Assine e ganhe {{days}} dias grátis",
+    "freeBadge": "{{days}} dias grátis para testar"
+  },
   "common": {
     "save": "Salvar",
     "cancel": "Cancelar",

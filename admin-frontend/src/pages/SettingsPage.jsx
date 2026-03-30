@@ -1,16 +1,10 @@
 import { useState, useEffect } from 'react';
 import adminApi from '../services/adminApi';
-import { Settings, Save, Loader2, Lock, Eye, EyeOff, Clock, Tag, Target } from 'lucide-react';
+import { Save, Loader2, Lock, Eye, EyeOff, Clock, Tag, Target } from 'lucide-react';
 import TemplateVersionCard from '../components/TemplateVersionCard';
 
 export default function SettingsPage() {
-  const [configs, setConfigs] = useState({});
-  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [dirty, setDirty] = useState({});
 
   // Trial config
   const [trialConfig, setTrialConfig] = useState({ trial_mode: 'none', trial_days: '7', trial_coupon: '' });
@@ -115,77 +109,8 @@ export default function SettingsPage() {
   };
 
   const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const res = await adminApi.get('/settings');
-      const data = res.data.settings || res.data.configs || res.data || {};
-
-      // Group configs by group field or prefix
-      const configMap = {};
-      const groupSet = new Set();
-
-      if (Array.isArray(data)) {
-        data.forEach((item) => {
-          const group = item.group || 'general';
-          groupSet.add(group);
-          if (!configMap[group]) configMap[group] = [];
-          configMap[group].push(item);
-        });
-      } else {
-        Object.entries(data).forEach(([key, val]) => {
-          const group = typeof val === 'object' && val.group ? val.group : 'general';
-          groupSet.add(group);
-          if (!configMap[group]) configMap[group] = [];
-          configMap[group].push({
-            key,
-            label: typeof val === 'object' ? val.label || key : key,
-            value: typeof val === 'object' ? val.value : val,
-            type: typeof val === 'object' ? val.type || typeof val.value : typeof val,
-          });
-        });
-      }
-
-      setGroups(Array.from(groupSet));
-      setConfigs(configMap);
-    } catch {
-      setError('Erro ao carregar configuracoes.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChange = (group, key, value) => {
-    setConfigs((prev) => {
-      const updated = { ...prev };
-      updated[group] = updated[group].map((item) =>
-        item.key === key ? { ...item, value } : item
-      );
-      return updated;
-    });
-    setDirty((prev) => ({ ...prev, [`${group}.${key}`]: true }));
-    setSaveSuccess(false);
-  };
-
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      setSaveSuccess(false);
-      const payload = {};
-      Object.entries(configs).forEach(([group, items]) => {
-        items.forEach((item) => {
-          payload[item.key] = item.value;
-        });
-      });
-      await adminApi.put('/settings', { settings: payload });
-      setDirty({});
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      alert(err.response?.data?.error || 'Erro ao salvar configuracoes.');
-    } finally {
-      setSaving(false);
-    }
+    // Endpoint /settings não existe — configs são gerenciadas pelas seções dedicadas abaixo
+    setLoading(false);
   };
 
   const handleChangePassword = async (e) => {
@@ -217,15 +142,6 @@ export default function SettingsPage() {
     }
   };
 
-  const groupLabels = {
-    general: 'Geral',
-    email: 'Email',
-    stripe: 'Stripe',
-    notifications: 'Notificacoes',
-    limits: 'Limites',
-    features: 'Features',
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -234,85 +150,12 @@ export default function SettingsPage() {
     );
   }
 
-  const hasDirty = Object.keys(dirty).length > 0;
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Configuracoes</h1>
-          <p className="text-gray-500 text-sm mt-1">Configuracoes do sistema</p>
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={saving || !hasDirty}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-          Salvar Alteracoes
-        </button>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Configuracoes</h1>
+        <p className="text-gray-500 text-sm mt-1">Configuracoes do sistema</p>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
-      )}
-
-      {saveSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm">
-          Configuracoes salvas com sucesso.
-        </div>
-      )}
-
-      {/* Dynamic Config Groups */}
-      {groups.map((group) => (
-        <div key={group} className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Settings size={18} className="text-slate-500" />
-            {groupLabels[group] || group}
-          </h3>
-          <div className="space-y-4">
-            {(configs[group] || []).map((item) => {
-              const isBool = item.type === 'boolean' || typeof item.value === 'boolean';
-              return (
-                <div key={item.key} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">{item.label || item.key}</p>
-                    <p className="text-xs text-gray-400 font-mono">{item.key}</p>
-                  </div>
-                  {isBool ? (
-                    <button
-                      onClick={() => handleChange(group, item.key, !item.value)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        item.value ? 'bg-blue-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          item.value ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  ) : (
-                    <input
-                      type="text"
-                      value={item.value ?? ''}
-                      onChange={(e) => handleChange(group, item.key, e.target.value)}
-                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-64 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      ))}
-
-      {/* Empty state for configs */}
-      {groups.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-12 text-center text-gray-400">
-          Nenhuma configuracao encontrada.
-        </div>
-      )}
 
       {/* ─── Metas do Dashboard ─── */}
       <div className="bg-white rounded-xl shadow-sm p-6">

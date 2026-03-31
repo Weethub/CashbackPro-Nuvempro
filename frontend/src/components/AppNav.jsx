@@ -164,7 +164,7 @@ export default function AppNav() {
               <Button
                 appearance="primary"
                 as="a"
-                href={`https://wa.me/${whatsapp}`}
+                href={`https://web.whatsapp.com/send?phone=${whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
               >

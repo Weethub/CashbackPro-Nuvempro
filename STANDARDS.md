@@ -683,3 +683,107 @@ Antes de fazer deploy, confirme:
 [ ] Vercel admin-frontend tem rootDirectory="admin-frontend"
 [ ] Deploy dos 3 serviços: frontend, admin-frontend, backend (Railway)
 ```
+
+---
+
+## 8. QA — Arquitetura de Testes e Release Gates
+
+### 8.1 Pirâmide de Testes do Template
+
+```
+         [E2E — futuro]
+        /              \
+    [Build Gate]  [Contrato API]
+   /                            \
+[Utils/Puras]          [Auth Guards]
+```
+
+| Camada | Ferramentas | Localização | O que cobre |
+|--------|-------------|-------------|-------------|
+| **Unit** | `node:test` | `__tests__/utils.test.js` | isFree, pagination, AppError, regras de negócio |
+| **Contract** | `node:test` + fetch | `__tests__/admin-api.test.js` | Shape de todas as respostas da API |
+| **Auth Guards** | `node:test` + fetch | `__tests__/auth-guard.test.js` | Toda rota retorna 401 sem token |
+| **Build Gate** | `npm run build` | GitHub Actions | Frontend e admin-frontend compilam sem erro |
+| **Smoke** | `node:test` + fetch | `__tests__/health.test.js` | Endpoints básicos sobem e respondem |
+
+### 8.2 Contrato de API — Regras Obrigatórias
+
+Toda resposta de API DEVE ser testada em `admin-api.test.js`. Requisitos mínimos:
+
+- **Listas paginadas**: `{ data: [], meta: { page, limit, total, totalPages } }` — nunca array direto
+- **Features de plano**: sempre array de strings — nunca objeto com booleanos
+- **storeName**: sempre flat no item — nunca aninhado como `item.store.name`
+- **isFree**: calculado no código — nunca `select: { isFree: true }` no Prisma
+- **status de loja**: sempre um de: `active | trial | expired | canceled | no_plan | past_due`
+- **Erros**: sempre `{ error, code, status }` — nunca mensagem hardcoded
+
+### 8.3 CI — GitHub Actions
+
+Todo push para `main` dispara automaticamente:
+
+1. **backend-tests** — Postgres efêmero + seed + `npm test`
+2. **build-frontend** — `npm run build` do frontend app
+3. **build-admin-frontend** — `npm run build` do admin frontend
+
+**Regra**: Deploy para Railway/Vercel SÓ ocorre se todos os 3 jobs estiverem ✅
+
+### 8.4 Release Gate — Checklist Obrigatório
+
+Antes de qualquer commit em `main`:
+
+- [ ] `cd backend && npm test` — todos os testes passando localmente
+- [ ] `cd frontend && npm run build` — build sem erros
+- [ ] `cd admin-frontend && npm run build` — build sem erros
+- [ ] `backend/src/lib/version.js` — versão bumped
+- [ ] `CHANGELOG.md` — seção adicionada
+
+```bash
+# Comando completo de validação pré-commit:
+cd backend && npm test && cd ../frontend && npm run build && cd ../admin-frontend && npm run build
+```
+
+### 8.5 Adicionando Novos Testes
+
+Ao criar **nova rota de API**:
+1. Adicionar auth guard em `auth-guard.test.js` (se protegida)
+2. Adicionar shape test em `admin-api.test.js` (se admin) ou novo arquivo
+3. Verificar que o shape está no padrão de paginação
+
+Ao criar **nova função de negócio pura**:
+1. Adicionar unit test em `utils.test.js`
+
+Ao mudar **schema de resposta de API**:
+1. Atualizar o teste correspondente ANTES de fazer o merge
+
+### 8.6 Template Clone — Validação Pós-Clone
+
+Após clonar o template para um novo app:
+
+```bash
+# 1. Setup inicial
+cd backend && npm install && npx prisma db push && npx prisma generate && node prisma/seed-admin.js
+
+# 2. Iniciar backend
+npm run dev &
+
+# 3. Validar tudo
+cd .. && bash scripts/validate-template.sh
+```
+
+O script `validate-template.sh` verifica:
+- `.env` configurado sem placeholders
+- Backend respondendo
+- Auth guards funcionando
+- Suite de testes passando
+- Builds dos frontends OK
+- Arquivos i18n presentes
+
+### 8.7 Consistência Visual — Regras de Design
+
+| Camada | Design System | Regra |
+|--------|---------------|-------|
+| **Frontend (app)** | Nimbus DS `@nimbus-ds/components` | NUNCA usar Tailwind ou CSS customizado |
+| **Admin Frontend** | Tailwind CSS + Lucide React | NUNCA importar Nimbus DS |
+| **Cores admin** | Palette definida no `tailwind.config.js` | Não usar cores hexadecimais hardcoded no JSX |
+
+**StatCard, DataTable, TemplateVersionCard** = componentes compartilhados do admin. Toda mudança visual DEVE ser feita no componente, nunca inline.

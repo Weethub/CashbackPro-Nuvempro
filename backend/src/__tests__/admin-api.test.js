@@ -41,17 +41,14 @@ describe('Admin Auth', () => {
 // ─── Admin Plans ─────────────────────────────────────────────────────────────
 
 describe('Admin Plans — Contrato da API', () => {
-  it('GET /admin-api/plans → 200 com paginação correta', async () => {
+  it('GET /admin-api/plans → 200 com lista de planos', async () => {
     const res = await fetch(`${BASE}/admin-api/plans`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     assert.strictEqual(res.status, 200);
     const body = await res.json();
-    assert.ok(Array.isArray(body.data), 'data deve ser array');
-    assert.ok(body.meta, 'deve ter meta');
-    assert.ok('total' in body.meta, 'meta deve ter total');
-    assert.ok('page' in body.meta, 'meta deve ter page');
-    assert.ok('totalPages' in body.meta, 'meta deve ter totalPages');
+    // /admin-api/plans retorna { plans: [...] } — não é paginado
+    assert.ok(Array.isArray(body.plans), 'plans deve ser array');
   });
 
   it('GET /admin-api/plans → features são arrays de strings (NUNCA objetos)', async () => {
@@ -59,7 +56,7 @@ describe('Admin Plans — Contrato da API', () => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const body = await res.json();
-    for (const plan of body.data) {
+    for (const plan of body.plans) {
       if (plan.features != null) {
         assert.ok(
           Array.isArray(plan.features),

@@ -36,10 +36,10 @@ jobs:
       STRIPE_SECRET_KEY: sk_test_fakekeyforci1234567890
       STRIPE_WEBHOOK_SECRET: whsec_fakekeyforci1234567890
       NUVEMSHOP_APP_ID: "99999"
-      CLIENT_ID: test_client_id
-      CLIENT_SECRET: test_client_secret
+      NUVEMSHOP_CLIENT_ID: test_client_id
+      NUVEMSHOP_CLIENT_SECRET: test_client_secret
       FRONTEND_URL: http://localhost:5173
-      ADMIN_URL: http://localhost:5174
+      ADMIN_FRONTEND_URL: http://localhost:5174
       APP_NAME: TestApp
       APP_SLUG: testapp
       APP_EMAIL: test@testapp.com

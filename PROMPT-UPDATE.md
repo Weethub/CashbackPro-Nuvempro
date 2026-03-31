@@ -5,6 +5,38 @@
 
 ---
 
+## PRINCÍPIO FUNDAMENTAL — LEIA ANTES DE TUDO
+
+O template é dividido em duas camadas com responsabilidades distintas:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  CAMADA TEMPLATE — Sempre atualizar, nunca customizar           │
+│                                                                 │
+│  ADMIN (100% template):                                         │
+│    Planos, Assinaturas, Clientes, Configurações,                │
+│    FAQ, Logs, Segurança, Dashboard de métricas                  │
+│                                                                 │
+│  FRONTEND — Seções base (template):                             │
+│    BillingPage (assinaturas), TermsPage (contrato),             │
+│    AppNav (topo + suporte), AppFooter (rodapé + versão),        │
+│    NexoProvider, api.js, i18n (chaves base), BillingPage        │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  CAMADA APP — Nunca sobrescrever, preservar sempre              │
+│                                                                 │
+│  FRONTEND — Seções do app:                                      │
+│    Dashboard, páginas específicas (/editor, /posts, etc.),      │
+│    componentes do app, itens de nav adicionados                 │
+│                                                                 │
+│  BACKEND:                                                       │
+│    Rotas específicas do app (/api/posts, /api/generate, etc.),  │
+│    schema.prisma (models do app), configs do app                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## CONTEXTO QUE VOCÊ PRECISA PASSAR AO CLAUDE
 
 ```
@@ -20,8 +52,13 @@ Tenho dois repositórios:
    — Baseado no template, mas com páginas, rotas e lógica específicas do app.
    — A versão atual do template neste app está em: backend/src/lib/version.js
 
-Quero atualizar o APP com as melhorias do TEMPLATE sem quebrar nenhuma
-customização específica do app.
+Quero atualizar o APP com as melhorias do TEMPLATE.
+
+REGRA CENTRAL:
+- Todo o ADMIN é propriedade do template → atualizar sempre ao máximo
+- As seções BASE do frontend (billing, termos, suporte, nav, rodapé, i18n base)
+  são propriedade do template → atualizar sempre
+- As páginas e rotas ESPECÍFICAS DO APP → nunca tocar
 
 Siga o processo abaixo EXATAMENTE, passo a passo, sem pular etapas.
 ```
@@ -57,121 +94,188 @@ Para cada versão, anote o que foi Adicionado, Corrigido e Modificado.
 Apresente este resumo ao usuário antes de continuar.
 ```
 
-**1.5 — Mapeie os arquivos customizados do app**
+**1.5 — Mapeie SOMENTE os arquivos da Camada App (o que deve ser preservado)**
 
-Leia estes arquivos no APP e anote o que foi customizado:
-- `backend/src/server.js` — quais rotas específicas do app foram adicionadas?
-- `backend/prisma/schema.prisma` — quais models específicos do app existem?
-- `frontend/src/App.jsx` — quais rotas específicas do app foram adicionadas?
-- `frontend/src/components/AppNav.jsx` — há itens de nav customizados?
-- `frontend/src/i18n/locales/pt-BR.json` — quais chaves são específicas do app?
-- `admin-frontend/src/App.jsx` — há rotas ou menus adicionados?
-- `.github/workflows/ci.yml` — há steps específicos do app?
+Leia estes arquivos no APP e liste o que é específico do app:
+- `backend/src/server.js` — quais `require` e `app.use()` são rotas do app?
+- `backend/prisma/schema.prisma` — quais models são específicos do app? (além dos do template)
+- `frontend/src/App.jsx` — quais `<Route>` são específicas do app?
+- `frontend/src/components/AppNav.jsx` — há botões/itens de nav adicionados pelo app?
+- `frontend/src/i18n/locales/pt-BR.json` — quais chaves de primeiro nível são do app?
+- `admin-frontend/src/App.jsx` — há `<Route>` de páginas específicas do app?
 
-Apresente ao usuário o resumo das customizações encontradas antes de continuar.
+Apresente ao usuário a lista do que será PRESERVADO antes de continuar.
 
 ---
 
 ### FASE 2 — CLASSIFICAÇÃO DOS ARQUIVOS
 
-Classifique cada arquivo alterado no template em uma das três categorias:
+#### GRUPO 1 — ADMIN (propriedade 100% do template → copiar sempre)
 
-**CATEGORIA A — Copiar direto** (template controla 100%, sem risco)
+Estes arquivos devem ser **substituídos integralmente** pelo template.
+O admin é sempre controlado pelo template — nunca há customização aqui.
+
 ```
-/tmp/nuvempro-template/backend/railway.json
-/tmp/nuvempro-template/backend/doppler.yaml
-/tmp/nuvempro-template/frontend/doppler.yaml
-/tmp/nuvempro-template/admin-frontend/doppler.yaml
-/tmp/nuvempro-template/scripts/setup-dev.sh
-/tmp/nuvempro-template/scripts/validate-template.sh
-/tmp/nuvempro-template/backend/.env.example
-/tmp/nuvempro-template/frontend/.env.example
-/tmp/nuvempro-template/admin-frontend/.env.example
-/tmp/nuvempro-template/admin-frontend/vercel.json
-/tmp/nuvempro-template/admin-frontend/src/pages/FaqPage.jsx
-/tmp/nuvempro-template/admin-frontend/src/pages/DashboardPage.jsx
-/tmp/nuvempro-template/admin-frontend/src/pages/CustomersPage.jsx
-/tmp/nuvempro-template/admin-frontend/src/pages/CustomerDetailPage.jsx
-/tmp/nuvempro-template/admin-frontend/src/pages/SubscriptionsPage.jsx
-/tmp/nuvempro-template/admin-frontend/src/pages/SettingsPage.jsx
-/tmp/nuvempro-template/admin-frontend/src/components/StatCard.jsx
-/tmp/nuvempro-template/backend/src/admin/routes/adminFaq.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminConfig.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminCustomers.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminSubscriptions.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminPlans.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminCoupons.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminTerms.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminLogs.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminCommissions.js
-/tmp/nuvempro-template/backend/src/admin/routes/adminSecurity.js
-/tmp/nuvempro-template/backend/src/admin/services/adminPlanService.js
-/tmp/nuvempro-template/backend/src/config/stripe.js
-/tmp/nuvempro-template/backend/src/routes/billing.js
-/tmp/nuvempro-template/backend/src/routes/terms.js
-/tmp/nuvempro-template/backend/src/routes/support.js
-/tmp/nuvempro-template/backend/src/middleware/auth.js
-/tmp/nuvempro-template/backend/src/middleware/rateLimiter.js
-/tmp/nuvempro-template/backend/src/lib/errors.js
-/tmp/nuvempro-template/backend/src/lib/paginate.js
-/tmp/nuvempro-template/backend/src/lib/version.js
-/tmp/nuvempro-template/frontend/src/pages/BillingPage.jsx
-/tmp/nuvempro-template/frontend/src/pages/TermsPage.jsx
-/tmp/nuvempro-template/frontend/src/providers/NexoProvider.jsx
-/tmp/nuvempro-template/frontend/src/services/api.js
+BACKEND — Rotas admin:
+  backend/src/admin/routes/adminPlans.js
+  backend/src/admin/routes/adminSubscriptions.js
+  backend/src/admin/routes/adminCustomers.js
+  backend/src/admin/routes/adminConfig.js
+  backend/src/admin/routes/adminFaq.js
+  backend/src/admin/routes/adminLogs.js
+  backend/src/admin/routes/adminSecurity.js
+  backend/src/admin/routes/adminCoupons.js
+  backend/src/admin/routes/adminCommissions.js
+  backend/src/admin/routes/adminTerms.js
+  backend/src/admin/services/adminPlanService.js
+  backend/src/admin/middleware/adminAuth.js
+  backend/src/admin/middleware/requireRole.js
+
+ADMIN FRONTEND — Todas as páginas base:
+  admin-frontend/src/pages/DashboardPage.jsx    ← métricas, metas, margem
+  admin-frontend/src/pages/PlansPage.jsx        ← planos + sync Stripe
+  admin-frontend/src/pages/SubscriptionsPage.jsx ← assinaturas
+  admin-frontend/src/pages/CustomersPage.jsx    ← lojas/clientes
+  admin-frontend/src/pages/CustomerDetailPage.jsx
+  admin-frontend/src/pages/SettingsPage.jsx     ← trial, metas, senha, suporte
+  admin-frontend/src/pages/FaqPage.jsx          ← FAQ + config de suporte
+  admin-frontend/src/pages/LogsPage.jsx
+  admin-frontend/src/pages/SecurityPage.jsx
+  admin-frontend/src/pages/CouponsPage.jsx
+  admin-frontend/src/pages/CommissionsPage.jsx
+  admin-frontend/src/pages/TermsAdminPage.jsx
+  admin-frontend/src/components/StatCard.jsx
+  admin-frontend/src/services/adminApi.js
+  admin-frontend/vercel.json
 ```
 
-**CATEGORIA B — Merge manual obrigatório** (template evoluiu MAS app tem customizações)
+#### GRUPO 2 — FRONTEND BASE (propriedade do template → copiar sempre)
+
+Estas são as seções base do frontend que o template controla:
+billing, contrato, suporte, nav, rodapé, auth e idiomas base.
+
+```
+FRONTEND — Seções base:
+  frontend/src/pages/BillingPage.jsx       ← assinaturas (planos, checkout, cancel)
+  frontend/src/pages/TermsPage.jsx         ← contrato/termos de uso
+  frontend/src/providers/NexoProvider.jsx  ← auth Nexo SDK, billingStatus
+  frontend/src/services/api.js             ← axios com token refresh
+  frontend/src/components/AppFooter.jsx    ← rodapé com versão e assinatura
+
+FRONTEND — Nav/Suporte (merge: template controla o sidebar, app controla os botões de nav):
+  frontend/src/components/AppNav.jsx       ← ver regra de merge abaixo
+
+FRONTEND — i18n (merge: adicionar chaves do template, preservar chaves do app):
+  frontend/src/i18n/locales/pt-BR.json
+  frontend/src/i18n/locales/es-AR.json
+  frontend/src/i18n/locales/es-MX.json
+```
+
+#### GRUPO 3 — BACKEND BASE (propriedade do template → copiar sempre)
+
+```
+  backend/src/routes/billing.js            ← checkout, cancel, sync, status, plans
+  backend/src/routes/terms.js              ← aceite de termos
+  backend/src/routes/support.js            ← FAQ público + config suporte
+  backend/src/routes/auth.js               ← OAuth Nuvemshop
+  backend/src/config/stripe.js             ← StripeService
+  backend/src/middleware/auth.js           ← requireAuth JWT
+  backend/src/middleware/rateLimiter.js    ← 5 níveis de rate limiting
+  backend/src/lib/errors.js               ← AppError
+  backend/src/lib/paginate.js             ← parsePagination, paginatedResponse
+  backend/src/lib/version.js             ← TEMPLATE_VERSION
+```
+
+#### GRUPO 4 — INFRAESTRUTURA (propriedade do template → copiar sempre)
+
+```
+  backend/railway.json
+  backend/doppler.yaml
+  frontend/doppler.yaml
+  admin-frontend/doppler.yaml
+  backend/.env.example
+  frontend/.env.example
+  admin-frontend/.env.example
+  scripts/setup-dev.sh
+  scripts/validate-template.sh
+```
+
+#### GRUPO 5 — MERGE OBRIGATÓRIO (template evoluiu + app tem partes próprias)
+
 ```
 backend/src/server.js
-   → Template: adiciona rotas novas (support, etc)
-   → App: tem rotas específicas do app
-   → Estratégia: adicionar APENAS as rotas novas do template; não remover nada do app
+  Template controla: imports e app.use() das rotas dos grupos 2, 3 e admin
+  App controla: imports e app.use() das rotas específicas do app
+  Estratégia:
+    1. Copie integralmente o server.js do template
+    2. Identifique os requires e app.use() das rotas do APP (anotados na Fase 1.5)
+    3. Adicione-os de volta no bloco "APP ROUTES" do server.js
+    4. Nunca remover rotas do app
 
 backend/prisma/seed-admin.js
-   → Template: adiciona novos AdminConfig defaults (goals, support, trial)
-   → App: pode ter planos específicos
-   → Estratégia: adicionar APENAS os novos blocos de upsert; não alterar planos do app
+  Template controla: upserts de AdminConfig (trial, goals, support), planos padrão
+  App controla: planos específicos do app (podem ter nomes/preços diferentes)
+  Estratégia:
+    1. Compare bloco a bloco com o template
+    2. Adicione novos blocos de AdminConfig que faltam
+    3. NÃO substitua os planos se o app tem planos customizados
 
 frontend/src/App.jsx
-   → Template: pode ter ajustes no gate de billing/terms/trial
-   → App: tem rotas específicas (ex: /blog, /posts, /editor)
-   → Estratégia: comparar bloco a bloco; preservar rotas do app; atualizar apenas gates
+  Template controla: gates (Terms, Billing, Trial), TrialBanner, estrutura de Layout
+  App controla: as <Route> específicas do app dentro do <Layout>
+  Estratégia:
+    1. Copie integralmente o App.jsx do template
+    2. Dentro do bloco <Route element={<Layout />}>, adicione de volta as rotas do app
+    3. Preserve imports dos componentes do app
 
 frontend/src/components/AppNav.jsx
-   → Template: evoluiu support sidebar (FAQ dinâmico, vídeo, WhatsApp)
-   → App: pode ter itens de nav adicionais
-   → Estratégia: substituir o bloco do Sidebar completo; preservar itens de nav do app
+  Template controla: TUDO exceto os botões de navegação específicos do app
+  App controla: botões de nav adicionados (ex: <Button onClick={() => navigate('/posts')}>)
+  Estratégia:
+    1. Copie integralmente o AppNav.jsx do template
+    2. No bloco "Left nav" (comentário no código), adicione os botões do app
+    3. O Sidebar de suporte é 100% template — nunca customizar
 
 frontend/src/i18n/locales/pt-BR.json (e es-AR.json, es-MX.json)
-   → Template: adiciona chaves novas (trial.*, billing.*, support.*)
-   → App: tem chaves específicas do app
-   → Estratégia: MERGE — adicionar chaves novas do template; nunca remover chaves do app
+  Template controla: chaves base (nav, billing, trial, support, terms, common)
+  App controla: chaves específicas do app (ex: "posts", "editor", "ai")
+  Estratégia:
+    1. Leia o JSON do template e o JSON do app
+    2. Faça um merge: chaves do template + chaves do app
+    3. Em caso de conflito de valor na mesma chave, pergunte ao usuário
 
 admin-frontend/src/App.jsx
-   → Template: rotas do admin base
-   → App: pode ter novas páginas admin específicas
-   → Estratégia: adicionar rotas novas do template; preservar rotas do app
+  Template controla: rotas das páginas base do admin
+  App controla: rotas de páginas admin específicas do app (se houver)
+  Estratégia:
+    1. Copie integralmente o App.jsx do admin do template
+    2. Adicione de volta as rotas de páginas admin do app (se houver)
 
 .github/workflows/ci.yml
-   → Template: corrigiu nomes de variáveis, adicionou steps
-   → App: pode ter steps específicos
-   → Estratégia: atualizar bloco env; preservar steps do app
+  Template controla: estrutura dos 3 jobs, bloco env, steps de build e test
+  App controla: steps adicionais específicos do app (se houver)
+  Estratégia:
+    1. Copie integralmente o ci.yml do template
+    2. Adicione steps extras do app (se houver)
 
 vercel.json (raiz)
-   → Template: mudou npm install → npm ci
-   → App: pode ter rewrites customizados
-   → Estratégia: atualizar buildCommand; preservar rewrites e headers do app
+  Template controla: buildCommand, installCommand, outputDirectory
+  App controla: rewrites customizados, headers adicionais (se houver)
+  Estratégia:
+    1. Atualize buildCommand e installCommand do template
+    2. Preserve rewrites e headers customizados do app
 ```
 
-**CATEGORIA C — NÃO TOCAR** (100% específico do app)
+#### GRUPO 6 — NUNCA TOCAR (100% propriedade do app)
+
 ```
-frontend/src/pages/Dashboard.jsx       ← lógica do app
-frontend/src/pages/[qualquer página do app]
-backend/src/routes/[rotas do app]      ← ex: routes/posts.js, routes/ai.js
-backend/prisma/schema.prisma           ← models do app — NUNCA sobrescrever
-backend/src/config/[configs do app]
-admin-frontend/src/pages/[páginas específicas do app]
+backend/prisma/schema.prisma              ← NUNCA sobrescrever
+backend/src/routes/[rotas do app]         ← ex: posts.js, generate.js, analytics.js
+backend/src/config/[configs do app]       ← ex: openai.js, s3.js
+frontend/src/pages/Dashboard.jsx         ← dashboard do app
+frontend/src/pages/[páginas do app]       ← ex: Editor.jsx, Posts.jsx
+frontend/src/components/[do app]         ← componentes específicos
+admin-frontend/src/pages/[do app]        ← páginas admin específicas
 ```
 
 ---
@@ -182,119 +286,113 @@ admin-frontend/src/pages/[páginas específicas do app]
 ```bash
 git checkout -b update/template-vX.Y.Z
 ```
-(substitua X.Y.Z pela VERSÃO_TEMPLATE)
 
-**3.2 — Aplique os arquivos CATEGORIA A (cópia direta)**
+**3.2 — Grupos 1, 2, 3 e 4: substituição direta**
 
-Para cada arquivo da Categoria A que foi modificado no template
-(compare com o diff entre VERSÃO_ATUAL e VERSÃO_TEMPLATE):
-
+Para cada arquivo dos grupos 1, 2, 3 e 4 que foi modificado no template:
 ```bash
 cp /tmp/nuvempro-template/[caminho] ./[caminho]
 ```
+Registre cada arquivo copiado. Só copie arquivos que realmente mudaram.
 
-Registre cada arquivo copiado em uma lista.
+**3.3 — Grupo 5: merge manual**
 
-**3.3 — Aplique os arquivos CATEGORIA B (merge manual)**
-
-Para cada arquivo de merge, siga este protocolo:
-
-1. Leia o arquivo no APP (versão atual)
+Para cada arquivo do Grupo 5, execute o protocolo:
+1. Leia o arquivo no APP (versão atual com customizações do app anotadas)
 2. Leia o arquivo no TEMPLATE (versão nova)
-3. Identifique EXATAMENTE o que mudou (diff mental ou real)
-4. Aplique SOMENTE as mudanças do template que não conflitam com o app
-5. Verifique que nenhuma customização do app foi removida
-6. Documente o que foi mesclado
+3. Aplique o template integralmente
+4. Reinsira SOMENTE as partes identificadas como "do app" na Fase 1.5
+5. Confirme que nada do app foi perdido
 
-**Regras absolutas do merge:**
-- NUNCA remover uma rota que existe no app mas não no template
-- NUNCA remover uma chave i18n que existe no app mas não no template
-- NUNCA alterar modelos Prisma (Categoria C)
-- Em caso de dúvida, PERGUNTE ao usuário antes de aplicar
+**3.4 — Verifique arquivos novos no template**
 
-**3.4 — Verifique arquivos NOVOS no template**
-
-Arquivos que existem no template mas NÃO existem no app devem ser copiados
-se forem Categoria A ou B:
+Arquivos que existem no template mas não no app:
 ```bash
-# Exemplo de novo arquivo:
-cp /tmp/nuvempro-template/backend/src/routes/support.js ./backend/src/routes/support.js
-cp /tmp/nuvempro-template/backend/railway.json ./backend/railway.json
+diff -rq --exclude="node_modules" --exclude="*.lock" \
+  /tmp/nuvempro-template/backend/src/ ./backend/src/ | grep "Only in /tmp"
 ```
-
-Se o arquivo novo em server.js registra uma nova rota (ex: `/api/support`),
-adicione o require e o app.use() correspondente no server.js do app,
-SEM remover nada que já existe.
+Copie os novos arquivos dos grupos 1-4. Para o server.js, registre-os na rota.
 
 ---
 
 ### FASE 4 — BANCO DE DADOS
 
-**4.1 — Verifique se o schema.prisma mudou no template**
+**4.1 — Verifique models do template no schema do app**
+
+NÃO copie o schema. Apenas compare e adicione campos/models faltantes:
 
 ```bash
 diff /tmp/nuvempro-template/backend/prisma/schema.prisma ./backend/prisma/schema.prisma
 ```
 
-⚠️ NÃO copie o schema do template. Apenas verifique se há novos models ou
-campos que precisam ser ADICIONADOS ao schema do app.
+Models obrigatórios do template (verifique se existem no app com os campos corretos):
+| Model | Campos obrigatórios |
+|---|---|
+| `AdminConfig` | id, key (unique), value, group, label |
+| `AdminFaq` | id, category, question, answer, videoUrl, isPublished, sortOrder |
+| `AdminLog` | id, adminId, action, entity, entityId, details, ipAddress |
+| `AdminCoupon` | id, name, stripeCouponId, isActive |
+| `TermsVersion` | id, version, title, content, **isPublished** (não isActive!) |
+| `TermsAcceptance` | id, storeId, termsVersionId — unique([storeId, termsVersionId]) |
 
-Models do template que devem existir no app (verifique se estão presentes):
-- `AdminConfig` — com campos: id, key, value, group, label
-- `AdminFaq` — com campos: id, category, question, answer, videoUrl, isPublished, sortOrder
-- `TermsVersion` — com campo `isPublished` (não `isActive`)
-- `AdminLog`, `AdminCoupon`, `AdminCommission`, `StoreProfile`
-
-Se algum estiver faltando, adicione ao schema e rode:
+Se campos estiverem faltando, adicione ao schema e rode:
 ```bash
-cd backend && npx prisma db push
+cd backend && npx prisma db push && npx prisma generate
 ```
 
-**4.2 — Atualize o seed**
+**4.2 — AdminConfig: verifique todas as chaves obrigatórias**
 
-Após mesclar o seed-admin.js (Categoria B), verifique se há novos
-blocos de `AdminConfig` no template que não existem no app:
+Compare o seed do template com o banco do app. Chaves obrigatórias:
 
-Novos configs esperados (verifique um a um):
-- `trial_mode`, `trial_days`, `trial_coupon` (sistema de trial)
-- `goal_stores`, `goal_subs`, `goal_trial`, `goal_mrr`, `server_cost` (metas do dashboard)
-- `support_video_url`, `support_whatsapp` (suporte do sidebar)
+| Grupo | Chaves |
+|---|---|
+| `trial` | trial_mode, trial_days, trial_coupon |
+| `goals` | goal_stores, goal_subs, goal_trial, goal_mrr, server_cost |
+| `support` | support_video_url, support_whatsapp |
 
-Para cada um que estiver faltando, adicione o bloco `upsert` no seed do app.
+Para chaves faltantes, adicione o upsert no seed e rode:
+```bash
+cd backend && node prisma/seed-admin.js
+```
 
 ---
 
 ### FASE 5 — VERIFICAÇÃO
 
-**5.1 — Verifique se o backend compila**
+**5.1 — Backend compila sem erros**
 ```bash
-cd backend && node -e "require('./src/server.js')" && echo "OK"
+cd backend && node -e "require('./src/server.js')" && echo "✓ Backend OK"
 ```
 
-**5.2 — Verifique se o frontend builda**
+**5.2 — Builds passam**
 ```bash
-cd frontend && npm run build
-cd admin-frontend && npm run build
+cd frontend && npm run build && echo "✓ Frontend OK"
+cd admin-frontend && npm run build && echo "✓ Admin OK"
 ```
 
-**5.3 — Execute os testes**
+**5.3 — Testes passam**
 ```bash
 cd backend && npm test
+# Todos os 15 suites devem passar. Se falhar, corrija antes de continuar.
 ```
 
-Todos os testes devem passar. Se algum falhar, corrija antes de continuar.
+**5.4 — Checklist funcional obrigatório**
 
-**5.4 — Checklist de funcionalidades**
+Seções do template (verificar obrigatoriamente):
+- [ ] Admin → Dashboard (métricas, metas, margem, trends)
+- [ ] Admin → Planos (listar, criar, sync Stripe)
+- [ ] Admin → Assinaturas (lista com storeName flat, métricas MRR/ARR)
+- [ ] Admin → Lojas/Clientes (status computado, detalhe com store)
+- [ ] Admin → Configurações (trial, metas, senha, suporte: vídeo + WhatsApp)
+- [ ] Admin → FAQ (criar, editar, publicar, config de suporte)
+- [ ] Admin → Logs e Segurança
+- [ ] Frontend → BillingPage (planos, checkout, cancelar, faturas)
+- [ ] Frontend → TermsPage (aceite de termos)
+- [ ] Frontend → Sidebar de Suporte (FAQ do banco, vídeo 16:9, WhatsApp)
+- [ ] Frontend → Trial banner (se trial_mode=free)
 
-Verifique que estas funcionalidades do app ainda funcionam:
-- [ ] Login admin
-- [ ] Dashboard com métricas
-- [ ] Lista de planos
-- [ ] Lista de lojas/clientes
-- [ ] FAQ admin (criar, editar, publicar)
-- [ ] Configurações (trial, metas, suporte)
-- [ ] Sidebar de suporte no frontend (FAQ, vídeo, WhatsApp)
-- [ ] Funcionalidades específicas do app (liste aqui as páginas do app)
+Seções do app (verificar que não quebraram):
+- [ ] [Liste aqui as páginas e fluxos específicos do app]
 
 ---
 
@@ -303,15 +401,18 @@ Verifique que estas funcionalidades do app ainda funcionam:
 **6.1 — Atualize a versão**
 ```
 Edite: backend/src/lib/version.js
-Mude TEMPLATE_VERSION para a VERSÃO_TEMPLATE que foi aplicada
+TEMPLATE_VERSION = '[VERSÃO_TEMPLATE]'
 ```
 
 **6.2 — Atualize o CHANGELOG do app**
-```
-Adicione uma seção no CHANGELOG.md do app:
+```markdown
 ## [VERSÃO_TEMPLATE] - DATA
-### Atualizado do Template
-- Lista resumida do que foi aplicado
+### Template Update
+Atualizado do NuvemPro App Template vVERSÃO_TEMPLATE:
+- Admin: [o que mudou]
+- Frontend base: [o que mudou]
+- Infraestrutura: [o que mudou]
+Preservado do app: [o que foi mantido]
 ```
 
 **6.3 — Commit**
@@ -319,36 +420,41 @@ Adicione uma seção no CHANGELOG.md do app:
 git add -A
 git commit -m "chore: atualiza template para vX.Y.Z
 
-Aplicadas atualizações do NuvemPro App Template:
-- [liste os principais itens aplicados]
+Admin, billing, termos, suporte e infraestrutura atualizados.
+Páginas e rotas específicas do app preservadas.
 
-Customizações do app preservadas:
-- [liste o que foi mantido intacto]"
+Template: NuvemproApp/nuvempro-app-template@vX.Y.Z"
 ```
 
-**6.4 — Abra Pull Request**
+**6.4 — Pull Request**
 ```bash
-gh pr create --title "Update: template v[VERSÃO_TEMPLATE]" \
-  --body "Atualização do NuvemPro App Template.
+gh pr create \
+  --title "chore: template update v[VERSÃO_TEMPLATE]" \
+  --body "## Template Update
 
-## O que foi atualizado
-- [lista]
+**De:** v[VERSÃO_ATUAL] → **Para:** v[VERSÃO_TEMPLATE]
 
-## O que foi preservado do app
-- [lista]
+## Atualizado (template)
+- [ ] Admin completo (planos, assinaturas, clientes, config, faq, logs, segurança)
+- [ ] Frontend base (billing, termos, suporte, nav, rodapé, i18n)
+- [ ] Infraestrutura (railway.json, doppler.yaml, ci.yml, vercel.json)
 
-## Testes
-- [ ] Build backend OK
+## Preservado (app)
+- [ ] [listar páginas do app]
+- [ ] [listar rotas backend do app]
+- [ ] [listar chaves i18n do app]
+
+## Verificações
+- [ ] npm test — todos passando
 - [ ] Build frontend OK
 - [ ] Build admin OK
-- [ ] npm test OK
-- [ ] Funcionalidades do app testadas manualmente"
+- [ ] Funcionalidades do app testadas"
 ```
 
-**6.5 — Rode o seed em produção após merge**
+**6.5 — Após merge: seed em produção**
 ```bash
-# Via Railway CLI ou shell do Railway:
-node prisma/seed-admin.js
+# Via Railway shell ou CLI:
+cd backend && node prisma/seed-admin.js
 ```
 
 ---
@@ -359,13 +465,13 @@ node prisma/seed-admin.js
 1. NUNCA sobrescrever backend/prisma/schema.prisma
 2. NUNCA remover rotas do app em server.js
 3. NUNCA remover chaves i18n específicas do app
-4. NUNCA commitar sem os testes passando
-5. SEMPRE trabalhar em branch separada (nunca direto na main)
-6. SEMPRE apresentar o resumo do CHANGELOG antes de começar as edições
-7. SEMPRE perguntar ao usuário quando houver dúvida sobre o que é "do template"
-   vs "do app" — é melhor perguntar do que quebrar
-8. Se um arquivo de Categoria B tiver conflito irresolvível, apresente
-   o diff ao usuário e peça decisão antes de aplicar
+4. NUNCA commitar sem build e testes passando
+5. SEMPRE trabalhar em branch separada
+6. SEMPRE apresentar o CHANGELOG antes de editar qualquer arquivo
+7. SEMPRE perguntar ao usuário em caso de dúvida entre "template" vs "app"
+8. Se o merge do Grupo 5 tiver conflito irresolvível → mostrar o diff e aguardar decisão
+9. O admin é 100% template — nunca questionar se deve atualizar o admin
+10. O sidebar de Suporte (AppNav) é 100% template — nunca preservar customizações nele
 ```
 
 ---
@@ -374,16 +480,22 @@ node prisma/seed-admin.js
 
 ```
 1. URL do repositório do app: _______________
-2. Branch principal do app (main/master): _______________
+2. Branch principal (main/master): _______________
 3. Versão atual do template no app (ou "não sei"): _______________
-4. Quais são as principais páginas/funcionalidades customizadas do app?
-   Ex: "BlogAI tem as páginas: /editor, /posts, /analytics e as rotas
-   backend: /api/posts, /api/generate, /api/analytics"
-5. O banco de dados de produção já está rodando? (importante para o seed)
-6. O deploy é automático (GitHub Actions) ou manual?
+4. Páginas específicas do app (frontend):
+   Ex: /dashboard, /editor, /posts, /analytics
+5. Rotas específicas do backend:
+   Ex: /api/posts, /api/generate, /api/analytics
+6. Itens de nav adicionados no AppNav (botões além do Dashboard/Billing):
+   Ex: botão "Posts" → /posts
+7. Chaves i18n específicas do app (namespace de primeiro nível):
+   Ex: "posts", "editor", "ai"
+8. Banco de produção está rodando? (para o seed pós-deploy)
+9. Deploy automático (GitHub Actions) ou manual?
 ```
 
 ---
 
 *Template: NuvemproApp/nuvempro-app-template*
-*Versão do prompt: 1.0.0 | Compatível com template v1.6.0+*
+*Versão do prompt: 2.0.0 | Compatível com template v1.6.0+*
+*Última revisão: 2026-03-31*

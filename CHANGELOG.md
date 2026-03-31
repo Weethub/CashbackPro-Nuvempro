@@ -6,6 +6,23 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.1] - 2026-03-31
+
+### Adicionado
+
+- **`backend/railway.json`** — define builder (Nixpacks), start command e restart policy; elimina ambiguidade de auto-detecção em monorepos
+- **Doppler** — `doppler.yaml` em backend/, frontend/ e admin-frontend/ para gestão centralizada de env vars (dev → produção com sync automático Railway/Vercel)
+- **`scripts/setup-dev.sh`** — onboarding de novos devs em um comando
+
+### Corrigido
+
+- **`vercel.json` (raiz)** — `npm install` → `npm ci` para builds reproduzíveis
+- **`admin-frontend/vercel.json`** — `npm install` → `npm ci`; adicionados headers de segurança (`X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`)
+- **`.github/workflows/ci.yml`** — nomes de variável corrigidos: `CLIENT_ID` → `NUVEMSHOP_CLIENT_ID`, `CLIENT_SECRET` → `NUVEMSHOP_CLIENT_SECRET`, `ADMIN_URL` → `ADMIN_FRONTEND_URL`
+- **`.env.example`** (3 arquivos) — header Doppler-first; nota sobre proxy Vite em dev
+
+---
+
 ## [1.6.3] - 2026-03-30
 
 ### Adicionado

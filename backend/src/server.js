@@ -62,11 +62,13 @@ const authRouter = require('./routes/auth');
 const billingRouter = require('./routes/billing');
 const termsRouter = require('./routes/terms');
 const profileRouter = require('./routes/profile');
+const supportRouter = require('./routes/support');
 
 app.use('/auth', authRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/terms', termsRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/support', supportRouter);
 
 // ═══════════════════════════════════════════
 // ADMIN ROUTES

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import adminApi from '../services/adminApi';
-import { Plus, X, Loader2, HelpCircle, Pencil, ChevronDown, ChevronUp, Video, Eye, EyeOff } from 'lucide-react';
+import { Plus, X, Loader2, HelpCircle, Pencil, ChevronDown, ChevronUp, Video, EyeOff, Settings2, Save } from 'lucide-react';
 
 const CATEGORIES = [
   { key: 'all', label: 'Todos' },
@@ -24,9 +24,51 @@ export default function FaqPage() {
   const [editingFaq, setEditingFaq] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
+  // Support config state
+  const [supportConfig, setSupportConfig] = useState({ support_video_url: '', support_whatsapp: '' });
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
+
   useEffect(() => {
     fetchFaqs();
   }, [category]);
+
+  useEffect(() => {
+    fetchSupportConfig();
+  }, []);
+
+  const fetchSupportConfig = async () => {
+    try {
+      const res = await adminApi.get('/config');
+      const configs = res.data.raw || [];
+      const map = {};
+      configs.forEach((c) => { map[c.key] = c.value; });
+      setSupportConfig({
+        support_video_url: map.support_video_url || '',
+        support_whatsapp: map.support_whatsapp || '',
+      });
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    setSavingConfig(true);
+    try {
+      await adminApi.put('/config', {
+        updates: [
+          { key: 'support_video_url', value: supportConfig.support_video_url, group: 'support' },
+          { key: 'support_whatsapp', value: supportConfig.support_whatsapp, group: 'support' },
+        ],
+      });
+      setConfigSaved(true);
+      setTimeout(() => setConfigSaved(false), 2500);
+    } catch {
+      alert('Erro ao salvar configurações de suporte.');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
 
   const fetchFaqs = async () => {
     try {
@@ -89,6 +131,53 @@ export default function FaqPage() {
         >
           <Plus size={18} /> Nova Pergunta
         </button>
+      </div>
+
+      {/* Support Config */}
+      <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings2 size={18} className="text-gray-500" />
+          <h2 className="text-base font-semibold text-gray-800">Configurações de Suporte</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Vídeo Principal de Apresentação
+            </label>
+            <input
+              type="url"
+              value={supportConfig.support_video_url}
+              onChange={(e) => setSupportConfig((p) => ({ ...p, support_video_url: e.target.value }))}
+              placeholder="https://youtube.com/watch?v=..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">Exibido no sidebar de Suporte do app</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              WhatsApp de Suporte
+            </label>
+            <input
+              type="text"
+              value={supportConfig.support_whatsapp}
+              onChange={(e) => setSupportConfig((p) => ({ ...p, support_whatsapp: e.target.value }))}
+              placeholder="5511999999999"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">Somente números, com DDI (ex: 5511999999999)</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mt-4">
+          <button
+            onClick={handleSaveConfig}
+            disabled={savingConfig}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-900 disabled:opacity-50 transition-colors"
+          >
+            {savingConfig ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            Salvar
+          </button>
+          {configSaved && <span className="text-sm text-emerald-600 font-medium">Salvo!</span>}
+        </div>
       </div>
 
       {/* Category Filters */}

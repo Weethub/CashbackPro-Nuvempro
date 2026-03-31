@@ -173,19 +173,19 @@ export default function AppNav() {
             </Box>
           )}
 
-          {/* Vídeo principal */}
+          {/* Vídeo principal — 16:9 inline, acima do FAQ */}
           <Box display="flex" flexDirection="column" gap="2">
             <Title as="h4">{t('support.videoTitle')}</Title>
             {youtubeId ? (
-              <Box borderRadius="2" style={{ overflow: 'hidden', position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+              <div style={{ width: '100%', borderRadius: 8, overflow: 'hidden', aspectRatio: '16/9', background: '#000' }}>
                 <iframe
-                  src={`https://www.youtube.com/embed/${youtubeId}`}
+                  src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
                   title="Tutorial"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                  style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
                 />
-              </Box>
+              </div>
             ) : mainVideoUrl ? (
               <Button
                 appearance="neutral"

@@ -19,6 +19,66 @@ function getYouTubeId(url) {
   return null;
 }
 
+function VideoModal({ url, onClose }) {
+  const youtubeId = getYouTubeId(url);
+
+  // Fecha com Escape
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        backgroundColor: 'rgba(0,0,0,0.85)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{ position: 'relative', width: '90%', maxWidth: 720 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Botão fechar */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: -36, right: 0,
+            background: 'none', border: 'none', color: '#fff',
+            fontSize: 28, lineHeight: 1, cursor: 'pointer',
+          }}
+          aria-label="Fechar"
+        >
+          ×
+        </button>
+
+        {/* Vídeo */}
+        <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 8, overflow: 'hidden' }}>
+          {youtubeId ? (
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&rel=0`}
+              title="Vídeo"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+            />
+          ) : (
+            <video
+              src={url}
+              autoPlay
+              controls
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#000' }}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppNav() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -26,6 +86,7 @@ export default function AppNav() {
   const [supportOpen, setSupportOpen] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [supportData, setSupportData] = useState(null);
+  const [videoModal, setVideoModal] = useState(null); // url string | null
 
   useEffect(() => {
     if (supportOpen && !supportData) {
@@ -191,10 +252,7 @@ export default function AppNav() {
                             <Box paddingTop="2">
                               <Button
                                 appearance="neutral"
-                                as="a"
-                                href={item.videoUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                                onClick={() => setVideoModal(item.videoUrl)}
                               >
                                 Ver vídeo
                               </Button>
@@ -217,6 +275,10 @@ export default function AppNav() {
           )}
         </Box>
       </Sidebar>
+
+      {videoModal && (
+        <VideoModal url={videoModal} onClose={() => setVideoModal(null)} />
+      )}
     </>
   );
 }

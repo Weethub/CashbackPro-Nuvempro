@@ -176,6 +176,20 @@
       "paid": "Pago",
       "pending": "Pendente",
       "noInvoices": "Nenhuma fatura encontrada."
+    },
+    "partner": {
+      "title": "Código do Parceiro",
+      "description": "Se você foi indicado por um parceiro, insira o código abaixo para associá-lo à sua conta.",
+      "label": "Código do Parceiro",
+      "placeholder": "Ex: E5DCHV87",
+      "save": "Associar Parceiro",
+      "saving": "Validando...",
+      "associated": "Parceiro associado: {{name}} ({{id}})",
+      "change": "Alterar",
+      "success": "Parceiro associado com sucesso!",
+      "notFound": "Parceiro não encontrado. Verifique o código e tente novamente.",
+      "suspended": "Este parceiro está suspenso e não pode receber indicações.",
+      "notConfigured": "Integração de parceiros não configurada."
     }
   },
   "support": {

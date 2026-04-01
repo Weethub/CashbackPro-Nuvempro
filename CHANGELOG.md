@@ -6,6 +6,22 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.3] - 2026-04-01
+
+### Adicionado
+
+- **Associação de Parceiro na BillingPage** — card "Código do Parceiro" no final da página de planos (após faturas):
+  - Usuário digita o Partner ID (ex: `E5DCHV87`); backend valida via `GET https://partners.nuvempro.com/api/v1/partners/:id`
+  - Se válido: salva `partnerId` + `partnerName` no `Store` (tenant) e atualiza metadados da subscription ativa no Stripe
+  - Se já associado: exibe badge verde "Parceiro associado: Nome (ID)" com botão "Alterar"
+  - Erros específicos: não encontrado, suspenso, não configurado
+- **`GET /api/billing/partner`** — retorna `{ partnerId, partnerName }` do store atual
+- **`POST /api/billing/partner`** — valida na Partners API, salva no DB, atualiza Stripe subscription metadata (best-effort)
+- **`PARTNERS_API_KEY`** adicionado ao `backend/.env.example`
+- **i18n** — chaves `billing.partner.*` em pt-BR, es-AR e es-MX
+
+---
+
 ## [1.7.1] - 2026-03-31
 
 ### Adicionado

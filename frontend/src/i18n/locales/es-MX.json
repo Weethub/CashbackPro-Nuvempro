@@ -172,6 +172,20 @@
       "paid": "Pagado",
       "pending": "Pendiente",
       "noInvoices": "No se encontraron facturas."
+    },
+    "partner": {
+      "title": "Código del Socio",
+      "description": "Si fuiste referido por un socio, ingresa el código abajo para asociarlo a tu cuenta.",
+      "label": "Código del Socio",
+      "placeholder": "Ej: E5DCHV87",
+      "save": "Asociar Socio",
+      "saving": "Validando...",
+      "associated": "Socio asociado: {{name}} ({{id}})",
+      "change": "Cambiar",
+      "success": "¡Socio asociado con éxito!",
+      "notFound": "Socio no encontrado. Verifica el código e intenta de nuevo.",
+      "suspended": "Este socio está suspendido y no puede recibir indicaciones.",
+      "notConfigured": "Integración de socios no configurada."
     }
   },
   "support": {

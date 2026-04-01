@@ -412,4 +412,101 @@ router.get('/invoices', async (req, res, next) => {
   }
 });
 
+/**
+ * GET /api/billing/partner — Retorna parceiro atualmente associado à loja.
+ */
+router.get('/partner', async (req, res, next) => {
+  try {
+    const store = await prisma.store.findUnique({
+      where: { id: req.store.id },
+      select: { partnerId: true, partnerName: true },
+    });
+    res.json({
+      partnerId: store?.partnerId || null,
+      partnerName: store?.partnerName || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/billing/partner — Valida parceiro via Partners API, salva no Store
+ * e atualiza os metadados da subscription ativa no Stripe.
+ *
+ * Body: { partnerId: "E5DCHV87" }
+ * Response: { partnerId, partnerName }
+ */
+router.post('/partner', async (req, res, next) => {
+  try {
+    const { partnerId } = req.body;
+
+    if (!partnerId || typeof partnerId !== 'string' || partnerId.trim().length < 4) {
+      throw new AppError('Código do parceiro inválido.', 400, 'INVALID_PARTNER_ID');
+    }
+
+    const PARTNERS_API_KEY = process.env.PARTNERS_API_KEY;
+    if (!PARTNERS_API_KEY) {
+      throw new AppError('Integração de parceiros não configurada.', 503, 'PARTNERS_NOT_CONFIGURED');
+    }
+
+    // Valida parceiro via API externa
+    let partnerRes;
+    try {
+      partnerRes = await fetch(
+        `https://partners.nuvempro.com/api/v1/partners/${encodeURIComponent(partnerId.trim())}`,
+        { headers: { 'x-api-key': PARTNERS_API_KEY } }
+      );
+    } catch {
+      throw new AppError('Erro ao conectar à API de parceiros.', 502, 'PARTNERS_API_UNREACHABLE');
+    }
+
+    if (partnerRes.status === 404) {
+      throw new AppError('Parceiro não encontrado.', 404, 'PARTNER_NOT_FOUND');
+    }
+    if (partnerRes.status === 403) {
+      throw new AppError('Este parceiro está suspenso.', 403, 'PARTNER_SUSPENDED');
+    }
+    if (partnerRes.status === 401) {
+      throw new AppError('Integração de parceiros não autorizada.', 503, 'PARTNERS_UNAUTHORIZED');
+    }
+    if (!partnerRes.ok) {
+      throw new AppError('Erro ao validar parceiro.', 502, 'PARTNERS_API_ERROR');
+    }
+
+    const partner = await partnerRes.json();
+
+    // Salva partnerId + partnerName no Store (tenant)
+    await prisma.store.update({
+      where: { id: req.store.id },
+      data: { partnerId: partner.partnerId, partnerName: partner.name },
+    });
+
+    // Atualiza metadados da subscription ativa no Stripe (best-effort — não falha a request)
+    try {
+      const subscription = await prisma.subscription.findUnique({
+        where: { storeId: req.store.id },
+        select: { stripeSubscriptionId: true, status: true },
+      });
+      if (
+        subscription?.stripeSubscriptionId &&
+        ['active', 'trialing'].includes(subscription.status)
+      ) {
+        await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+          metadata: {
+            partner_id: partner.partnerId,
+            partner_name: partner.name,
+          },
+        });
+      }
+    } catch {
+      // Non-critical: metadados do Stripe não impedem o save local
+    }
+
+    res.json({ partnerId: partner.partnerId, partnerName: partner.name });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

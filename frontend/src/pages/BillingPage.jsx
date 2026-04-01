@@ -47,6 +47,13 @@ export default function BillingPage({ locked = false }) {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  // Partner state
+  const [partner, setPartner] = useState(null); // { partnerId, partnerName } | null
+  const [partnerInput, setPartnerInput] = useState('');
+  const [partnerEditing, setPartnerEditing] = useState(false);
+  const [partnerLoading, setPartnerLoading] = useState(false);
+  const [partnerError, setPartnerError] = useState(null);
+
   useEffect(() => {
     loadPlans();
     if (locked) {
@@ -55,6 +62,7 @@ export default function BillingPage({ locked = false }) {
       syncAndRefresh();
     } else {
       loadInvoices();
+      loadPartner();
       syncPlan(); // Sempre sincroniza ao carregar — garante plano atualizado mesmo sem webhook
     }
   }, [locked]);
@@ -149,6 +157,38 @@ export default function BillingPage({ locked = false }) {
       setConfirmCancel(false);
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  const loadPartner = async () => {
+    try {
+      const res = await api.get('/api/billing/partner');
+      if (res.data?.partnerId) {
+        setPartner({ partnerId: res.data.partnerId, partnerName: res.data.partnerName });
+      }
+    } catch {
+      // Silencioso — parceiro é opcional
+    }
+  };
+
+  const handlePartnerSave = async () => {
+    if (!partnerInput.trim()) return;
+    setPartnerLoading(true);
+    setPartnerError(null);
+    try {
+      const res = await api.post('/api/billing/partner', { partnerId: partnerInput.trim().toUpperCase() });
+      setPartner({ partnerId: res.data.partnerId, partnerName: res.data.partnerName });
+      setPartnerEditing(false);
+      setPartnerInput('');
+      setSuccessMsg(t('billing.partner.success'));
+    } catch (err) {
+      const code = err.response?.data?.code;
+      if (code === 'PARTNER_NOT_FOUND') setPartnerError(t('billing.partner.notFound'));
+      else if (code === 'PARTNER_SUSPENDED') setPartnerError(t('billing.partner.suspended'));
+      else if (code === 'PARTNERS_NOT_CONFIGURED' || code === 'PARTNERS_UNAUTHORIZED') setPartnerError(t('billing.partner.notConfigured'));
+      else setPartnerError(err.response?.data?.error || err.message);
+    } finally {
+      setPartnerLoading(false);
     }
   };
 
@@ -425,6 +465,96 @@ export default function BillingPage({ locked = false }) {
                 </Table.Body>
               </Table>
             )}
+          </Card.Body>
+        </Card>
+      )}
+
+      {/* Partner section (when not locked) */}
+      {!locked && (
+        <Card>
+          <Card.Header>
+            <Title as="h3">{t('billing.partner.title')}</Title>
+          </Card.Header>
+          <Card.Body>
+            <Box display="flex" flexDirection="column" gap="3">
+              <Text color="neutral-textLow">{t('billing.partner.description')}</Text>
+
+              {/* Parceiro já associado e não está editando */}
+              {partner && !partnerEditing && (
+                <Box display="flex" alignItems="center" gap="3" flexWrap="wrap">
+                  <Tag appearance="success">
+                    {t('billing.partner.associated', {
+                      name: partner.partnerName,
+                      id: partner.partnerId,
+                    })}
+                  </Tag>
+                  <Button
+                    appearance="transparent"
+                    onClick={() => {
+                      setPartnerEditing(true);
+                      setPartnerInput('');
+                      setPartnerError(null);
+                    }}
+                  >
+                    {t('billing.partner.change')}
+                  </Button>
+                </Box>
+              )}
+
+              {/* Formulário de associação: sem parceiro OU editando */}
+              {(!partner || partnerEditing) && (
+                <Box display="flex" flexDirection="column" gap="2">
+                  <Box display="flex" gap="2" alignItems="center" flexWrap="wrap">
+                    <div style={{ flex: 1, minWidth: 180 }}>
+                      <input
+                        type="text"
+                        value={partnerInput}
+                        onChange={(e) => setPartnerInput(e.target.value.toUpperCase())}
+                        placeholder={t('billing.partner.placeholder')}
+                        maxLength={8}
+                        disabled={partnerLoading}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 6,
+                          fontSize: 14,
+                          fontFamily: 'monospace',
+                          letterSpacing: '0.1em',
+                          boxSizing: 'border-box',
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && handlePartnerSave()}
+                      />
+                    </div>
+                    <Button
+                      appearance="primary"
+                      onClick={handlePartnerSave}
+                      disabled={partnerLoading || !partnerInput.trim()}
+                    >
+                      {partnerLoading ? t('billing.partner.saving') : t('billing.partner.save')}
+                    </Button>
+                    {partnerEditing && (
+                      <Button
+                        appearance="transparent"
+                        onClick={() => {
+                          setPartnerEditing(false);
+                          setPartnerInput('');
+                          setPartnerError(null);
+                        }}
+                        disabled={partnerLoading}
+                      >
+                        {t('common.cancel')}
+                      </Button>
+                    )}
+                  </Box>
+                  {partnerError && (
+                    <Text fontSize="caption" color="danger-textLow">
+                      {partnerError}
+                    </Text>
+                  )}
+                </Box>
+              )}
+            </Box>
           </Card.Body>
         </Card>
       )}

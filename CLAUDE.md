@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.6.3**
+> Versão atual do template: **1.7.3**
 
 ---
 
@@ -34,9 +34,10 @@ nuvempro-app-template/
 │   │   │   ├── auth.js         # requireAuth (JWT Nuvemshop)
 │   │   │   └── rateLimiter.js  # 5 níveis de rate limiting
 │   │   ├── routes/
-│   │   │   ├── billing.js      # GET /plans, POST /checkout, /cancel, /sync, /status, /invoices
+│   │   │   ├── billing.js      # /plans, /checkout, /cancel, /sync, /status, /invoices, /partner
 │   │   │   ├── auth.js         # OAuth Nuvemshop + dev-token
 │   │   │   ├── webhook.js      # Stripe webhooks
+│   │   │   ├── support.js      # GET /api/support (FAQs + vídeo + whatsapp — público)
 │   │   │   ├── profile.js      # Perfil da loja
 │   │   │   └── terms.js        # Termos de uso
 │   │   └── admin/
@@ -59,9 +60,11 @@ nuvempro-app-template/
 │       ├── providers/
 │       │   └── NexoProvider.jsx    # Auth Nexo SDK, billingStatus, termsAccepted
 │       ├── pages/
-│       │   ├── BillingPage.jsx     # Planos, checkout, cancelar, faturas
+│       │   ├── BillingPage.jsx     # Planos, checkout, cancelar, faturas, parceiro
 │       │   ├── OnboardingPage.jsx
 │       │   └── ...
+│       ├── components/
+│       │   └── AppNav.jsx          # Sidebar suporte: vídeo 16:9, FAQ dinâmico, WhatsApp
 │       ├── services/
 │       │   └── api.js              # Axios com token refresh automático
 │       └── i18n/locales/
@@ -70,11 +73,14 @@ nuvempro-app-template/
 │           └── es-MX.json
 ├── admin-frontend/             # React + Vite + Tailwind (painel interno)
 │   └── src/pages/
-│       └── PlansPage.jsx       # Lista planos + Sincronizar com Stripe
+│       ├── PlansPage.jsx       # Lista planos + Sincronizar com Stripe
+│       └── FaqPage.jsx         # FAQ + Configurações de Suporte (vídeo + whatsapp)
+├── railway.json                # Build config Railway (Nixpacks, start, restart policy)
 ├── vercel.json                 # Build config Vercel (aponta para frontend/)
 ├── CHANGELOG.md
 ├── STANDARDS.md                # Regras obrigatórias de código
 ├── PROMPT.md                   # Prompt para criar novo app a partir do template
+├── PROMPT-UPDATE.md            # Prompt para atualizar app existente a partir do template
 └── ADMIN-PADRAO-NUVEMPRO-v3.0.md  # Guia completo das 12 fases
 ```
 
@@ -98,8 +104,8 @@ JWT_SECRET=...
 ADMIN_JWT_SECRET=...
 
 NUVEMSHOP_APP_ID=...
-CLIENT_ID=...
-CLIENT_SECRET=...
+NUVEMSHOP_CLIENT_ID=...
+NUVEMSHOP_CLIENT_SECRET=...
 
 STRIPE_SECRET_KEY=sk_...
 STRIPE_WEBHOOK_SECRET=whsec_...
@@ -108,7 +114,10 @@ APP_NAME=NuvemPro App
 APP_SLUG=meuapp
 APP_EMAIL=contato@exemplo.com
 FRONTEND_URL=https://...
-ADMIN_URL=https://...
+ADMIN_FRONTEND_URL=https://...
+
+# NuvemPro Partners — comissionamento de parceiros
+PARTNERS_API_KEY=nv_live_...
 ```
 
 ---
@@ -117,7 +126,7 @@ ADMIN_URL=https://...
 
 | Modelo            | Propósito                                          |
 |-------------------|----------------------------------------------------|
-| `Store`           | Tenant. Tem `plan`, `stripeCustomerId`             |
+| `Store`           | Tenant. Tem `plan`, `stripeCustomerId`, `partnerId`, `partnerName` |
 | `Subscription`    | 1:1 com Store. `stripeSubscriptionId`, `cancelAtPeriodEnd`, `status` |
 | `Invoice`         | Faturas Stripe salvas pelo webhook                 |
 | `AdminPlan`       | Planos criados no admin. `stripePriceIds: Json`, `price: Json`, `features: Json` |
@@ -131,6 +140,13 @@ ADMIN_URL=https://...
 | `StoreProfile`    | Dados extras da loja (JSON livre)                  |
 | `TermsVersion`    | Versões dos termos de uso                          |
 | `TermsAcceptance` | Aceites dos termos por loja                        |
+
+### Campos de parceiro no `Store`
+
+```prisma
+partnerId    String?   // Partner ID do parceiro indicador (ex: "E5DCHV87")
+partnerName  String?   // Nome do parceiro (salvo junto ao validar)
+```
 
 ### Campo importante: `AdminPlan.stripePriceIds`
 
@@ -165,6 +181,17 @@ Criados automaticamente pelo `seed-admin.js`:
 
 Gerenciados em **Admin → Configurações → Período de Trial**.
 
+### Campos de configuração de Suporte (`AdminConfig`)
+
+Criados automaticamente pelo `seed-admin.js`:
+
+| key | valor padrão | descrição |
+|-----|-------------|-----------|
+| `support_video_url` | `''` | URL do YouTube do vídeo principal de apresentação do app |
+| `support_whatsapp` | `''` | Número WhatsApp de suporte (ex: `5511999999999`) |
+
+Gerenciados em **Admin → FAQ → Configurações de Suporte**.
+
 ---
 
 ## Sistema de Trial (duas modalidades)
@@ -198,6 +225,107 @@ O trial é configurado pelo admin em **Configurações → Período de Trial** e
 ### ATENÇÃO: `trial_period_days` vs cupom
 
 O modo `paid` usa `subscription_data.trial_period_days` (nativo Stripe) — **não** usa cupom. Isso evita erros de ID de cupom incorreto e é compatível com `allow_promotion_codes: true`. **Nunca trocar de volta para `discounts: [{coupon}]`** — Stripe não permite os dois ao mesmo tempo.
+
+---
+
+## Sistema de Parceiros (Comissionamento)
+
+O sistema conecta apps indicados por parceiros ao **NuvemPro Partners** para pagamento de comissões.
+
+### Fluxo completo
+
+```
+1. Parceiro compartilha seu Partner ID (ex: E5DCHV87) com o cliente
+2. Cliente acessa BillingPage → seção "Código do Parceiro" (ao final da página)
+3. Cliente digita o Partner ID e clica "Associar Parceiro"
+4. Backend valida via GET https://partners.nuvempro.com/api/v1/partners/:id
+   - 200: parceiro válido → { partnerId, name }
+   - 404: não encontrado
+   - 403: parceiro suspenso
+5. Se válido:
+   a. Salva partnerId + partnerName no Store (tenant) no banco local
+   b. Atualiza metadados da subscription ativa no Stripe (best-effort)
+6. Frontend exibe badge verde: "Parceiro associado: Nome (ID)" + botão "Alterar"
+```
+
+### Endpoints de parceiro
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/billing/partner` | Retorna `{ partnerId, partnerName }` do store atual |
+| `POST` | `/api/billing/partner` | Valida na Partners API, salva no DB, atualiza Stripe |
+
+### Metadados Stripe na subscription
+
+Toda subscription criada via checkout inclui `subscription_data.metadata`:
+
+```js
+{
+  app_id: process.env.NUVEMSHOP_APP_ID,
+  app_name: process.env.APP_NAME,
+  app_slug: process.env.APP_SLUG,
+  partner_id: store.partnerId || '',    // lido do Store no momento do checkout
+  partner_name: store.partnerName || '',
+  store_id: String(store.id),
+  plan_key: planKey,
+  billing_interval: billingInterval,
+}
+```
+
+**Atenção**: o parceiro deve ser associado **antes** do checkout para que `partner_id` entre na subscription. Se o parceiro for associado depois, `POST /api/billing/partner` atualiza o Stripe diretamente via `stripe.subscriptions.update`.
+
+### Partners API — Referência rápida
+
+- **Base URL**: `https://partners.nuvempro.com/api/v1`
+- **Auth**: header `x-api-key: PARTNERS_API_KEY`
+- **Endpoint de validação**: `GET /partners/:partnerId`
+- **Health check**: `GET /ping`
+- **Partner ID**: 8 caracteres alfanuméricos (sem ambiguidade O/0/I/1/L)
+- **Rate limit**: 100 req/min por IP
+
+| Código | Significado |
+|--------|-------------|
+| `200` | Parceiro válido e ativo |
+| `403` | Parceiro suspenso |
+| `404` | Parceiro não encontrado |
+| `401` | API Key inválida |
+
+### Configuração necessária
+
+Adicionar no Railway (backend environment):
+```
+PARTNERS_API_KEY=nv_live_...
+```
+Criar a chave em: `https://partners.nuvempro.com/admin/api-keys`
+
+---
+
+## Sistema de Suporte (FAQ + Vídeo + WhatsApp)
+
+### Endpoint público
+
+`GET /api/support` — sem autenticação. Retorna:
+```json
+{
+  "faqs": [{ "id", "question", "answer", "videoUrl", "category", "sortOrder" }],
+  "mainVideoUrl": "https://youtube.com/watch?v=...",
+  "whatsapp": "5511999999999"
+}
+```
+
+### No AppNav (sidebar do frontend)
+
+- Busca `/api/support` ao abrir pela primeira vez (lazy, cacheado em memória)
+- Vídeo principal: renderiza como `<iframe>` 16:9 usando `aspectRatio: '16/9'` (div nativo, não Box Nimbus)
+- FAQ: accordion por item, `expandedId` state
+- FAQ com vídeo: botão "Ver vídeo" → `VideoModal` com autoplay (`?autoplay=1`)
+- WhatsApp: `https://web.whatsapp.com/send?phone=${whatsapp}`
+
+### No Admin (FaqPage)
+
+- Seção "Configurações de Suporte" no topo: campos `support_video_url` e `support_whatsapp`
+- Salva via `PUT /admin-api/config` com formato batch: `{ updates: [{ key, value }] }`
+- Lê via `GET /admin-api/config` usando `res.data.raw` (array flat)
 
 ---
 
@@ -289,6 +417,19 @@ isSubscribable && !isCurrent
 // onde isSubscribable = !plan.isFree && intervalAvail && plan.configured
 ```
 
+### Seção "Código do Parceiro" (ao final da BillingPage)
+
+Exibida apenas quando `!locked`. Estados:
+
+| Estado | UI |
+|---|---|
+| Sem parceiro | Input `partnerInput` + botão "Associar Parceiro" |
+| Carregando | Botão desabilitado "Validando..." |
+| Parceiro associado | Badge verde `"Parceiro associado: Nome (ID)"` + botão "Alterar" |
+| Erro | Texto vermelho com mensagem específica |
+
+Handlers: `loadPartner()` (chamado no `useEffect` inicial), `handlePartnerSave()` (POST + atualiza state).
+
 ---
 
 ## Arquitetura de Termos de Uso (Gate obrigatório)
@@ -378,7 +519,7 @@ curl -X PATCH "https://api.vercel.com/v9/projects/PROJ_ID" \
 
 ```json
 {
-  "buildCommand": "cd frontend && npm install && npm run build",
+  "buildCommand": "cd frontend && npm ci && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
@@ -388,10 +529,24 @@ curl -X PATCH "https://api.vercel.com/v9/projects/PROJ_ID" \
 
 ```json
 {
-  "buildCommand": "npm install && npm run build",
+  "buildCommand": "npm ci && npm run build",
   "outputDirectory": "dist",
-  "installCommand": "npm install",
+  "installCommand": "echo 'install handled in buildCommand'",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
+```
+
+### railway.json (Backend)
+
+```json
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": { "builder": "NIXPACKS" },
+  "deploy": {
+    "startCommand": "npm start",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
 }
 ```
 
@@ -403,21 +558,43 @@ git config user.email "GITHUB_ID+username@users.noreply.github.com"
 git config user.name "username"
 ```
 
+### Deploy via API (Railway + Vercel)
+
+```bash
+# Railway — redeploy (requer serviceId e environmentId corretos)
+curl -X POST "https://backboard.railway.com/graphql/v2" \
+  -H "Authorization: Bearer RAILWAY_TOKEN" -H "Content-Type: application/json" \
+  -d '{"query":"mutation { serviceInstanceRedeploy(serviceId: \"SVC_ID\", environmentId: \"ENV_ID\") }"}'
+
+# Railway — upsert variável
+curl -X POST "https://backboard.railway.com/graphql/v2" \
+  -H "Authorization: Bearer RAILWAY_TOKEN" -H "Content-Type: application/json" \
+  -d '{"query":"mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }","variables":{"input":{"projectId":"PROJ_ID","environmentId":"ENV_ID","serviceId":"SVC_ID","name":"KEY","value":"VAL"}}}'
+
+# Vercel — deploy frontend (SHA do git HEAD)
+curl -X POST "https://api.vercel.com/v13/deployments?projectId=PROJ_ID&teamId=TEAM_ID" \
+  -H "Authorization: Bearer VERCEL_TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"frontend","gitSource":{"type":"github","repoId":"REPO_ID","ref":"main","sha":"SHA"},"target":"production"}'
+```
+
 ---
 
 ## Histórico de Versões Recentes
 
 | Versão | O que mudou |
 |--------|-------------|
+| **1.7.3** | Associação de parceiro na BillingPage: valida via Partners API, salva no Store, atualiza Stripe subscription metadata |
+| **1.7.2** | FAQ dinâmico do admin no sidebar do app; vídeo principal 16:9 acima do FAQ; VideoModal com autoplay; WhatsApp `web.whatsapp.com` |
+| **1.7.1** | Doppler para gestão de env vars; `railway.json`; `npm ci` nos builds; headers de segurança no admin Vercel |
+| **1.7.0** | CI com GitHub Actions (build, test, validate-clone); `package-lock.json` commitados |
 | **1.6.3** | Aviso de trial ativo na BillingPage: "Trial ativo até {data}", Alert "Nenhuma cobrança até {data}", dica de cancelamento |
 | **1.6.2** | Fix: `getSubscriptionStatus` 3 fases detecta subscription trialing de novo plano; `POST /sync` busca trialing+active em paralelo |
 | **1.6.1** | Fix: checkout paid trial usa `trial_period_days` nativo (elimina erro com cupom ID); features do seed como arrays de strings legíveis |
-| **1.6.0** | Sistema de trial em duas modalidades (`free`/`paid`) configurável no admin; banner countdown; badge "Assine e ganhe X dias grátis"; `AdminConfig` com defaults de trial |
-| **1.5.5** | Fix: `isCurrent` verifica plano+intervalo (tag "Plano atual" só no intervalo correto); desconto % dinâmico nos botões de período |
-| **1.5.3** | Fix crítico: `isFree` não é campo Prisma — calcular via `price` JSON; gate e termsData corretos; `TRIAL_DAYS=0` impede trial |
-| **1.5.2** | Fix: seed não reverte `isActive`; desativar plano arquiva no Stripe; delete plano remove do Stripe+DB |
-| **1.5.0** | Gate de assinatura obrigatória; `allow_promotion_codes: true`; campo `hasAccess` no billing status |
-| **1.4.1** | Fix: tela branca em Terms/FAQ/Logs/Segurança admin; `isPublished` correto; endpoints `/logs/usage` e `/logs/abuse` |
+| **1.6.0** | Sistema de trial em duas modalidades (`free`/`paid`) configurável no admin; banner countdown; badge "Assine e ganhe X dias grátis" |
+| **1.5.5** | Fix: `isCurrent` verifica plano+intervalo; desconto % dinâmico nos botões de período |
+| **1.5.3** | Fix crítico: `isFree` não é campo Prisma — calcular via `price` JSON |
+| **1.5.0** | Gate de assinatura obrigatória; `allow_promotion_codes: true`; campo `hasAccess` |
+| **1.4.1** | Fix: tela branca em Terms/FAQ/Logs/Segurança admin; `isPublished` correto |
 
 ---
 
@@ -434,10 +611,13 @@ git config user.name "username"
 ## Comandos Úteis
 
 ```bash
-# Iniciar tudo em desenvolvimento
-cd backend && npm run dev          # porta 3001
-cd frontend && npm run dev         # porta 5173
-cd admin-frontend && npm run dev   # porta 5174
+# Iniciar tudo em desenvolvimento (com Doppler — recomendado)
+cd backend && doppler run -- npm run dev          # porta 3001
+cd frontend && npm run dev                         # porta 5173
+cd admin-frontend && npm run dev                   # porta 5174
+
+# Sem Doppler (fallback com .env)
+cd backend && npm run dev
 
 # Após mudar schema.prisma:
 cd backend
@@ -463,9 +643,6 @@ cd backend && npm test
 - **Nuvemshop** usa header `"Authentication"` (não `"Authorization"`) para o token
 - **Nexo SDK** (`@tiendanube/nexo`) gerencia sessão do iframe; `iAmReady()` dispara resize do iframe
 - **`window.top.location.href`** usado no checkout para sair do iframe e ir ao Stripe
-
----
-
 - **`paginatedResponse`** retorna `{ data, meta }` — no frontend admin usar sempre `res.data.data`, nunca `res.data.campo || res.data`
 - **`TermsVersion.isPublished`** é o campo correto (não `isActive`)
 - **Admin frontend** é acessado diretamente via URL, sem restrição de iframe — o `NexoProvider` que bloqueia acesso direto existe apenas no `frontend/`, não no `admin-frontend/`
@@ -475,7 +652,11 @@ cd backend && npm test
 - **Subscription `trialing`**: status `trialing` = assinatura com trial ativo no Stripe (não cobrado ainda). `subActive = ['active', 'trialing'].includes(status)` — sempre incluir trialing no check de acesso.
 - **Seed não reverte `isActive`**: `seed-admin.js` usa `update` sem `isActive` — admin controla o campo. Se um plano foi desativado no admin, o seed não reativa.
 - **`POST /sync` sem early return**: a otimização "already_synced" foi removida — sem ela o sync detecta novas subscriptions trialing. Não reintroduzir.
+- **Partners API — metadados da subscription**: o parceiro deve ser associado antes do checkout para entrar no `subscription_data.metadata`. Se associado depois, o endpoint `POST /api/billing/partner` atualiza o Stripe diretamente. A atualização Stripe é best-effort (não falha o request se o Stripe estiver indisponível).
+- **`Box` component Nimbus DS**: NÃO suporta `aspectRatio` CSS — usar `div` nativo com `style={{ aspectRatio: '16/9' }}` para vídeos e containers com proporção fixa.
+- **Vercel + Cloudflare**: não usar proxy (laranja) para domínios do Vercel — causa conflito SSL e double-proxy. Usar grey cloud (DNS only) para Vercel; pode usar proxy para Railway.
+- **Railway project ID**: o ID correto do projeto `nuvempro-app-template` é `e1d7d40f-2909-456b-992f-d9ae28753536` (não confundir com IDs de outros projetos como App-PostaAI, App-RecuperaJa).
 
 ---
 
-*Atualizado em: 2026-03-30 | Versão: 1.4.1*
+*Atualizado em: 2026-04-01 | Versão: 1.7.3*

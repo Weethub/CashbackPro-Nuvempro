@@ -139,20 +139,20 @@ export default function LogsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+      <div className="flex gap-2">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                 tab === t.key
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <Icon size={16} className={tab === t.key ? t.color : 'text-gray-400'} />
+              <Icon size={16} className={tab === t.key ? 'text-white' : 'text-gray-400'} />
               {t.label}
             </button>
           );

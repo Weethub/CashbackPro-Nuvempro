@@ -250,12 +250,12 @@ export default function BillingPage({ locked = false }) {
                         <Button appearance="danger" onClick={handleCancel} disabled={cancelLoading}>
                           {cancelLoading ? t('common.loading') : t('billing.cancelConfirmYes')}
                         </Button>
-                        <Button appearance="transparent" onClick={() => setConfirmCancel(false)} disabled={cancelLoading}>
+                        <Button appearance="secondary" onClick={() => setConfirmCancel(false)} disabled={cancelLoading}>
                           {t('common.cancel')}
                         </Button>
                       </>
                     ) : (
-                      <Button appearance="transparent" onClick={() => setConfirmCancel(true)}>
+                      <Button appearance="secondary" onClick={() => setConfirmCancel(true)}>
                         {t('billing.cancelPlan')}
                       </Button>
                     )}
@@ -297,7 +297,7 @@ export default function BillingPage({ locked = false }) {
           return (
             <Button
               key={intv}
-              appearance={interval === intv ? 'primary' : 'transparent'}
+              appearance={interval === intv ? 'primary' : 'secondary'}
               onClick={() => setInterval_(intv)}
             >
               {t(`billing.interval.${intv}`)}{discountLabel}
@@ -489,7 +489,7 @@ export default function BillingPage({ locked = false }) {
                     })}
                   </Tag>
                   <Button
-                    appearance="transparent"
+                    appearance="secondary"
                     onClick={() => {
                       setPartnerEditing(true);
                       setPartnerInput('');
@@ -535,7 +535,7 @@ export default function BillingPage({ locked = false }) {
                     </Button>
                     {partnerEditing && (
                       <Button
-                        appearance="transparent"
+                        appearance="secondary"
                         onClick={() => {
                           setPartnerEditing(false);
                           setPartnerInput('');

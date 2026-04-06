@@ -167,7 +167,7 @@ export default function Onboarding({ onComplete }) {
 
               <Box display="flex" justifyContent="space-between" gap="2">
                 {step > 1 ? (
-                  <Button appearance="transparent" onClick={() => setStep(step - 1)}>
+                  <Button appearance="secondary" onClick={() => setStep(step - 1)}>
                     {t('onboarding.back')}
                   </Button>
                 ) : (

@@ -124,7 +124,7 @@ export default function AppNav() {
         {/* Left nav */}
         <Box display="flex" gap="2" alignItems="center">
           <Button
-            appearance={isActive('/') ? 'primary' : 'secondary'}
+            appearance={isActive('/') ? 'primary' : 'neutral'}
             onClick={() => navigate('/')}
           >
             {t('nav.dashboard')}
@@ -135,13 +135,13 @@ export default function AppNav() {
         {/* Right nav */}
         <Box display="flex" gap="3" alignItems="center">
           <Button
-            appearance={isActive('/billing') ? 'primary' : 'secondary'}
+            appearance={isActive('/billing') ? 'primary' : 'neutral'}
             onClick={() => navigate('/billing')}
           >
             {t('nav.billing')}
           </Button>
           <Button
-            appearance="secondary"
+            appearance="neutral"
             onClick={() => setSupportOpen(true)}
           >
             {t('nav.support')}

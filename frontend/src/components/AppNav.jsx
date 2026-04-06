@@ -112,7 +112,7 @@ export default function AppNav() {
         display="flex"
         alignItems="center"
         justifyContent="space-between"
-        padding="2"
+        padding="4"
         paddingLeft="4"
         paddingRight="4"
         borderColor="neutral-surfaceHighlight"
@@ -122,7 +122,7 @@ export default function AppNav() {
         backgroundColor="neutral-background"
       >
         {/* Left nav */}
-        <Box display="flex" gap="1" alignItems="center">
+        <Box display="flex" gap="2" alignItems="center">
           <Button
             appearance={isActive('/') ? 'primary' : 'secondary'}
             onClick={() => navigate('/')}
@@ -133,7 +133,7 @@ export default function AppNav() {
         </Box>
 
         {/* Right nav */}
-        <Box display="flex" gap="2" alignItems="center">
+        <Box display="flex" gap="3" alignItems="center">
           <Button
             appearance={isActive('/billing') ? 'primary' : 'secondary'}
             onClick={() => navigate('/billing')}

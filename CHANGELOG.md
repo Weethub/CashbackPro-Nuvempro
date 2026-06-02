@@ -6,6 +6,14 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.6] - 2026-06-02
+
+### Corrigido
+
+- **Moldura branca em volta do app embedado** — novo `frontend/src/index.css` (importado no `main.jsx`) zera a margem padrão do `body` (`margin: 8px` do user-agent). Dentro do iframe (Nexo), essa margem aparecia como espaço vazio no topo, rodapé e laterais, pois o `iAmReady()` dimensiona o iframe pela altura do conteúdo.
+
+---
+
 ## [1.7.5] - 2026-06-02
 
 ### Adicionado

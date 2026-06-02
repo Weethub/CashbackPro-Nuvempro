@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import adminApi from '../services/adminApi';
-import { Plus, X, Loader2, FileText, CheckCircle, Clock, Pencil } from 'lucide-react';
+import { Plus, X, Loader2, FileText, CheckCircle, Clock, Pencil, Eye } from 'lucide-react';
+import RichTextEditor from '../components/RichTextEditor';
 
 export default function TermsPage() {
   const [versions, setVersions] = useState([]);
@@ -8,6 +9,7 @@ export default function TermsPage() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingTerm, setEditingTerm] = useState(null);
+  const [previewTerm, setPreviewTerm] = useState(null);
   const [publishLoading, setPublishLoading] = useState('');
 
   useEffect(() => {
@@ -128,7 +130,15 @@ export default function TermsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => setPreviewTerm(term)}
+                      title="Visualizar"
+                      className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+                    >
+                      <Eye size={16} />
+                    </button>
+                    <button
                       onClick={() => { setEditingTerm(term); setShowForm(true); }}
+                      title="Editar"
                       className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
                     >
                       <Pencil size={16} />
@@ -158,6 +168,37 @@ export default function TermsPage() {
           onClose={() => { setShowForm(false); setEditingTerm(null); }}
         />
       )}
+
+      {previewTerm && (
+        <TermPreview term={previewTerm} onClose={() => setPreviewTerm(null)} />
+      )}
+    </div>
+  );
+}
+
+function TermPreview({ term, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">{term.title || `Versao ${term.version}`}</h2>
+            <span className="text-xs text-gray-500 font-mono">v{term.version}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={20} /></button>
+        </div>
+        <div className="p-6 overflow-y-auto terms-preview">
+          <div dangerouslySetInnerHTML={{ __html: term.content || '<p>(sem conteudo)</p>' }} />
+        </div>
+        <style>{`
+          .terms-preview p { margin: 0 0 0.75em; line-height: 1.6; color: #374151; }
+          .terms-preview h2 { font-size: 1.25rem; font-weight: 700; margin: 1em 0 0.4em; color: #111827; }
+          .terms-preview h3 { font-size: 1.1rem; font-weight: 600; margin: 0.8em 0 0.3em; color: #111827; }
+          .terms-preview ul { list-style: disc; padding-left: 1.5em; margin: 0 0 0.75em; }
+          .terms-preview ol { list-style: decimal; padding-left: 1.5em; margin: 0 0 0.75em; }
+          .terms-preview a { color: #2563eb; text-decoration: underline; }
+        `}</style>
+      </div>
     </div>
   );
 }
@@ -169,9 +210,17 @@ function TermForm({ term, onSave, onClose }) {
     content: term?.content || '',
   });
   const [saving, setSaving] = useState(false);
+  const [contentError, setContentError] = useState('');
+
+  const isContentEmpty = (html) => !html || html.replace(/<[^>]*>/g, '').trim() === '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isContentEmpty(form.content)) {
+      setContentError('Preencha o conteudo dos termos.');
+      return;
+    }
+    setContentError('');
     setSaving(true);
     try {
       await onSave(form);
@@ -212,13 +261,11 @@ function TermForm({ term, onSave, onClose }) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Conteudo</label>
-            <textarea
+            <RichTextEditor
               value={form.content}
-              onChange={(e) => setForm({ ...form, content: e.target.value })}
-              rows={15}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
-              required
+              onChange={(html) => { setForm({ ...form, content: html }); if (contentError) setContentError(''); }}
             />
+            {contentError && <p className="text-red-600 text-xs mt-1">{contentError}</p>}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">

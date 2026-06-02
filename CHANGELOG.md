@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.7] - 2026-06-02
+
+### Adicionado
+
+- **Editor rich text nos Termos de Uso (admin)** — novo `admin-frontend/src/components/RichTextEditor.jsx` (TipTap) substitui o `<textarea>` do campo Conteúdo. Ao colar, o texto preserva parágrafos/estrutura e é salvo como HTML (resolve o conteúdo "sem espaçamento"). Toolbar: negrito, itálico, H2, H3, lista, lista numerada, link, limpar formatação.
+- **Preview de versão (admin)** — botão 👁 em cada versão na lista de Termos abre um modal que renderiza o conteúdo como HTML (igual o app exibe), para conferir a formatação antes de publicar.
+- **Dependências** (admin): `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-link`.
+
+---
+
 ## [1.7.6] - 2026-06-02
 
 ### Corrigido

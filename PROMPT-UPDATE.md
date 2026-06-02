@@ -143,7 +143,7 @@ ADMIN FRONTEND — Todas as páginas base:
   admin-frontend/src/pages/SecurityPage.jsx
   admin-frontend/src/pages/CouponsPage.jsx
   admin-frontend/src/pages/CommissionsPage.jsx
-  admin-frontend/src/pages/TermsAdminPage.jsx
+  admin-frontend/src/pages/TermsPage.jsx
   admin-frontend/src/components/StatCard.jsx
   admin-frontend/src/services/adminApi.js
   admin-frontend/vercel.json

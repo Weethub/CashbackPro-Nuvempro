@@ -6,6 +6,7 @@ const assert = require('node:assert');
 // Pure function imports
 const { parsePagination, paginatedResponse } = require('../lib/paginate');
 const { AppError } = require('../lib/errors');
+const { normalizeTrialMode, normalizeTrialDays } = require('../lib/trial');
 
 // ─── parsePagination ──────────────────────────────────────────────────────────
 
@@ -163,5 +164,65 @@ describe('MRR — cálculo por billingInterval', () => {
     const price = { monthly: 99.9, semestral: 498, annual: 798 };
     const mrr = price.annual / 12;
     assert.strictEqual(Math.round(mrr * 100) / 100, 66.5);
+  });
+});
+
+// ─── normalizeTrialMode — enum seguro ─────────────────────────────────────────
+
+describe('normalizeTrialMode', () => {
+  it('aceita os modos válidos: none, free, paid', () => {
+    assert.strictEqual(normalizeTrialMode('none'), 'none');
+    assert.strictEqual(normalizeTrialMode('free'), 'free');
+    assert.strictEqual(normalizeTrialMode('paid'), 'paid');
+  });
+
+  it('valor inválido (typo) → fallback seguro none', () => {
+    assert.strictEqual(normalizeTrialMode('gratis'), 'none');
+    assert.strictEqual(normalizeTrialMode('FREE'), 'none');
+  });
+
+  it('vazio, null ou undefined → none', () => {
+    assert.strictEqual(normalizeTrialMode(''), 'none');
+    assert.strictEqual(normalizeTrialMode(null), 'none');
+    assert.strictEqual(normalizeTrialMode(undefined), 'none');
+  });
+});
+
+// ─── normalizeTrialDays ───────────────────────────────────────────────────────
+
+describe('normalizeTrialDays', () => {
+  it('parseia string numérica', () => {
+    assert.strictEqual(normalizeTrialDays('14'), 14);
+  });
+
+  it('valor inválido ou <= 0 → fallback', () => {
+    assert.strictEqual(normalizeTrialDays('0'), 7);
+    assert.strictEqual(normalizeTrialDays('-5'), 7);
+    assert.strictEqual(normalizeTrialDays('abc'), 7);
+    assert.strictEqual(normalizeTrialDays(null), 7);
+  });
+
+  it('respeita teto de 365 dias', () => {
+    assert.strictEqual(normalizeTrialDays('9999'), 365);
+  });
+});
+
+// ─── Comissão — idempotência por invoiceId ────────────────────────────────────
+
+describe('Webhook — comissão NÃO deve duplicar por invoiceId', () => {
+  it('não cria comissão se já existe uma para o mesmo invoiceId', () => {
+    // Simula o guard do handleInvoicePaid: cria só quando não há registro prévio.
+    const recorded = [{ invoiceId: 'in_123' }];
+    const shouldCreate = (invoiceId) => !recorded.some((c) => c.invoiceId === invoiceId);
+
+    assert.strictEqual(shouldCreate('in_123'), false, 'invoice já registrada → não cria');
+    assert.strictEqual(shouldCreate('in_999'), true, 'invoice nova → cria');
+  });
+
+  it('comissão só é considerada quando commissionRate > 0 e amountPaid > 0', () => {
+    const eligible = (commissionRate, amountPaid) => commissionRate > 0 && amountPaid > 0;
+    assert.strictEqual(eligible(0.2, 49.9), true);
+    assert.strictEqual(eligible(0, 49.9), false, 'sem taxa → sem comissão');
+    assert.strictEqual(eligible(0.2, 0), false, 'fatura R$0 (trial) → sem comissão');
   });
 });

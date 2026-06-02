@@ -45,7 +45,10 @@ router.post('/', async (req, res) => {
     }
   } catch (err) {
     console.error(`Error handling ${event.type}:`, err);
-    // Return 200 to prevent Stripe retries for processing errors
+    // Handlers são idempotentes (upsert por chave única + guard de comissão por
+    // invoiceId), então é seguro pedir retry ao Stripe em falha transitória
+    // (ex: DB momentaneamente indisponível). Sem isto, o evento seria perdido.
+    return res.status(500).json({ error: 'Webhook handler failed.' });
   }
 
   res.json({ received: true });
@@ -146,24 +149,36 @@ async function handleInvoicePaid(invoice) {
     const commissionRate = plan ? plan.commissionRate : 0;
 
     if (commissionRate > 0) {
-      const commissionAmount = amountPaid * commissionRate;
-
-      await prisma.adminCommission.create({
-        data: {
-          partnerId: store.partnerId,
-          partnerName: store.partnerName || null,
-          storeId: store.id,
-          invoiceId: invoice.id,
-          amount: amountPaid,
-          commissionRate,
-          commissionAmount,
-          status: 'pending',
-        },
+      // Idempotência: o Stripe pode reentregar invoice.paid (e este handler
+      // agora retorna 500 em falha, o que provoca retry). Sem este guard, cada
+      // reentrega criaria uma comissão duplicada — AdminCommission não tem
+      // constraint única em invoiceId.
+      const existing = await prisma.adminCommission.findFirst({
+        where: { invoiceId: invoice.id },
       });
 
-      console.log(
-        `Commission created: ${commissionAmount.toFixed(2)} for partner ${store.partnerId} (store ${store.id})`
-      );
+      if (existing) {
+        console.log(`Commission already recorded for invoice ${invoice.id}, skipping`);
+      } else {
+        const commissionAmount = amountPaid * commissionRate;
+
+        await prisma.adminCommission.create({
+          data: {
+            partnerId: store.partnerId,
+            partnerName: store.partnerName || null,
+            storeId: store.id,
+            invoiceId: invoice.id,
+            amount: amountPaid,
+            commissionRate,
+            commissionAmount,
+            status: 'pending',
+          },
+        });
+
+        console.log(
+          `Commission created: ${commissionAmount.toFixed(2)} for partner ${store.partnerId} (store ${store.id})`
+        );
+      }
     }
   }
 

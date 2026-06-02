@@ -39,7 +39,7 @@ export default function Dashboard() {
             borderWidth="1"
             borderRadius="2"
           >
-            <Text color="neutral-textDisabled">Dashboard content placeholder</Text>
+            <Text color="neutral-textDisabled">{t('dashboard.contentPlaceholder')}</Text>
           </Box>
         </Card.Body>
       </Card>

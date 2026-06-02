@@ -5,6 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { checkoutLimiter } = require('../middleware/rateLimiter');
 const { StripeService, stripe } = require('../config/stripe');
 const adminPlanService = require('../admin/services/adminPlanService');
+const { normalizeTrialMode, normalizeTrialDays } = require('../lib/trial');
 
 const router = express.Router();
 
@@ -28,8 +29,8 @@ async function getTrialConfig() {
     const map = {};
     for (const c of configs) map[c.key] = c.value;
     return {
-      trialMode: map['trial_mode'] || 'none',
-      trialDays: parseInt(map['trial_days']) || 7,
+      trialMode: normalizeTrialMode(map['trial_mode']),
+      trialDays: normalizeTrialDays(map['trial_days']),
       trialCoupon: map['trial_coupon'] || '',
     };
   } catch {

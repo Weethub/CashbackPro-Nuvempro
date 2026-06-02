@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Text, Sidebar, Button, Title } from '@nimbus-ds/components';
 import TermsPage from '../pages/TermsPage.jsx';
+import BrandSymbol from './BrandSymbol.jsx';
 import { useNexo } from '../providers/NexoProvider.jsx';
 
 /* eslint-disable no-undef */
@@ -28,6 +29,7 @@ export default function AppFooter() {
         borderTopWidth="1"
         backgroundColor="neutral-background"
       >
+        <BrandSymbol height={16} />
         <Text fontSize="caption" color="neutral-textLow">
           <a
             href="https://nuvempro.com.br"

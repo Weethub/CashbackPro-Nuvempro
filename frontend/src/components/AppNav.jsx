@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Box, Button, Text, Title, Sidebar } from '@nimbus-ds/components';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
+import BrandSymbol from './BrandSymbol.jsx';
 import api from '../services/api.js';
 
 function getYouTubeId(url) {
@@ -124,6 +125,7 @@ export default function AppNav() {
       >
         {/* Left nav */}
         <Box display="flex" gap="2" alignItems="center">
+          <BrandSymbol height={26} />
           <Button
             appearance={isActive('/') ? 'primary' : 'neutral'}
             onClick={() => navigate('/')}

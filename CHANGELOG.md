@@ -6,6 +6,16 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.5] - 2026-06-02
+
+### Adicionado
+
+- **Símbolo da marca Nuvempro** — novo componente `frontend/src/components/BrandSymbol.jsx` (SVG inline, cor `#141414`, decorativo via `aria-hidden`):
+  - **Topo (`AppNav`)**: exibido no início da navegação, antes do botão Dashboard.
+  - **Rodapé (`AppFooter`)**: exibido antes do texto "Nuvempro".
+
+---
+
 ## [1.7.4] - 2026-06-02
 
 ### Corrigido

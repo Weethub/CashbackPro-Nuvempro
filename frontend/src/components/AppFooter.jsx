@@ -39,7 +39,15 @@ export default function AppFooter() {
           </a>
           {' '}© {year} · {t('footer.rights')} ·{' '}
           <span
+            role="button"
+            tabIndex={0}
             onClick={() => setTermsOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setTermsOpen(true);
+              }
+            }}
             style={{ cursor: 'pointer', textDecoration: 'underline' }}
           >
             {t('footer.terms')}

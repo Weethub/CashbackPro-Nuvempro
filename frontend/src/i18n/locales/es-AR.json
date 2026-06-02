@@ -193,6 +193,7 @@
     "whatsapp": "Hablar por WhatsApp",
     "whatsappNumber": "",
     "videoTitle": "Tutorial en video",
+    "viewVideo": "Ver video",
     "faq": [
       {
         "question": "\u00bfC\u00f3mo cambio mi plan?",
@@ -214,7 +215,8 @@
   },
   "dashboard": {
     "title": "Panel",
-    "welcome": "\u00a1Bienvenido a tu panel!"
+    "welcome": "\u00a1Bienvenido a tu panel!",
+    "contentPlaceholder": "Agreg\u00e1 aqu\u00ed el contenido de tu app."
   },
   "settings": {
     "title": "Configuraci\u00f3n",
@@ -238,6 +240,7 @@
     "loading": "Cargando...",
     "error": "Error",
     "success": "\u00a1\u00c9xito!",
-    "noData": "No se encontraron datos."
+    "noData": "No se encontraron datos.",
+    "close": "Cerrar"
   }
 }

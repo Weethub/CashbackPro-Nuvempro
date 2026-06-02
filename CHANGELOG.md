@@ -6,6 +6,29 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.4] - 2026-06-02
+
+### Corrigido
+
+- **Webhook Stripe — comissão duplicada**: `invoice.paid` agora verifica se já existe `AdminCommission` para o `invoiceId` antes de criar. Sem o guard, reentregas do Stripe geravam comissões duplicadas (não há constraint única em `invoiceId`).
+- **Webhook Stripe — perda silenciosa de eventos**: erro em handler agora retorna `500` (em vez de `200`), fazendo o Stripe reprocessar. Seguro porque os handlers são idempotentes (upserts por chave única + guard de comissão).
+- **`trial_mode` sem validação**: novo helper `backend/src/lib/trial.js` (`normalizeTrialMode`, `normalizeTrialDays`) normaliza valores do `AdminConfig` — qualquer valor fora de `none|free|paid` vira `none`; `trial_days` é limitado a 1–365. Usado em `routes/billing.js`.
+- **`PROMPT-UPDATE.md`**: referência de arquivo corrigida (`TermsAdminPage.jsx` → `TermsPage.jsx`) no Grupo 1 — seguir o prompt ao pé da letra falhava o `cp`.
+
+### Frontend (alinhamento às regras do template)
+
+- **`AppNav.jsx`**: vídeo principal do suporte trocou `aspectRatio` CSS por `paddingBottom: 56.25%` (padrão correto, igual ao `VideoModal`); strings hardcoded (`"Ver vídeo"`, `aria-label="Fechar"`) movidas para i18n; accordion do FAQ agora é acessível por teclado (`role`/`tabIndex`/`aria-expanded`/Enter+Espaço, chevron `aria-hidden`).
+- **`AppFooter.jsx`**: link de Termos (`<span>`) agora navegável por teclado (`role="button"`, `tabIndex`, `onKeyDown`).
+- **`Dashboard.jsx`**: placeholder hardcoded movido para `dashboard.contentPlaceholder` (i18n).
+- **i18n**: novas chaves `support.viewVideo`, `common.close`, `dashboard.contentPlaceholder` em pt-BR, es-AR e es-MX.
+- **Código morto removido**: `frontend/src/hooks/useApi.js` (não era importado em lugar algum).
+
+### Testes
+
+- `utils.test.js`: novos testes unitários para `normalizeTrialMode`/`normalizeTrialDays` e para a lógica de idempotência/elegibilidade de comissão.
+
+---
+
 ## [1.7.3] - 2026-04-01
 
 ### Adicionado

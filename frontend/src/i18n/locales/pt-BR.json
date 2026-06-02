@@ -197,6 +197,7 @@
     "whatsapp": "Falar no WhatsApp",
     "whatsappNumber": "",
     "videoTitle": "Tutorial em v\u00eddeo",
+    "viewVideo": "Ver v\u00eddeo",
     "faq": [
       {
         "question": "Como fa\u00e7o para alterar meu plano?",
@@ -218,7 +219,8 @@
   },
   "dashboard": {
     "title": "Painel",
-    "welcome": "Bem-vindo ao seu painel!"
+    "welcome": "Bem-vindo ao seu painel!",
+    "contentPlaceholder": "Adicione aqui o conteúdo do seu app."
   },
   "settings": {
     "title": "Configura\u00e7\u00f5es",
@@ -242,6 +244,7 @@
     "loading": "Carregando...",
     "error": "Erro",
     "success": "Sucesso!",
-    "noData": "Nenhum dado encontrado."
+    "noData": "Nenhum dado encontrado.",
+    "close": "Fechar"
   }
 }

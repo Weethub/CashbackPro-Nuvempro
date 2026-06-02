@@ -20,6 +20,7 @@ function getYouTubeId(url) {
 }
 
 function VideoModal({ url, onClose }) {
+  const { t } = useTranslation();
   const youtubeId = getYouTubeId(url);
 
   // Fecha com Escape
@@ -50,7 +51,7 @@ function VideoModal({ url, onClose }) {
             background: 'none', border: 'none', color: '#fff',
             fontSize: 28, lineHeight: 1, cursor: 'pointer',
           }}
-          aria-label="Fechar"
+          aria-label={t('common.close')}
         >
           ×
         </button>
@@ -177,13 +178,13 @@ export default function AppNav() {
           <Box display="flex" flexDirection="column" gap="2">
             <Title as="h4">{t('support.videoTitle')}</Title>
             {youtubeId ? (
-              <div style={{ width: '100%', borderRadius: 8, overflow: 'hidden', aspectRatio: '16/9', background: '#000' }}>
+              <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%', height: 0, borderRadius: 8, overflow: 'hidden', background: '#000' }}>
                 <iframe
                   src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
-                  title="Tutorial"
+                  title={t('support.videoTitle')}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', display: 'block' }}
                 />
               </div>
             ) : mainVideoUrl ? (
@@ -234,12 +235,21 @@ export default function AppNav() {
                         alignItems="center"
                         padding="3"
                         style={{ cursor: 'pointer' }}
+                        role="button"
+                        tabIndex={0}
+                        aria-expanded={isOpen}
                         onClick={() => setExpandedId(isOpen ? null : item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setExpandedId(isOpen ? null : item.id);
+                          }
+                        }}
                       >
                         <Text fontWeight="bold" fontSize="caption" color="primary-interactive">
                           {item.question}
                         </Text>
-                        <Text color="neutral-textLow" fontSize="caption">
+                        <Text color="neutral-textLow" fontSize="caption" aria-hidden="true">
                           {isOpen ? '∧' : '∨'}
                         </Text>
                       </Box>
@@ -254,7 +264,7 @@ export default function AppNav() {
                                 appearance="neutral"
                                 onClick={() => setVideoModal(item.videoUrl)}
                               >
-                                Ver vídeo
+                                {t('support.viewVideo')}
                               </Button>
                             </Box>
                           )}

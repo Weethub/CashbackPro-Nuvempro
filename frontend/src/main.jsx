@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import '@nimbus-ds/styles/dist/index.css';
+import './index.css';
 import './i18n/index.js';
 import App from './App.jsx';
 import NexoProvider from './providers/NexoProvider.jsx';

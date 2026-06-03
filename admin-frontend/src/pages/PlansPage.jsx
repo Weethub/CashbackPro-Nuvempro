@@ -46,6 +46,8 @@ export default function PlansPage() {
     fetchStripeAccount();
   }, []);
 
+  const [switchingMode, setSwitchingMode] = useState(false);
+
   const fetchStripeAccount = async () => {
     try {
       const res = await adminApi.get('/plans/stripe-account');
@@ -54,6 +56,20 @@ export default function PlansPage() {
       setStripeAccount({ configured: false });
     } finally {
       setStripeAccountLoading(false);
+    }
+  };
+
+  const handleToggleMode = async (mode) => {
+    if (switchingMode || !mode) return;
+    setSwitchingMode(true);
+    try {
+      await adminApi.post('/plans/stripe-mode', { mode });
+      await fetchStripeAccount();
+      await fetchPlans(); // re-verifica os price IDs no novo modo
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao trocar de modo.');
+    } finally {
+      setSwitchingMode(false);
     }
   };
 
@@ -293,7 +309,12 @@ export default function PlansPage() {
       </div>
 
       {/* Stripe Account Info */}
-      <StripeAccountBanner account={stripeAccount} loading={stripeAccountLoading} />
+      <StripeAccountBanner
+        account={stripeAccount}
+        loading={stripeAccountLoading}
+        switching={switchingMode}
+        onToggleMode={handleToggleMode}
+      />
 
       {/* Modal de confirmação de exclusão */}
       {confirmDeletePlan && (
@@ -320,7 +341,7 @@ export default function PlansPage() {
   );
 }
 
-function StripeAccountBanner({ account, loading }) {
+function StripeAccountBanner({ account, loading, switching, onToggleMode }) {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center gap-3 text-gray-400 text-sm">
@@ -335,6 +356,7 @@ function StripeAccountBanner({ account, loading }) {
   const isLive = account.mode === 'live';
   const isTest = account.mode === 'test';
   const configured = account.configured;
+  const keys = account.keys || {};
 
   return (
     <div className={`rounded-xl border p-4 flex items-center justify-between gap-4 flex-wrap
@@ -385,19 +407,60 @@ function StripeAccountBanner({ account, loading }) {
         )}
       </div>
 
-      {/* Link para o dashboard Stripe */}
-      {configured && (
-        <a
-          href={isLive ? 'https://dashboard.stripe.com' : 'https://dashboard.stripe.com/test'}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`flex items-center gap-1.5 text-xs font-medium transition-colors
-            ${isLive ? 'text-emerald-700 hover:text-emerald-900' : 'text-amber-700 hover:text-amber-900'}`}
-        >
-          <ExternalLink size={13} />
-          Abrir Dashboard Stripe
-        </a>
-      )}
+      {/* Lado direito: toggle de modo + status das chaves + dashboard */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Status das duas chaves (configuradas no env) */}
+        <div className="flex items-center gap-1.5 text-[11px] font-medium">
+          <span className={`px-1.5 py-0.5 rounded ${keys.test ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'}`}>
+            Test {keys.test ? '✓' : '—'}
+          </span>
+          <span className={`px-1.5 py-0.5 rounded ${keys.live ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-400'}`}>
+            Live {keys.live ? '✓' : '—'}
+          </span>
+        </div>
+
+        {/* Toggle test / produção */}
+        {onToggleMode && (
+          <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden bg-white">
+            <button
+              type="button"
+              disabled={switching || isTest || !keys.test}
+              onClick={() => onToggleMode('test')}
+              title={!keys.test ? 'Chave de teste não configurada no ambiente' : 'Ativar modo teste'}
+              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed
+                ${isTest ? 'bg-amber-500 text-white' : `text-gray-600 hover:bg-gray-50 ${!keys.test ? 'opacity-40' : ''}`}`}
+            >
+              <FlaskConical size={12} /> Teste
+            </button>
+            <button
+              type="button"
+              disabled={switching || isLive || !keys.live}
+              onClick={() => onToggleMode('live')}
+              title={!keys.live ? 'Chave de produção não configurada no ambiente' : 'Ativar modo produção'}
+              className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed
+                ${isLive ? 'bg-emerald-600 text-white' : `text-gray-600 hover:bg-gray-50 ${!keys.live ? 'opacity-40' : ''}`}`}
+            >
+              <Zap size={12} /> Produção
+            </button>
+          </div>
+        )}
+
+        {switching && <Loader2 size={14} className="animate-spin text-gray-400" />}
+
+        {/* Link para o dashboard Stripe */}
+        {configured && (
+          <a
+            href={isLive ? 'https://dashboard.stripe.com' : 'https://dashboard.stripe.com/test'}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center gap-1.5 text-xs font-medium transition-colors
+              ${isLive ? 'text-emerald-700 hover:text-emerald-900' : 'text-amber-700 hover:text-amber-900'}`}
+          >
+            <ExternalLink size={13} />
+            Abrir Dashboard Stripe
+          </a>
+        )}
+      </div>
     </div>
   );
 }

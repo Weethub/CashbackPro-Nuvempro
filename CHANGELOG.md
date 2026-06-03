@@ -6,6 +6,23 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.8] - 2026-06-03
+
+### Adicionado
+
+- **Toggle de modo Stripe (Test / Produção) no admin** — botão na página de Planos alterna o modo ativo sem restart. As duas chaves ficam no ambiente; o banco guarda só o flag `stripe_mode` (`AdminConfig`).
+  - `config/stripe.js`: cliente resolvido por Proxy sobre o modo ativo (reavaliado em background ~15s); helpers `getActiveMode`, `getWebhookSecret`, `getStripeKeyStatus`, `refreshStripeMode`. Sem mudança nos call-sites.
+  - `POST /admin-api/plans/stripe-mode` (proprietário) grava o flag e reavalia o modo.
+  - `GET /admin-api/plans/stripe-account` agora retorna o modo ativo + status das duas chaves (`keys.test`/`keys.live`).
+  - Webhook verifica a assinatura com o secret do modo ativo e faz fallback para o outro (suporta test e live no mesmo endpoint).
+  - Banner de Planos: status das chaves Test/Live + controle Teste/Produção.
+- **Env**: `STRIPE_SECRET_KEY_TEST`, `STRIPE_SECRET_KEY_LIVE`, `STRIPE_WEBHOOK_SECRET_TEST`, `STRIPE_WEBHOOK_SECRET_LIVE` (legado `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` segue como fallback).
+- **Seed**: `stripe_mode` (default `test`).
+
+> Nota: price IDs e customer/subscription IDs são por modo no Stripe. Ao trocar de modo, re-sincronize os planos ("Sincronizar Stripe"); assinaturas/clientes de um modo não existem no outro.
+
+---
+
 ## [1.7.7] - 2026-06-02
 
 ### Adicionado

@@ -4,7 +4,7 @@ const { AppError } = require('../../lib/errors');
 const { requireRole } = require('../middleware/requireRole');
 const adminPlanService = require('../services/adminPlanService');
 const adminLogService = require('../services/adminLogService');
-const { stripe } = require('../../config/stripe');
+const { stripe, getActiveMode, getStripeKeyStatus, refreshStripeMode } = require('../../config/stripe');
 
 const router = express.Router();
 
@@ -43,29 +43,62 @@ function normalizePlan(plan) {
  */
 router.get('/stripe-account', async (req, res, next) => {
   try {
-    const key = process.env.STRIPE_SECRET_KEY || '';
+    await refreshStripeMode();
+    const mode = getActiveMode();          // 'test' | 'live' — modo ativo (flag no AdminConfig)
+    const keys = getStripeKeyStatus();     // { test: bool, live: bool } — chaves configuradas no env
+    const activeConfigured = mode === 'live' ? keys.live : keys.test;
 
-    let mode = 'unknown';
-    if (key.startsWith('sk_live_') || key.startsWith('rk_live_')) mode = 'live';
-    else if (key.startsWith('sk_test_') || key.startsWith('rk_test_')) mode = 'test';
-
-    const isConfigured = key.length > 20 && !key.includes('CHANGE_ME') && !key.includes('demo');
-
-    if (!isConfigured) {
-      return res.json({ configured: false, mode, accountName: null, email: null, country: null, accountId: null });
+    if (!activeConfigured) {
+      return res.json({ configured: false, mode, keys, accountName: null, email: null, country: null, accountId: null });
     }
 
     const account = await stripe.accounts.retrieve();
     res.json({
       configured: true,
       mode,
+      keys,
       accountName: account.settings?.dashboard?.display_name || account.business_profile?.name || null,
       email: account.email || null,
       country: account.country || null,
       accountId: account.id || null,
     });
   } catch (err) {
-    res.json({ configured: false, mode: 'unknown', accountName: null, email: null, country: null, accountId: null, error: err.message });
+    res.json({ configured: false, mode: getActiveMode(), keys: getStripeKeyStatus(), accountName: null, email: null, country: null, accountId: null, error: err.message });
+  }
+});
+
+/**
+ * POST /admin-api/plans/stripe-mode — alterna entre modo test e live.
+ * Guarda apenas o flag `stripe_mode` no AdminConfig (as chaves ficam no env).
+ * Após trocar, os planos devem ser re-sincronizados (price IDs são por modo).
+ */
+router.post('/stripe-mode', requireRole('proprietario'), async (req, res, next) => {
+  try {
+    const { mode } = req.body;
+    if (mode !== 'test' && mode !== 'live') {
+      throw new AppError('Modo invalido. Use "test" ou "live".', 400, 'INVALID_STRIPE_MODE');
+    }
+
+    await prisma.adminConfig.upsert({
+      where: { key: 'stripe_mode' },
+      update: { value: mode },
+      create: { key: 'stripe_mode', value: mode, group: 'stripe', label: 'Modo Stripe (test/live)' },
+    });
+
+    await refreshStripeMode();
+
+    await adminLogService.log({
+      adminId: req.adminId,
+      action: 'set_stripe_mode',
+      entity: 'config',
+      entityId: 'stripe_mode',
+      details: { mode },
+      ipAddress: req.ip,
+    });
+
+    res.json({ mode });
+  } catch (err) {
+    next(err);
   }
 });
 

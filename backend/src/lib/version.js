@@ -10,7 +10,7 @@
  *   - MINOR: novas funcionalidades (novos módulos, rotas, features)
  *   - PATCH: bug fixes e melhorias menores
  */
-const TEMPLATE_VERSION = '1.7.7';
+const TEMPLATE_VERSION = '1.7.8';
 
 /**
  * Repositório oficial do template no GitHub.

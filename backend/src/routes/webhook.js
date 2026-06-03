@@ -1,8 +1,29 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
-const { stripe } = require('../config/stripe');
+const { stripe, getActiveMode, getWebhookSecret } = require('../config/stripe');
 
 const router = express.Router();
+
+/**
+ * Verifica a assinatura do webhook tentando o secret do modo ativo primeiro e,
+ * em seguida, o do outro modo. Necessário porque test e live assinam com secrets
+ * diferentes e ambos os endpoints podem apontar para a mesma URL.
+ */
+function constructEventAnyMode(body, sig) {
+  const active = getActiveMode();
+  const order = active === 'live' ? ['live', 'test'] : ['test', 'live'];
+  let lastErr;
+  for (const mode of order) {
+    const secret = getWebhookSecret(mode);
+    if (!secret) continue;
+    try {
+      return stripe.webhooks.constructEvent(body, sig, secret);
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('Nenhum webhook secret configurado.');
+}
 
 /**
  * POST /webhook — Stripe webhook handler
@@ -16,11 +37,7 @@ router.post('/', async (req, res) => {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    event = constructEventAnyMode(req.body, sig);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
     return res.status(400).json({ error: 'Webhook signature verification failed.' });

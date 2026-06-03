@@ -179,6 +179,20 @@ async function main() {
     console.log(`Config upserted: ${cfg.key}`);
   }
 
+  // Stripe mode default — flag test/live (as chaves ficam no env, nunca no banco)
+  const stripeDefaults = [
+    { key: 'stripe_mode', value: 'test', group: 'stripe', label: 'Modo Stripe (test/live)' },
+  ];
+
+  for (const cfg of stripeDefaults) {
+    await prisma.adminConfig.upsert({
+      where: { key: cfg.key },
+      update: {}, // nunca sobrescreve — admin gerencia via toggle
+      create: cfg,
+    });
+    console.log(`Config upserted: ${cfg.key}`);
+  }
+
   console.log('Seed completed successfully.');
 }
 

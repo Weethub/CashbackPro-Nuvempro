@@ -2,7 +2,76 @@ const Stripe = require('stripe');
 const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// ─── Modo Stripe (test | live) ────────────────────────────────────────────────
+// As chaves vivem no ambiente (Doppler/.env); o banco guarda apenas o flag
+// `stripe_mode` (AdminConfig). O cliente ativo é resolvido dinamicamente e
+// reavaliado em segundo plano, então o toggle no admin reflete sem restart.
+// Mantemos a API `stripe.xxx` em todo o código via Proxy — zero mudança nos
+// call-sites. Fallback para STRIPE_SECRET_KEY (legado) quando a chave do modo
+// não estiver configurada.
+const STRIPE_MODES = ['test', 'live'];
+
+let activeMode = STRIPE_MODES.includes(process.env.STRIPE_MODE) ? process.env.STRIPE_MODE : 'test';
+
+function keyForMode(mode) {
+  if (mode === 'live') return process.env.STRIPE_SECRET_KEY_LIVE || process.env.STRIPE_SECRET_KEY || '';
+  return process.env.STRIPE_SECRET_KEY_TEST || process.env.STRIPE_SECRET_KEY || '';
+}
+
+function getWebhookSecret(mode = activeMode) {
+  if (mode === 'live') return process.env.STRIPE_WEBHOOK_SECRET_LIVE || process.env.STRIPE_WEBHOOK_SECRET || '';
+  return process.env.STRIPE_WEBHOOK_SECRET_TEST || process.env.STRIPE_WEBHOOK_SECRET || '';
+}
+
+// Status de cada modo (sem expor a chave) — usado pelo banner do admin.
+function getStripeKeyStatus() {
+  const legacy = String(process.env.STRIPE_SECRET_KEY || '');
+  const testKey = process.env.STRIPE_SECRET_KEY_TEST || (legacy.startsWith('sk_test_') || legacy.startsWith('rk_test_') ? legacy : '');
+  const liveKey = process.env.STRIPE_SECRET_KEY_LIVE || (legacy.startsWith('sk_live_') || legacy.startsWith('rk_live_') ? legacy : '');
+  const ok = (k, prefixes) => typeof k === 'string' && k.length > 20 && !k.includes('CHANGE_ME') && !k.includes('demo') && prefixes.some((p) => k.startsWith(p));
+  return {
+    test: ok(testKey, ['sk_test_', 'rk_test_']),
+    live: ok(liveKey, ['sk_live_', 'rk_live_']),
+  };
+}
+
+const _clients = {};
+function clientForMode(mode) {
+  if (!_clients[mode]) {
+    // Placeholder evita crash de load quando a chave do modo não está setada;
+    // chamadas reais nesse modo falham e são tratadas pelos try/catch existentes.
+    _clients[mode] = new Stripe(keyForMode(mode) || 'sk_test_placeholder');
+  }
+  return _clients[mode];
+}
+
+async function refreshStripeMode() {
+  try {
+    const cfg = await prisma.adminConfig.findUnique({ where: { key: 'stripe_mode' } });
+    if (cfg && STRIPE_MODES.includes(cfg.value)) activeMode = cfg.value;
+  } catch {
+    // mantém o modo atual se o banco estiver indisponível
+  }
+  return activeMode;
+}
+
+function getActiveMode() {
+  return activeMode;
+}
+
+// Reavalia o modo periodicamente (toggle reflete em ~15s entre instâncias).
+const _modeTimer = setInterval(() => { refreshStripeMode(); }, 15000);
+if (_modeTimer.unref) _modeTimer.unref();
+refreshStripeMode();
+
+// Proxy: resolve para o cliente Stripe do modo ativo no momento da chamada.
+const stripe = new Proxy({}, {
+  get(_t, prop) {
+    const client = clientForMode(activeMode);
+    const value = client[prop];
+    return typeof value === 'function' ? value.bind(client) : value;
+  },
+});
 
 const StripeService = {
   /**
@@ -255,4 +324,11 @@ const StripeService = {
   },
 };
 
-module.exports = { stripe, StripeService };
+module.exports = {
+  stripe,
+  StripeService,
+  getActiveMode,
+  getWebhookSecret,
+  getStripeKeyStatus,
+  refreshStripeMode,
+};

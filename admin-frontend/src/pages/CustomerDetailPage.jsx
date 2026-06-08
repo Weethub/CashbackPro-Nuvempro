@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import adminApi from '../services/adminApi';
-import { ArrowLeft, Store, CreditCard, Calendar, Mail, Globe, User, Clock, Loader2 } from 'lucide-react';
+import { ArrowLeft, Store, CreditCard, Calendar, Mail, Globe, User, Clock, Loader2, Trash2, AlertTriangle, X } from 'lucide-react';
+
+const CONFIRM_WORD = 'DELETAR';
 
 const statusColors = {
   active: 'bg-emerald-100 text-emerald-700',
@@ -45,6 +47,7 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState('');
+  const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
     fetchCustomer();
@@ -89,6 +92,17 @@ export default function CustomerDetailPage() {
     } catch (err) {
       alert(err.response?.data?.error || 'Erro ao impersonar.');
     } finally {
+      setActionLoading('');
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setActionLoading('delete');
+      await adminApi.delete(`/customers/${id}`);
+      navigate('/customers');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Erro ao remover a loja.');
       setActionLoading('');
     }
   };
@@ -187,6 +201,85 @@ export default function CustomerDetailPage() {
             {actionLoading === 'impersonate' && <Loader2 size={16} className="animate-spin" />}
             Acessar como Proprietario
           </button>
+        </div>
+      </div>
+
+      {/* Danger zone */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border border-red-200">
+        <h3 className="text-lg font-semibold text-red-700 mb-1 flex items-center gap-2">
+          <AlertTriangle size={18} /> Zona de perigo
+        </h3>
+        <p className="text-sm text-gray-500 mb-4">
+          Remove permanentemente a loja e todos os dados relacionados (assinatura, faturas, perfil e conteudos do app). Esta acao e irreversivel.
+        </p>
+        <button
+          onClick={() => setShowDelete(true)}
+          disabled={!!actionLoading}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center gap-2"
+        >
+          <Trash2 size={16} /> Remover loja (apagar dados)
+        </button>
+      </div>
+
+      {showDelete && (
+        <DeleteStoreModal
+          storeName={customer.name || customer.storeName || `Loja #${id}`}
+          loading={actionLoading === 'delete'}
+          onConfirm={handleDelete}
+          onClose={() => setShowDelete(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function DeleteStoreModal({ storeName, loading, onConfirm, onClose }) {
+  const [text, setText] = useState('');
+  const armed = text.trim() === CONFIRM_WORD;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-red-700 flex items-center gap-2">
+            <AlertTriangle size={20} /> Remover loja
+          </h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-700">
+            Voce esta prestes a apagar <span className="font-semibold">{storeName}</span> e{' '}
+            <span className="font-semibold">todos os dados relacionados</span> no banco. Esta acao{' '}
+            <span className="font-semibold text-red-700">nao pode ser desfeita</span>.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Digite <span className="font-mono font-bold">{CONFIRM_WORD}</span> para confirmar
+            </label>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              autoFocus
+              placeholder={CONFIRM_WORD}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:border-red-400 focus:ring-1 focus:ring-red-400 outline-none"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={!armed || loading}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {loading && <Loader2 size={16} className="animate-spin" />}
+              <Trash2 size={16} /> Apagar dados do tenant
+            </button>
+          </div>
         </div>
       </div>
     </div>

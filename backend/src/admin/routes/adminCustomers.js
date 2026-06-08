@@ -5,6 +5,7 @@ const { AppError } = require('../../lib/errors');
 const { parsePagination, paginatedResponse } = require('../../lib/paginate');
 const { requireRole } = require('../middleware/requireRole');
 const adminLogService = require('../services/adminLogService');
+const { StripeService } = require('../../config/stripe');
 
 const router = express.Router();
 
@@ -345,6 +346,59 @@ router.post('/:id/extend-trial', requireRole('gerente'), async (req, res, next) 
     });
 
     res.json({ trialEndsAt: updated.trialEndsAt });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /admin-api/customers/:id — Remove a loja (tenant) e TODOS os dados
+ * relacionados. Destrutivo e irreversível. Apenas proprietário.
+ *
+ * Estratégia: cancela assinatura ativa no Stripe (best-effort) e, em transação,
+ * apaga as tabelas-base que não têm cascade (subscription, storeProfile, invoice,
+ * termsAcceptance, adminCommission) e por fim a Store — cujo delete cascateia os
+ * models específicos do app que tenham onDelete: Cascade no schema.
+ */
+router.delete('/:id', requireRole('proprietario'), async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) throw new AppError('storeId invalido.', 400, 'INVALID_STORE_ID');
+
+    const store = await prisma.store.findUnique({ where: { id } });
+    if (!store) throw new AppError('Loja nao encontrada.', 404, 'STORE_NOT_FOUND');
+
+    // Auditoria ANTES de apagar (o storeId deixa de existir depois)
+    await adminLogService.log({
+      adminId: req.admin.id,
+      action: 'delete_store',
+      entity: 'store',
+      entityId: id,
+      details: { name: store.name, nuvemshopId: store.nuvemshopId, plan: store.plan },
+      ipAddress: req.ip,
+      severity: 'warning',
+    });
+
+    // Cancela assinatura ativa no Stripe (best-effort — não bloqueia o delete local)
+    if (store.stripeCustomerId) {
+      try {
+        await StripeService.cancelAllActiveSubscriptions(store.stripeCustomerId);
+      } catch (e) {
+        console.warn('[delete_store] falha ao cancelar assinatura no Stripe:', e.message);
+      }
+    }
+
+    // Apaga dados base (FKs sem cascade) e a loja (cascateia models do app com onDelete: Cascade)
+    await prisma.$transaction([
+      prisma.subscription.deleteMany({ where: { storeId: id } }),
+      prisma.storeProfile.deleteMany({ where: { storeId: id } }),
+      prisma.invoice.deleteMany({ where: { storeId: id } }),
+      prisma.termsAcceptance.deleteMany({ where: { storeId: id } }),
+      prisma.adminCommission.deleteMany({ where: { storeId: id } }),
+      prisma.store.delete({ where: { id } }),
+    ]);
+
+    res.json({ deleted: true, storeId: id });
   } catch (err) {
     next(err);
   }

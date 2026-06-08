@@ -6,6 +6,19 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.7.9] - 2026-06-03
+
+### Adicionado
+
+- **Remover loja (tenant) no admin** — "Zona de perigo" no detalhe do cliente com exclusão permanente dos dados do tenant.
+  - `DELETE /admin-api/customers/:id` (somente **proprietário**): cancela a assinatura ativa no Stripe (best-effort) e, em transação, apaga as tabelas-base sem cascade (`subscription`, `storeProfile`, `invoice`, `termsAcceptance`, `adminCommission`) e a `Store` — cujo delete cascateia os models do app com `onDelete: Cascade`.
+  - Auditoria registrada **antes** da exclusão (`delete_store`, severity warning).
+  - UI: modal com **type-to-confirm** — é preciso digitar `DELETAR` para habilitar o botão "Apagar dados do tenant".
+
+> Nota: models específicos do app só são apagados se tiverem `onDelete: Cascade` no schema do app. Tabelas de log/evento com `storeId` sem FK podem deixar registros órfãos (não-PII).
+
+---
+
 ## [1.7.8] - 2026-06-03
 
 ### Adicionado

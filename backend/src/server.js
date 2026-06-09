@@ -63,12 +63,14 @@ const billingRouter = require('./routes/billing');
 const termsRouter = require('./routes/terms');
 const profileRouter = require('./routes/profile');
 const supportRouter = require('./routes/support');
+const nuvemshopWebhooksRouter = require('./routes/nuvemshopWebhooks');
 
 app.use('/auth', authRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/terms', termsRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/support', supportRouter);
+app.use('/webhooks', nuvemshopWebhooksRouter);
 
 // ═══════════════════════════════════════════
 // ADMIN ROUTES

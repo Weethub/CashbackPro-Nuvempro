@@ -10,6 +10,7 @@ const TABS = [
   { key: 'trial', label: 'Trial' },
   { key: 'expired', label: 'Expirados' },
   { key: 'no_plan', label: 'Sem Plano' },
+  { key: 'uninstalled', label: 'Desinstalados' },
 ];
 
 const statusColors = {
@@ -19,6 +20,7 @@ const statusColors = {
   canceled: 'bg-gray-100 text-gray-600',
   past_due: 'bg-red-100 text-red-700',
   no_plan: 'bg-slate-100 text-slate-600',
+  uninstalled: 'bg-red-100 text-red-700',
 };
 
 const statusLabel = {
@@ -28,6 +30,7 @@ const statusLabel = {
   canceled: 'Cancelado',
   past_due: 'Inadimplente',
   no_plan: 'Sem Plano',
+  uninstalled: 'Desinstalado',
 };
 
 const planColors = {

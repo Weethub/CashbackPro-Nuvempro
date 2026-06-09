@@ -50,6 +50,7 @@ router.get('/callback', authLimiter, async (req, res, next) => {
         name: storeInfo.name?.pt || storeInfo.name?.es || storeInfo.name?.en || undefined,
         domain: storeInfo.original_domain || storeInfo.domain || undefined,
         email: storeInfo.email || undefined,
+        uninstalledAt: null, // reinstalação limpa o marcador de desinstalação
       },
       create: {
         nuvemshopId: userId,

@@ -18,6 +18,7 @@ model Store {
   accessToken       String?
   plan              String    @default("starter")
   trialEndsAt       DateTime?
+  uninstalledAt     DateTime? // setado pelo webhook app/uninstalled (null = app instalado)
   stripeCustomerId  String?
   partnerId         String?
   partnerName       String?

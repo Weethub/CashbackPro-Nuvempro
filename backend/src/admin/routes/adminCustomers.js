@@ -175,6 +175,8 @@ router.get('/', async (req, res, next) => {
       where.subscription = { is: null };
     } else if (filter === 'no_plan') {
       where.subscription = { is: null };
+    } else if (filter === 'uninstalled') {
+      where.uninstalledAt = { not: null };
     }
 
     // Search
@@ -216,6 +218,9 @@ router.get('/', async (req, res, next) => {
         status = 'expired';
       }
 
+      // App desinstalado tem prioridade no badge da lista
+      if (s.uninstalledAt) status = 'uninstalled';
+
       return {
         id: s.id,
         nuvemshopId: s.nuvemshopId,
@@ -225,6 +230,7 @@ router.get('/', async (req, res, next) => {
         planKey: s.subscription?.planKey || s.plan || null,
         status,
         trialEndsAt: s.trialEndsAt,
+        uninstalledAt: s.uninstalledAt,
         createdAt: s.createdAt,
         subscription: s.subscription
           ? {

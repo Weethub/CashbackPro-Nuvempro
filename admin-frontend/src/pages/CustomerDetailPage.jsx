@@ -13,6 +13,7 @@ const statusColors = {
   canceled: 'bg-gray-100 text-gray-600',
   past_due: 'bg-red-100 text-red-700',
   no_plan: 'bg-slate-100 text-slate-600',
+  uninstalled: 'bg-red-100 text-red-700',
 };
 
 const statusLabel = {
@@ -23,9 +24,11 @@ const statusLabel = {
   canceled: 'Cancelado',
   past_due: 'Inadimplente',
   no_plan: 'Sem Plano',
+  uninstalled: 'Desinstalado',
 };
 
 function computeStatus(customer) {
+  if (customer?.uninstalledAt) return 'uninstalled';
   const sub = customer?.subscription;
   if (sub) {
     if (sub.status === 'trialing') return 'trial';
@@ -154,6 +157,27 @@ export default function CustomerDetailPage() {
           );
         })()}
       </div>
+
+      {/* Alerta de app desinstalado */}
+      {customer.uninstalledAt && (() => {
+        const days = Math.floor((Date.now() - new Date(customer.uninstalledAt).getTime()) / 86400000);
+        const over30 = days >= 30;
+        return (
+          <div className={`rounded-xl border p-4 flex items-start gap-3 ${over30 ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+            <AlertTriangle size={20} className={`mt-0.5 ${over30 ? 'text-red-600' : 'text-amber-600'}`} />
+            <div className="text-sm">
+              <p className={`font-semibold ${over30 ? 'text-red-800' : 'text-amber-800'}`}>
+                App desinstalado em {new Date(customer.uninstalledAt).toLocaleDateString('pt-BR')} (ha {days} {days === 1 ? 'dia' : 'dias'})
+              </p>
+              <p className={over30 ? 'text-red-700' : 'text-amber-700'}>
+                {over30
+                  ? 'Desinstalado ha mais de 30 dias. Considere remover a loja e limpar os dados na Zona de perigo abaixo.'
+                  : 'A loja desinstalou o app. Se reinstalar, este aviso some automaticamente.'}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Store Info */}
       <div className="bg-white rounded-xl shadow-sm p-6">

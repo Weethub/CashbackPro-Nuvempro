@@ -6,6 +6,20 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.8.0] - 2026-06-03
+
+### Adicionado
+
+- **Controle de app desinstalado** — alerta no admin quando a loja desinstala o app.
+  - **Schema**: novo campo `Store.uninstalledAt DateTime?` (migration `0002_store_uninstalled_at`; também adicionado `prisma/migrations/migration_lock.toml`).
+  - **Webhooks Nuvemshop** (novo `routes/nuvemshopWebhooks.js`, montado em `/webhooks`): `app/uninstalled` marca `uninstalledAt`; `store/redact` (LGPD) também marca como rede de segurança (~48h); stubs `customers/redact` e `customers/data_request`.
+  - **Reinstalação limpa** `uninstalledAt` no callback OAuth (`auth.js`).
+  - **Admin**: lista de clientes com badge/filtro "Desinstalado" (`uninstalledAt` no payload); detalhe com alerta "App desinstalado em {data} (há N dias)" e destaque para **> 30 dias** sugerindo remover na Zona de perigo.
+
+> Requer aplicar a migração no deploy (`prisma migrate deploy` ou `db push`). Para receber `app/uninstalled`, ativar o evento no Partner Portal apontando para `https://<backend>/webhooks/app/uninstalled`. HMAC do webhook fica como hardening futuro.
+
+---
+
 ## [1.7.9] - 2026-06-03
 
 ### Adicionado

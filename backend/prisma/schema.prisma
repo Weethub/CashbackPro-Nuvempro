@@ -177,6 +177,7 @@ model AdminCommission {
   status           String   @default("pending")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  @@unique([invoiceId]) // 1 comissão por fatura — backstop contra reentrega concorrente
   @@map("admin_commissions")
 }
 

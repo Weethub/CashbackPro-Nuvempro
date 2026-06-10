@@ -166,10 +166,9 @@ async function handleInvoicePaid(invoice) {
     const commissionRate = plan ? plan.commissionRate : 0;
 
     if (commissionRate > 0) {
-      // Idempotência: o Stripe pode reentregar invoice.paid (e este handler
-      // agora retorna 500 em falha, o que provoca retry). Sem este guard, cada
-      // reentrega criaria uma comissão duplicada — AdminCommission não tem
-      // constraint única em invoiceId.
+      // Idempotência por invoiceId. O guard findFirst evita o caso comum, e a
+      // constraint @@unique([invoiceId]) + catch P2002 cobre a corrida concorrente
+      // (duas reentregas simultâneas passam pelo findFirst antes de qualquer create).
       const existing = await prisma.adminCommission.findFirst({
         where: { invoiceId: invoice.id },
       });
@@ -179,22 +178,30 @@ async function handleInvoicePaid(invoice) {
       } else {
         const commissionAmount = amountPaid * commissionRate;
 
-        await prisma.adminCommission.create({
-          data: {
-            partnerId: store.partnerId,
-            partnerName: store.partnerName || null,
-            storeId: store.id,
-            invoiceId: invoice.id,
-            amount: amountPaid,
-            commissionRate,
-            commissionAmount,
-            status: 'pending',
-          },
-        });
+        try {
+          await prisma.adminCommission.create({
+            data: {
+              partnerId: store.partnerId,
+              partnerName: store.partnerName || null,
+              storeId: store.id,
+              invoiceId: invoice.id,
+              amount: amountPaid,
+              commissionRate,
+              commissionAmount,
+              status: 'pending',
+            },
+          });
 
-        console.log(
-          `Commission created: ${commissionAmount.toFixed(2)} for partner ${store.partnerId} (store ${store.id})`
-        );
+          console.log(
+            `Commission created: ${commissionAmount.toFixed(2)} for partner ${store.partnerId} (store ${store.id})`
+          );
+        } catch (e) {
+          if (e.code === 'P2002') {
+            console.log(`Commission race for invoice ${invoice.id} — já criada por outra entrega, ignorando`);
+          } else {
+            throw e;
+          }
+        }
       }
     }
   }

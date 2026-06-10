@@ -385,15 +385,6 @@ router.delete('/:id', requireRole('proprietario'), async (req, res, next) => {
       severity: 'warning',
     });
 
-    // Cancela assinatura ativa no Stripe (best-effort — não bloqueia o delete local)
-    if (store.stripeCustomerId) {
-      try {
-        await StripeService.cancelAllActiveSubscriptions(store.stripeCustomerId);
-      } catch (e) {
-        console.warn('[delete_store] falha ao cancelar assinatura no Stripe:', e.message);
-      }
-    }
-
     // Apaga dados base (FKs sem cascade) e a loja (cascateia models do app com onDelete: Cascade)
     await prisma.$transaction([
       prisma.subscription.deleteMany({ where: { storeId: id } }),
@@ -403,6 +394,17 @@ router.delete('/:id', requireRole('proprietario'), async (req, res, next) => {
       prisma.adminCommission.deleteMany({ where: { storeId: id } }),
       prisma.store.delete({ where: { id } }),
     ]);
+
+    // Cancela a assinatura no Stripe DEPOIS do commit local (best-effort).
+    // Antes do commit, se a transação falhasse, a assinatura ficaria cancelada
+    // no Stripe com a loja ainda viva no banco (inconsistência).
+    if (store.stripeCustomerId) {
+      try {
+        await StripeService.cancelAllActiveSubscriptions(store.stripeCustomerId);
+      } catch (e) {
+        console.warn('[delete_store] falha ao cancelar assinatura no Stripe:', e.message);
+      }
+    }
 
     res.json({ deleted: true, storeId: id });
   } catch (err) {

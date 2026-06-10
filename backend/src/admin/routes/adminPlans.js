@@ -79,6 +79,14 @@ router.post('/stripe-mode', requireRole('proprietario'), async (req, res, next) 
       throw new AppError('Modo invalido. Use "test" ou "live".', 400, 'INVALID_STRIPE_MODE');
     }
 
+    // Não deixa ativar um modo cuja chave não está configurada no ambiente —
+    // senão o keyForMode cairia silenciosamente na chave legada (possivelmente do
+    // outro modo), rodando em modo diferente do que o admin acha.
+    const keys = getStripeKeyStatus();
+    if (!keys[mode]) {
+      throw new AppError(`Chave Stripe do modo "${mode}" nao configurada no ambiente.`, 400, 'STRIPE_KEY_NOT_CONFIGURED');
+    }
+
     await prisma.adminConfig.upsert({
       where: { key: 'stripe_mode' },
       update: { value: mode },

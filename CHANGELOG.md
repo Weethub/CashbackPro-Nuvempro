@@ -6,6 +6,26 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.8.1] - 2026-06-03
+
+### Segurança / Hardening
+
+- **`trust proxy` ativado** (`server.js`) — atrás de proxy (Railway/Vercel), o `req.ip` agora é o IP real do cliente. Corrige rate limiters por IP (que estavam efetivamente globais) e os IPs gravados nos audit logs.
+- **Webhook Stripe fora do rate limit global** — montado antes do `globalLimiter`, evitando que bursts legítimos do Stripe sejam throttled (eventos já são verificados por assinatura).
+- **HMAC nos webhooks Nuvemshop** (`nuvemshopWebhooks.js`) — valida `x-linkedstore-hmac-sha256` (HMAC-SHA256 do raw body com `NUVEMSHOP_CLIENT_SECRET`, tolerante a hex/base64, timing-safe). `app/uninstalled` rejeita HMAC inválido; `store/redact` mantém 200 (LGPD) mas não marca em HMAC inválido. `express.json` passou a capturar `req.rawBody`.
+- **Toggle de modo Stripe valida a chave** — `POST /admin-api/plans/stripe-mode` recusa ativar um modo cuja chave não está no ambiente (evita cair silenciosamente na chave legada do outro modo).
+
+### Corrigido
+
+- **Delete de tenant** (`adminCustomers.js`) — cancelamento da assinatura no Stripe movido para **depois** do commit da transação local (evita assinatura cancelada com loja ainda no banco se o delete falhar).
+- **Comissão duplicada** — `AdminCommission` ganhou `@@unique([invoiceId])` (migration `0003`) e o webhook trata `P2002`, fechando a corrida de reentregas concorrentes.
+
+### Docs
+
+- `CLAUDE.md` atualizado para v1.8.1.
+
+---
+
 ## [1.8.0] - 2026-06-03
 
 ### Adicionado

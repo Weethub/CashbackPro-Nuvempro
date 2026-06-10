@@ -12,6 +12,11 @@ const { adminAuth } = require('./admin/middleware/adminAuth');
 const app = express();
 const PORT = parseInt(process.env.PORT) || 3001;
 
+// ─── Trust proxy (Railway/Vercel/ALB ficam na frente).
+// Sem isto, req.ip = IP do proxy → os rate limiters por IP viram globais e os
+// audit logs gravam o IP do proxy. O valor 1 confia no primeiro hop.
+app.set('trust proxy', 1);
+
 // ─── Security headers
 app.use(helmet());
 
@@ -31,15 +36,17 @@ app.use(cors({
   credentials: true,
 }));
 
-// ─── Rate limiter (global)
-app.use(globalLimiter);
-
-// ─── Webhook route MUST use express.raw() BEFORE express.json()
+// ─── Webhook Stripe: raw body, ANTES do express.json e SEM o rate limit global
+// (eventos do Stripe são verificados por assinatura e não devem ser throttled).
 const webhookRouter = require('./routes/webhook');
 app.use('/webhook', express.raw({ type: 'application/json' }), webhookRouter);
 
-// ─── Body parsing (after webhook)
-app.use(express.json({ limit: '10mb' }));
+// ─── Rate limiter (global) — aplicado após o webhook Stripe
+app.use(globalLimiter);
+
+// ─── Body parsing (após o webhook). O `verify` captura o raw body, usado para
+// validar o HMAC dos webhooks da Nuvemshop (/webhooks/*).
+app.use(express.json({ limit: '10mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Health check

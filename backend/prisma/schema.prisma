@@ -200,6 +200,7 @@ model AdminCoupon {
 model AdminFaq {
   id          Int      @id @default(autoincrement())
   category    String   @default("geral")
+  locale      String   @default("pt") // idioma da FAQ: pt | es
   question    String
   answer      String
   videoUrl    String?

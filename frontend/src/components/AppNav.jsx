@@ -82,7 +82,7 @@ function VideoModal({ url, onClose }) {
 }
 
 export default function AppNav() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [supportOpen, setSupportOpen] = useState(false);
@@ -90,13 +90,13 @@ export default function AppNav() {
   const [supportData, setSupportData] = useState(null);
   const [videoModal, setVideoModal] = useState(null); // url string | null
 
+  // Busca o suporte ao abrir; refaz quando o idioma muda (FAQs são por idioma).
   useEffect(() => {
-    if (supportOpen && !supportData) {
-      api.get('/api/support')
-        .then((res) => setSupportData(res.data))
-        .catch(() => setSupportData({ faqs: [], mainVideoUrl: '', whatsapp: '' }));
-    }
-  }, [supportOpen]);
+    if (!supportOpen) return;
+    api.get('/api/support', { params: { lang: i18n.language } })
+      .then((res) => setSupportData(res.data))
+      .catch(() => setSupportData({ faqs: [], mainVideoUrl: '', whatsapp: '' }));
+  }, [supportOpen, i18n.language]);
 
   const isActive = (path) =>
     path === '/'

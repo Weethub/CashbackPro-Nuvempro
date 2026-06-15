@@ -7,6 +7,9 @@ const adminLogService = require('../services/adminLogService');
 
 const router = express.Router();
 
+// Normaliza o idioma da FAQ para o conjunto suportado (pt | es), default pt.
+const normLocale = (l) => (l === 'es' ? 'es' : 'pt');
+
 /**
  * GET /admin-api/faq — List FAQs with optional category filter
  * Query: ?category=geral&page=1&limit=20
@@ -14,10 +17,11 @@ const router = express.Router();
 router.get('/', async (req, res, next) => {
   try {
     const { page, limit, skip } = parsePagination(req.query);
-    const { category } = req.query;
+    const { category, locale } = req.query;
 
     const where = {};
     if (category) where.category = category;
+    if (locale) where.locale = normLocale(locale);
 
     const [faqs, total] = await Promise.all([
       prisma.adminFaq.findMany({
@@ -40,7 +44,7 @@ router.get('/', async (req, res, next) => {
  */
 router.post('/', requireRole('suporte'), async (req, res, next) => {
   try {
-    const { category, question, answer, videoUrl, isPublished, sortOrder } = req.body;
+    const { category, locale, question, answer, videoUrl, isPublished, sortOrder } = req.body;
 
     if (!question || !answer) {
       throw new AppError('question e answer sao obrigatorios.', 400, 'MISSING_FIELDS');
@@ -49,6 +53,7 @@ router.post('/', requireRole('suporte'), async (req, res, next) => {
     const faq = await prisma.adminFaq.create({
       data: {
         category: category || 'geral',
+        locale: normLocale(locale),
         question,
         answer,
         videoUrl: videoUrl || null,
@@ -78,7 +83,7 @@ router.post('/', requireRole('suporte'), async (req, res, next) => {
 router.put('/:id', requireRole('suporte'), async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const { category, question, answer, videoUrl, isPublished, sortOrder } = req.body;
+    const { category, locale, question, answer, videoUrl, isPublished, sortOrder } = req.body;
 
     const existing = await prisma.adminFaq.findUnique({ where: { id } });
     if (!existing) {
@@ -87,6 +92,7 @@ router.put('/:id', requireRole('suporte'), async (req, res, next) => {
 
     const data = {};
     if (category !== undefined) data.category = category;
+    if (locale !== undefined) data.locale = normLocale(locale);
     if (question !== undefined) data.question = question;
     if (answer !== undefined) data.answer = answer;
     if (videoUrl !== undefined) data.videoUrl = videoUrl;

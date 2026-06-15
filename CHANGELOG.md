@@ -6,6 +6,20 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.8.2] - 2026-06-03
+
+### Adicionado
+
+- **Idioma nas FAQs de Suporte** — cada pergunta/resposta agora tem idioma (`pt` | `es`), e o sidebar de Suporte do app exibe só as FAQs do idioma da loja.
+  - **Schema**: `AdminFaq.locale` (default `pt`; migration `0004`). Registros existentes assumem `pt`.
+  - **Admin (FaqPage)**: select de **Idioma** (Português/Espanhol) no formulário, badge de idioma em cada card e filtro por idioma na lista.
+  - **Backend**: `adminFaq` salva/filtra `locale`; `GET /api/support?lang=<locale>` filtra por idioma (mapeia `pt-BR`→`pt`, `es-AR`/`es-MX`→`es`) com **fallback para `pt`** quando não há FAQ no idioma pedido.
+  - **App (AppNav)**: envia o idioma atual ao buscar o suporte e refaz a busca quando o idioma muda.
+
+> Requer aplicar a migração no deploy (`migrate deploy`/`db push`).
+
+---
+
 ## [1.8.1] - 2026-06-03
 
 ### Segurança / Hardening

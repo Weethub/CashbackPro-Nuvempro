@@ -6,6 +6,19 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.8.3] - 2026-06-03
+
+### Corrigido
+
+- **Checagem de atualização do template com repositório privado** — o card "Template NuvemPro" mostrava "Versão mais recente: —" porque o hook batia na API pública do GitHub **sem autenticação** (404 em repo privado).
+  - Novo `GET /admin-api/template/version` (adminAuth): consulta o GitHub **server-side** com `GITHUB_TOKEN` (cache de 30 min), retornando `{ current, latest, outdated, releaseUrl }`. Token nunca vai ao navegador → funciona com repo privado.
+  - `useTemplateVersion` passou a consumir esse endpoint em vez de chamar o GitHub direto.
+  - `.env.example`: novo `GITHUB_TOKEN`.
+
+> **Operacional**: setar `GITHUB_TOKEN` (PAT com leitura do repo do template) no ambiente de cada app. Sem ele, a versão instalada continua aparecendo, mas a "mais recente" fica indisponível.
+
+---
+
 ## [1.8.2] - 2026-06-03
 
 ### Adicionado

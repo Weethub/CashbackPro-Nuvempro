@@ -1,50 +1,38 @@
 import { useState, useEffect } from 'react';
+import adminApi from '../services/adminApi';
 
 let _cache = null; // singleton — busca apenas uma vez por sessão
 
 /**
- * Busca a versão do template no /admin-api/health e compara com
- * a última versão disponível no GitHub Releases.
+ * Busca a versão do template via backend (/admin-api/template/version).
+ * A comparação com o GitHub Releases é feita no servidor (autenticada com
+ * GITHUB_TOKEN), então funciona mesmo com o repositório privado.
  *
- * Resultado é cacheado em memória para evitar múltiplos fetches.
+ * Retorna: { current, latest, repo, loading, outdated, releaseUrl }
  */
 export function useTemplateVersion() {
-  const [state, setState] = useState(_cache || { current: null, latest: null, repo: null, loading: true, outdated: false });
+  const [state, setState] = useState(
+    _cache || { current: null, latest: null, repo: null, loading: true, outdated: false, releaseUrl: null }
+  );
 
   useEffect(() => {
     if (_cache) return;
 
-    const adminApiUrl = import.meta.env.VITE_ADMIN_API_URL || '/admin-api';
-    const backendBase = adminApiUrl.replace(/\/admin-api\/?$/, '');
-
     async function load() {
       try {
-        const healthRes = await fetch(`${backendBase}/admin-api/health`);
-        const health = await healthRes.json();
-        const current = health.templateVersion || null;
-        const repo = health.templateRepo || null;
-
-        let latest = null;
-        if (repo) {
-          try {
-            const ghRes = await fetch(
-              `https://api.github.com/repos/${repo}/releases/latest`,
-              { headers: { Accept: 'application/vnd.github.v3+json' } }
-            );
-            if (ghRes.ok) {
-              const gh = await ghRes.json();
-              latest = gh.tag_name ? gh.tag_name.replace(/^v/, '') : null;
-            }
-          } catch {
-            // GitHub offline ou rate limit — ignora silenciosamente
-          }
-        }
-
-        const outdated = current && latest ? semverGt(latest, current) : false;
-        _cache = { current, latest, repo, loading: false, outdated };
+        const res = await adminApi.get('/template/version');
+        const d = res.data || {};
+        _cache = {
+          current: d.current || null,
+          latest: d.latest || null,
+          repo: d.repo || null,
+          outdated: !!d.outdated,
+          releaseUrl: d.releaseUrl || null,
+          loading: false,
+        };
         setState(_cache);
       } catch {
-        const result = { current: null, latest: null, repo: null, loading: false, outdated: false };
+        const result = { current: null, latest: null, repo: null, loading: false, outdated: false, releaseUrl: null };
         _cache = result;
         setState(result);
       }
@@ -54,10 +42,4 @@ export function useTemplateVersion() {
   }, []);
 
   return state;
-}
-
-function semverGt(a, b) {
-  const toNum = (v) =>
-    String(v).split('.').map(Number).reduce((acc, n, i) => acc + n * Math.pow(1000, 2 - i), 0);
-  return toNum(a) > toNum(b);
 }

@@ -94,6 +94,7 @@ const adminFaqRouter = require('./admin/routes/adminFaq');
 const adminLogsRouter = require('./admin/routes/adminLogs');
 const adminSecurityRouter = require('./admin/routes/adminSecurity');
 const adminConfigRouter = require('./admin/routes/adminConfig');
+const adminTemplateRouter = require('./admin/routes/adminTemplate');
 
 // Admin health (no auth)
 app.get('/admin-api/health', (req, res) => {
@@ -120,6 +121,7 @@ app.use('/admin-api/faq', adminAuth, adminFaqRouter);
 app.use('/admin-api/logs', adminAuth, adminLogsRouter);
 app.use('/admin-api/security', adminAuth, adminSecurityRouter);
 app.use('/admin-api/config', adminAuth, adminConfigRouter);
+app.use('/admin-api/template', adminAuth, adminTemplateRouter);
 
 // ═══════════════════════════════════════════
 // ERROR HANDLING

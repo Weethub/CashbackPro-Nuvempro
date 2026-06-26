@@ -659,4 +659,21 @@ cd backend && npm test
 
 ---
 
+## Comportamento Pós-Tarefa — Next Actions
+
+> **IMPORTANTE:** Ao concluir qualquer tarefa significativa (feature, bug fix, refactoring, CRUD, deploy, config), SEMPRE apresentar 3 sugestões de acompanhamento contextuais no final da resposta.
+
+As sugestões devem ser **acionáveis** (o usuário pode pedir e o Claude executa), **contextuais** (baseadas no que foi feito) e **progressivas** (segurança, performance, testes, UX, negócio). Seguir o formato da skill `saas-next-actions`.
+
+Formato:
+```
+---
+### Sugestões de acompanhamento
+1. **[Categoria] Ação** — Descrição curta do valor.
+2. **[Categoria] Ação** — Descrição curta do valor.
+3. **[Categoria] Ação** — Descrição curta do valor.
+```
+
+---
+
 *Atualizado em: 2026-06-18 | Versão: 1.9.0*

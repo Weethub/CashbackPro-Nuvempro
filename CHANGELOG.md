@@ -17,6 +17,8 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 > Requer migração no deploy (`migrate deploy`/`db push`).
 
+- **Padrão de comportamento "Next Actions" no `CLAUDE.md`** — ao concluir uma tarefa significativa, o Claude Code sempre apresenta 3 sugestões de acompanhamento contextuais (formato da skill `saas-next-actions`). Vale para todos os apps baseados no template.
+
 ---
 
 ## [1.8.3] - 2026-06-03

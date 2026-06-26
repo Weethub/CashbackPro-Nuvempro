@@ -27,6 +27,7 @@ model Store {
   subscription      Subscription?
   profile           StoreProfile?
   termsAcceptances  TermsAcceptance[]
+  supportTickets    SupportTicket[]
   @@map("stores")
 }
 
@@ -209,4 +210,37 @@ model AdminFaq {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   @@map("admin_faqs")
+}
+
+// ─── Suporte (tickets) ─────────────────────────────────────────────────────
+// Ticket aberto pela loja (tenant) no app; respondido pelo admin. Thread de
+// mensagens (author = store | admin). Isolado por storeId.
+model SupportTicket {
+  id            Int             @id @default(autoincrement())
+  storeId       Int
+  subject       String?
+  status        String          @default("open") // open | answered | closed
+  lastMessageAt DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  store    Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
+
+  @@index([storeId])
+  @@index([status, lastMessageAt(sort: Desc)])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  author    String   // store | admin
+  body      String
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
 }

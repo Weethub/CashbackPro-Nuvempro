@@ -194,6 +194,19 @@
     "whatsappNumber": "",
     "videoTitle": "Tutorial en video",
     "viewVideo": "Ver video",
+    "tickets": {
+      "title": "Habla con nosotros",
+      "subjectPlaceholder": "Asunto (opcional)",
+      "messagePlaceholder": "Escribe tu duda o sugerencia...",
+      "send": "Enviar",
+      "sending": "Enviando...",
+      "mine": "Mis conversaciones",
+      "replyPlaceholder": "Responder...",
+      "reply": "Enviar",
+      "you": "Tú",
+      "us": "Soporte",
+      "status": { "open": "Abierto", "answered": "Respondido", "closed": "Cerrado" }
+    },
     "faq": [
       {
         "question": "\u00bfC\u00f3mo cambio mi plan?",

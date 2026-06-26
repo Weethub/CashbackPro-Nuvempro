@@ -198,6 +198,19 @@
     "whatsappNumber": "",
     "videoTitle": "Tutorial em v\u00eddeo",
     "viewVideo": "Ver v\u00eddeo",
+    "tickets": {
+      "title": "Fale com a gente",
+      "subjectPlaceholder": "Assunto (opcional)",
+      "messagePlaceholder": "Escreva sua d\u00favida ou sugest\u00e3o...",
+      "send": "Enviar",
+      "sending": "Enviando...",
+      "mine": "Minhas conversas",
+      "replyPlaceholder": "Responder...",
+      "reply": "Enviar",
+      "you": "Voc\u00ea",
+      "us": "Suporte",
+      "status": { "open": "Aberto", "answered": "Respondido", "closed": "Fechado" }
+    },
     "faq": [
       {
         "question": "Como fa\u00e7o para alterar meu plano?",

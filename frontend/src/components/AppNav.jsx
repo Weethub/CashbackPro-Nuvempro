@@ -89,14 +89,57 @@ export default function AppNav() {
   const [expandedId, setExpandedId] = useState(null);
   const [supportData, setSupportData] = useState(null);
   const [videoModal, setVideoModal] = useState(null); // url string | null
+  const [tickets, setTickets] = useState(null);        // null = não carregado
+  const [tSubject, setTSubject] = useState('');
+  const [tMessage, setTMessage] = useState('');
+  const [tSending, setTSending] = useState(false);
+  const [reply, setReply] = useState({});              // { [ticketId]: texto }
+  const [replyingId, setReplyingId] = useState(null);
 
-  // Busca o suporte ao abrir; refaz quando o idioma muda (FAQs são por idioma).
+  // Busca FAQ/config ao abrir; refaz quando o idioma muda (FAQs são por idioma).
   useEffect(() => {
     if (!supportOpen) return;
     api.get('/api/support', { params: { lang: i18n.language } })
       .then((res) => setSupportData(res.data))
       .catch(() => setSupportData({ faqs: [], mainVideoUrl: '', whatsapp: '' }));
   }, [supportOpen, i18n.language]);
+
+  // Carrega os tickets da loja ao abrir o suporte.
+  useEffect(() => {
+    if (!supportOpen) return;
+    loadTickets();
+  }, [supportOpen]);
+
+  const loadTickets = () => {
+    api.get('/api/support/tickets')
+      .then((res) => setTickets(res.data.tickets || []))
+      .catch(() => setTickets([]));
+  };
+
+  const submitTicket = async () => {
+    const message = tMessage.trim();
+    if (!message || tSending) return;
+    setTSending(true);
+    try {
+      await api.post('/api/support/tickets', { subject: tSubject.trim() || undefined, message });
+      setTSubject('');
+      setTMessage('');
+      loadTickets();
+    } catch { /* silencioso */ }
+    finally { setTSending(false); }
+  };
+
+  const submitReply = async (id) => {
+    const message = (reply[id] || '').trim();
+    if (!message || replyingId) return;
+    setReplyingId(id);
+    try {
+      await api.post(`/api/support/tickets/${id}/messages`, { message });
+      setReply((r) => ({ ...r, [id]: '' }));
+      loadTickets();
+    } catch { /* silencioso */ }
+    finally { setReplyingId(null); }
+  };
 
   const isActive = (path) =>
     path === '/'
@@ -278,6 +321,89 @@ export default function AppNav() {
               </Box>
             </Box>
           )}
+
+          {/* Tickets — fale com a gente */}
+          <Box display="flex" flexDirection="column" gap="3">
+            <Title as="h4">{t('support.tickets.title')}</Title>
+
+            {/* Novo ticket */}
+            <Box display="flex" flexDirection="column" gap="2">
+              <input
+                value={tSubject}
+                onChange={(e) => setTSubject(e.target.value)}
+                placeholder={t('support.tickets.subjectPlaceholder')}
+                maxLength={200}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, boxSizing: 'border-box' }}
+              />
+              <textarea
+                value={tMessage}
+                onChange={(e) => setTMessage(e.target.value)}
+                placeholder={t('support.tickets.messagePlaceholder')}
+                rows={3}
+                maxLength={5000}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }}
+              />
+              <Button appearance="primary" disabled={tSending || !tMessage.trim()} onClick={submitTicket}>
+                {tSending ? t('support.tickets.sending') : t('support.tickets.send')}
+              </Button>
+            </Box>
+
+            {/* Minhas conversas */}
+            {Array.isArray(tickets) && tickets.length > 0 && (
+              <Box display="flex" flexDirection="column" gap="2">
+                <Text fontWeight="bold" fontSize="caption">{t('support.tickets.mine')}</Text>
+                {tickets.map((tk) => (
+                  <Box
+                    key={tk.id}
+                    borderColor="neutral-surfaceHighlight"
+                    borderStyle="solid"
+                    borderWidth="1"
+                    borderRadius="2"
+                    padding="3"
+                    display="flex"
+                    flexDirection="column"
+                    gap="2"
+                  >
+                    <Box display="flex" justifyContent="space-between" alignItems="center" gap="2">
+                      <Text fontWeight="bold" fontSize="caption">{tk.subject || '—'}</Text>
+                      <Text fontSize="caption" color="neutral-textLow">{t(`support.tickets.status.${tk.status}`)}</Text>
+                    </Box>
+                    {(tk.messages || []).map((m) => (
+                      <Box
+                        key={m.id}
+                        backgroundColor={m.author === 'admin' ? 'primary-surface' : 'neutral-surface'}
+                        borderRadius="2"
+                        padding="2"
+                      >
+                        <Text fontSize="caption" color="neutral-textLow">
+                          {m.author === 'admin' ? t('support.tickets.us') : t('support.tickets.you')}
+                        </Text>
+                        <Text fontSize="caption" color="neutral-textHigh">{m.body}</Text>
+                      </Box>
+                    ))}
+                    {tk.status !== 'closed' && (
+                      <Box display="flex" gap="1">
+                        <input
+                          value={reply[tk.id] || ''}
+                          onChange={(e) => setReply((r) => ({ ...r, [tk.id]: e.target.value }))}
+                          placeholder={t('support.tickets.replyPlaceholder')}
+                          maxLength={5000}
+                          style={{ flex: 1, padding: '6px 8px', borderRadius: 8, border: '1px solid #e0e0e0', fontSize: 12, boxSizing: 'border-box' }}
+                        />
+                        <Button
+                          appearance="neutral"
+                          disabled={replyingId === tk.id || !(reply[tk.id] || '').trim()}
+                          onClick={() => submitReply(tk.id)}
+                        >
+                          {t('support.tickets.reply')}
+                        </Button>
+                      </Box>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
 
           {/* Loading state */}
           {supportOpen && !supportData && (

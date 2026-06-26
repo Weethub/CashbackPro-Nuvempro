@@ -6,6 +6,17 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.9.4] - 2026-06-26
+
+### Adicionado
+
+- **Opt-out de e-mail por loja** — o lojista controla se quer receber os e-mails de resposta:
+  - App: toggle "Receber e-mails quando respondermos" no sidebar de Suporte (`AppNav.jsx`), com i18n (pt-BR, es-AR, es-MX).
+  - Backend: `GET`/`PUT /api/support/preferences` — preferência guardada em `StoreProfile.data.supportEmailOptOut` (merge, sem migração).
+  - `notifyStoreOfReply` respeita o opt-out: não envia se a loja desativou (default: ativado).
+
+---
+
 ## [1.9.3] - 2026-06-26
 
 ### Adicionado

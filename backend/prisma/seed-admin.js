@@ -168,6 +168,7 @@ async function main() {
   const supportDefaults = [
     { key: 'support_video_url', value: '', group: 'support', label: 'URL do Vídeo Principal de Apresentação' },
     { key: 'support_whatsapp', value: '', group: 'support', label: 'Número do WhatsApp de Suporte (ex: 5511999999999)' },
+    { key: 'support_notify_email', value: '', group: 'support', label: 'E-mail para notificação de novos tickets (requer RESEND_API_KEY)' },
   ];
 
   for (const cfg of supportDefaults) {

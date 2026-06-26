@@ -32,7 +32,7 @@ export default function FaqPage() {
   const [expandedId, setExpandedId] = useState(null);
 
   // Support config state
-  const [supportConfig, setSupportConfig] = useState({ support_video_url: '', support_whatsapp: '' });
+  const [supportConfig, setSupportConfig] = useState({ support_video_url: '', support_whatsapp: '', support_notify_email: '' });
   const [savingConfig, setSavingConfig] = useState(false);
   const [configSaved, setConfigSaved] = useState(false);
 
@@ -53,6 +53,7 @@ export default function FaqPage() {
       setSupportConfig({
         support_video_url: map.support_video_url || '',
         support_whatsapp: map.support_whatsapp || '',
+        support_notify_email: map.support_notify_email || '',
       });
     } catch {
       // silently ignore
@@ -66,6 +67,7 @@ export default function FaqPage() {
         updates: [
           { key: 'support_video_url', value: supportConfig.support_video_url, group: 'support' },
           { key: 'support_whatsapp', value: supportConfig.support_whatsapp, group: 'support' },
+          { key: 'support_notify_email', value: supportConfig.support_notify_email, group: 'support' },
         ],
       });
       setConfigSaved(true);
@@ -173,6 +175,19 @@ export default function FaqPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs text-gray-400 mt-1">Somente números, com DDI (ex: 5511999999999)</p>
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              E-mail de notificação de tickets
+            </label>
+            <input
+              type="email"
+              value={supportConfig.support_notify_email}
+              onChange={(e) => setSupportConfig((p) => ({ ...p, support_notify_email: e.target.value }))}
+              placeholder="suporte@suaempresa.com"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">Recebe aviso quando uma loja abre ou responde um ticket. Requer <code>RESEND_API_KEY</code> no backend.</p>
           </div>
         </div>
         <div className="flex items-center gap-3 mt-4">

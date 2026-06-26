@@ -6,6 +6,18 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.9.2] - 2026-06-26
+
+### Adicionado
+
+- **Notificação por e-mail de tickets (admin)** — aviso ao abrir/responder um ticket:
+  - Novo serviço `lib/email.js` — envio transacional best-effort via API HTTP do **Resend** (usa o `axios` já presente; sem nova dependência). No-op silencioso se não configurado.
+  - `POST /api/support/tickets` e `POST /api/support/tickets/:id/messages` disparam e-mail (fire-and-forget) ao destino configurado.
+  - Nova config `support_notify_email` (Admin → FAQ → Configurações de Suporte) + seed default.
+  - Novas envs: `RESEND_API_KEY` e `SUPPORT_FROM_EMAIL` (fallback: `APP_EMAIL`).
+
+---
+
 ## [1.9.1] - 2026-06-18
 
 ### Adicionado

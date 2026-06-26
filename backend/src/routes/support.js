@@ -3,8 +3,46 @@ const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
 const { ticketLimiter } = require('../middleware/rateLimiter');
+const { sendEmail } = require('../lib/email');
 
 const router = express.Router();
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"]/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+  ));
+}
+
+/**
+ * Notifica o admin por e-mail sobre atividade num ticket. Best-effort, fire-and-forget:
+ * lê o destino em AdminConfig['support_notify_email'] e não lança em caso de falha.
+ */
+async function notifyAdminOfTicket({ kind, ticketId, storeName, subject, message }) {
+  try {
+    const cfg = await prisma.adminConfig.findUnique({ where: { key: 'support_notify_email' } });
+    const to = (cfg?.value || '').trim();
+    if (!to) return;
+
+    const appName = process.env.APP_NAME || 'App';
+    const isNew = kind === 'new';
+    const heading = isNew ? 'Novo ticket de suporte' : 'Nova mensagem em ticket';
+    const adminUrl = (process.env.ADMIN_FRONTEND_URL || '').replace(/\/$/, '');
+    const link = adminUrl ? `${adminUrl}/support` : '';
+
+    const html = `
+      <div style="font-family:system-ui,Arial,sans-serif;max-width:560px">
+        <h2 style="margin:0 0 4px">${escapeHtml(heading)} — ${escapeHtml(appName)}</h2>
+        <p style="color:#555;margin:0 0 16px">Ticket #${ticketId} · Loja: <strong>${escapeHtml(storeName)}</strong></p>
+        ${subject ? `<p style="margin:0 0 8px"><strong>Assunto:</strong> ${escapeHtml(subject)}</p>` : ''}
+        <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f5f5f5;border-left:3px solid #ccc;white-space:pre-wrap">${escapeHtml(message)}</blockquote>
+        ${link ? `<p><a href="${link}" style="background:#111;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Responder no painel</a></p>` : ''}
+      </div>`;
+
+    await sendEmail({ to, subject: `[${appName}] ${heading} #${ticketId}`, html });
+  } catch (err) {
+    console.error('[support] notifyAdminOfTicket falhou (ignorado):', err.message);
+  }
+}
 
 /**
  * GET /api/support — Public endpoint (no auth required)
@@ -123,6 +161,15 @@ router.post('/tickets', requireAuth, ticketLimiter, async (req, res, next) => {
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
 
+    // Notifica o admin (best-effort, não aguarda)
+    notifyAdminOfTicket({
+      kind: 'new',
+      ticketId: ticket.id,
+      storeName: req.store.name || `Loja ${req.store.id}`,
+      subject,
+      message,
+    });
+
     res.status(201).json({ ticket });
   } catch (err) {
     next(err);
@@ -163,6 +210,16 @@ router.post('/tickets/:id/messages', requireAuth, ticketLimiter, async (req, res
       where: { id },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
+
+    // Notifica o admin (best-effort, não aguarda)
+    notifyAdminOfTicket({
+      kind: 'followup',
+      ticketId: id,
+      storeName: req.store.name || `Loja ${req.store.id}`,
+      subject: updated?.subject,
+      message,
+    });
+
     res.json({ ticket: updated });
   } catch (err) {
     next(err);

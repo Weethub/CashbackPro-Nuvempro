@@ -95,6 +95,14 @@ export default function AppNav() {
   const [tSending, setTSending] = useState(false);
   const [reply, setReply] = useState({});              // { [ticketId]: texto }
   const [replyingId, setReplyingId] = useState(null);
+  const [answeredCount, setAnsweredCount] = useState(0); // tickets respondidos (badge)
+
+  // Resumo de tickets ao montar (badge "respondido" no botão de Suporte).
+  useEffect(() => {
+    api.get('/api/support/tickets/summary')
+      .then((res) => setAnsweredCount(res.data?.answered || 0))
+      .catch(() => {});
+  }, []);
 
   // Busca FAQ/config ao abrir; refaz quando o idioma muda (FAQs são por idioma).
   useEffect(() => {
@@ -188,9 +196,20 @@ export default function AppNav() {
           </Button>
           <Button
             appearance="neutral"
-            onClick={() => setSupportOpen(true)}
+            onClick={() => { setSupportOpen(true); setAnsweredCount(0); }}
           >
-            {t('nav.support')}
+            <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {t('nav.support')}
+              {answeredCount > 0 && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: 16, height: 16, borderRadius: 8, background: '#e53e3e',
+                  color: '#fff', fontSize: 10, fontWeight: 700, lineHeight: 1, padding: '0 4px',
+                }}>
+                  {answeredCount > 9 ? '9+' : answeredCount}
+                </span>
+              )}
+            </span>
           </Button>
           <LanguageSwitcher />
         </Box>

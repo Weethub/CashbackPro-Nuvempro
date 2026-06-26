@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.9.0**
+> Versão atual do template: **1.9.3**
 
 ---
 
@@ -118,6 +118,10 @@ ADMIN_FRONTEND_URL=https://...
 
 # NuvemPro Partners — comissionamento de parceiros
 PARTNERS_API_KEY=nv_live_...
+
+# Notificação de tickets de suporte por e-mail (opcional — best-effort)
+RESEND_API_KEY=re_...
+SUPPORT_FROM_EMAIL=Suporte <suporte@exemplo.com>   # fallback: APP_EMAIL
 ```
 
 ---
@@ -189,6 +193,7 @@ Criados automaticamente pelo `seed-admin.js`:
 |-----|-------------|-----------|
 | `support_video_url` | `''` | URL do YouTube do vídeo principal de apresentação do app |
 | `support_whatsapp` | `''` | Número WhatsApp de suporte (ex: `5511999999999`) |
+| `support_notify_email` | `''` | E-mail que recebe aviso quando uma loja abre/responde um ticket (requer `RESEND_API_KEY`) |
 
 Gerenciados em **Admin → FAQ → Configurações de Suporte**.
 
@@ -300,7 +305,7 @@ Criar a chave em: `https://partners.nuvempro.com/admin/api-keys`
 
 ---
 
-## Sistema de Suporte (FAQ + Vídeo + WhatsApp)
+## Sistema de Suporte (FAQ + Vídeo + WhatsApp + Tickets)
 
 ### Endpoint público
 
@@ -323,9 +328,44 @@ Criar a chave em: `https://partners.nuvempro.com/admin/api-keys`
 
 ### No Admin (FaqPage)
 
-- Seção "Configurações de Suporte" no topo: campos `support_video_url` e `support_whatsapp`
+- Seção "Configurações de Suporte" no topo: campos `support_video_url`, `support_whatsapp` e `support_notify_email`
 - Salva via `PUT /admin-api/config` com formato batch: `{ updates: [{ key, value }] }`
 - Lê via `GET /admin-api/config` usando `res.data.raw` (array flat)
+
+### Tickets de suporte (thread loja ↔ admin)
+
+Módulo padrão do template (v1.9.0+). Modelos `SupportTicket` (1:N) + `SupportMessage`. Status: `open` | `answered` | `closed`.
+
+**App (tenant — `routes/support.js`, requer `requireAuth`):**
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/support/tickets` | Lista os tickets da loja com a thread |
+| `GET` | `/api/support/tickets/summary` | Contagem `{open, answered, closed}` p/ badge no app |
+| `POST` | `/api/support/tickets` | Abre ticket (1ª mensagem). Anti-spam: `ticketLimiter` |
+| `POST` | `/api/support/tickets/:id/messages` | Follow-up da loja → reabre (`open`). `ticketLimiter` |
+
+- UI no `AppNav.jsx`: formulário + "Minhas conversas" (thread); badge "respondido" no botão Suporte (zera ao abrir).
+- `ticketLimiter` (`rateLimiter.js`): 10 req / 10 min, chaveado por `req.store.id` (usar **após** `requireAuth`).
+
+**Admin (`admin/routes/adminSupport.js`, montado em `/admin-api/support` com `adminAuth`):**
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/admin-api/support` | Lista paginada (filtro `status`, `search`); usar `res.data.data` |
+| `GET` | `/admin-api/support/stats` | Contagem por status p/ badge no menu (def. **antes** de `/:id`) |
+| `GET` | `/admin-api/support/:id` | Detalhe do ticket + thread + loja |
+| `POST` | `/admin-api/support/:id/reply` | Admin responde → status `answered` (`requireRole('suporte')`) |
+| `PATCH` | `/admin-api/support/:id/status` | Fecha/reabre |
+
+- UI no `SupportPage.jsx` + item "Suporte" no `Sidebar.jsx` com badge de tickets abertos.
+
+### Notificação por e-mail (v1.9.2 / v1.9.3)
+
+- `lib/email.js` → `sendEmail({ to, subject, html, replyTo })`: best-effort via API HTTP do **Resend** (usa `axios`, sem nova dep). **Nunca lança**; no-op (`{ skipped: true }`) se faltar `RESEND_API_KEY`, remetente ou destinatário.
+- **Admin → recebe** (v1.9.2): fire-and-forget em `POST /tickets` e `POST /tickets/:id/messages` (helper `notifyAdminOfTicket` em `routes/support.js`), enviando ao `AdminConfig['support_notify_email']`.
+- **Lojista → recebe** (v1.9.3): fire-and-forget em `POST /admin-api/support/:id/reply` (helper `notifyStoreOfReply` em `admin/routes/adminSupport.js`), enviando ao `Store.email` com CTA via `FRONTEND_URL`.
+- Envs: `RESEND_API_KEY` (re_...) e `SUPPORT_FROM_EMAIL` (fallback `APP_EMAIL`). Sem chave configurada, o app funciona normalmente — apenas não envia e-mail.
 
 ---
 
@@ -676,4 +716,4 @@ Formato:
 
 ---
 
-*Atualizado em: 2026-06-18 | Versão: 1.9.0*
+*Atualizado em: 2026-06-26 | Versão: 1.9.3*

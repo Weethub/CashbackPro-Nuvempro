@@ -26,4 +26,15 @@ const adminLoginLimiter = rateLimit({
   message: { error: 'Muitas tentativas de login. Aguarde 15 minutos.', code: 'ADMIN_LOGIN_RATE_LIMIT' },
 });
 
-module.exports = { globalLimiter, authLimiter, checkoutLimiter, adminLoginLimiter };
+// Anti-spam de tickets/mensagens de suporte. Chaveado por loja (req.store) quando
+// disponível — deve ser usado APÓS o requireAuth — com fallback para IP.
+const ticketLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.store?.id ? `store:${req.store.id}` : req.ip),
+  message: { error: 'Muitas mensagens em pouco tempo. Aguarde alguns minutos.', code: 'SUPPORT_RATE_LIMIT' },
+});
+
+module.exports = { globalLimiter, authLimiter, checkoutLimiter, adminLoginLimiter, ticketLimiter };

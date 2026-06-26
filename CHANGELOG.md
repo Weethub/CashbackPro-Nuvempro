@@ -6,6 +6,43 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.9.3] - 2026-06-26
+
+### Adicionado
+
+- **E-mail ao lojista quando o suporte responde** — fecha o loop dos dois lados:
+  - `POST /admin-api/support/:id/reply` dispara e-mail (fire-and-forget) ao `Store.email` com o texto da resposta e CTA para abrir o app.
+  - Reusa `lib/email.js` (Resend, best-effort) — no-op se a loja não tiver e-mail ou se `RESEND_API_KEY` não estiver configurada.
+  - Usa `FRONTEND_URL` para o botão "Abrir o app".
+
+---
+
+## [1.9.2] - 2026-06-26
+
+### Adicionado
+
+- **Notificação por e-mail de tickets (admin)** — aviso ao abrir/responder um ticket:
+  - Novo serviço `lib/email.js` — envio transacional best-effort via API HTTP do **Resend** (usa o `axios` já presente; sem nova dependência). No-op silencioso se não configurado.
+  - `POST /api/support/tickets` e `POST /api/support/tickets/:id/messages` disparam e-mail (fire-and-forget) ao destino configurado.
+  - Nova config `support_notify_email` (Admin → FAQ → Configurações de Suporte) + seed default.
+  - Novas envs: `RESEND_API_KEY` e `SUPPORT_FROM_EMAIL` (fallback: `APP_EMAIL`).
+
+---
+
+## [1.9.1] - 2026-06-18
+
+### Adicionado
+
+- **Notificações de suporte (in-app)** — sinalização de tickets pendentes:
+  - **Admin**: badge com a contagem de tickets **abertos** no item "Suporte" do menu (`GET /admin-api/support/stats`).
+  - **App**: badge no botão "Suporte" quando há tickets **respondidos** pela equipe (`GET /api/support/tickets/summary`), some ao abrir o sidebar.
+
+### Segurança
+
+- **Anti-spam de tickets** — novo `ticketLimiter` (10 req / 10 min, chaveado por loja) aplicado a `POST /api/support/tickets` e `POST /api/support/tickets/:id/messages`.
+
+---
+
 ## [1.9.0] - 2026-06-18
 
 ### Adicionado

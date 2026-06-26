@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.9.3**
+> Versão atual do template: **1.9.5**
 
 ---
 
@@ -365,6 +365,7 @@ Módulo padrão do template (v1.9.0+). Modelos `SupportTicket` (1:N) + `SupportM
 - `lib/email.js` → `sendEmail({ to, subject, html, replyTo })`: best-effort via API HTTP do **Resend** (usa `axios`, sem nova dep). **Nunca lança**; no-op (`{ skipped: true }`) se faltar `RESEND_API_KEY`, remetente ou destinatário.
 - **Admin → recebe** (v1.9.2): fire-and-forget em `POST /tickets` e `POST /tickets/:id/messages` (helper `notifyAdminOfTicket` em `routes/support.js`), enviando ao `AdminConfig['support_notify_email']`.
 - **Lojista → recebe** (v1.9.3): fire-and-forget em `POST /admin-api/support/:id/reply` (helper `notifyStoreOfReply` em `admin/routes/adminSupport.js`), enviando ao `Store.email` com CTA via `FRONTEND_URL`.
+- **Opt-out por loja** (v1.9.4): o lojista pode desativar os e-mails de resposta no toggle do sidebar de Suporte. Guardado em `StoreProfile.data.supportEmailOptOut` (default `false` = recebe). Endpoints `GET`/`PUT /api/support/preferences` (`{ emailNotifications }`); `notifyStoreOfReply` consulta a flag e não envia se desativada.
 - Envs: `RESEND_API_KEY` (re_...) e `SUPPORT_FROM_EMAIL` (fallback `APP_EMAIL`). Sem chave configurada, o app funciona normalmente — apenas não envia e-mail.
 
 ---
@@ -716,4 +717,4 @@ Formato:
 
 ---
 
-*Atualizado em: 2026-06-26 | Versão: 1.9.3*
+*Atualizado em: 2026-06-26 | Versão: 1.9.5*

@@ -21,9 +21,16 @@ function escapeHtml(str) {
  * Notifica o lojista por e-mail que o suporte respondeu. Best-effort, fire-and-forget:
  * só envia se a loja tiver e-mail e o `lib/email` estiver configurado. Nunca lança.
  */
-async function notifyStoreOfReply({ to, storeName, ticketId, subject, message }) {
+async function notifyStoreOfReply({ to, storeId, storeName, ticketId, subject, message }) {
   try {
     if (!to) return;
+
+    // Respeita o opt-out da loja (StoreProfile.data.supportEmailOptOut)
+    if (storeId) {
+      const profile = await prisma.storeProfile.findUnique({ where: { storeId } });
+      if (profile?.data?.supportEmailOptOut === true) return;
+    }
+
     const appName = process.env.APP_NAME || 'App';
     const appUrl = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
 
@@ -128,7 +135,12 @@ router.get('/:id', async (req, res, next) => {
       },
     });
     if (!ticket) throw new AppError('Ticket nao encontrado.', 404, 'TICKET_NOT_FOUND');
-    res.json({ ticket });
+
+    // Sinaliza se a loja desativou e-mails de resposta (StoreProfile.data.supportEmailOptOut)
+    const profile = await prisma.storeProfile.findUnique({ where: { storeId: ticket.storeId } });
+    const emailOptOut = profile?.data?.supportEmailOptOut === true;
+
+    res.json({ ticket: { ...ticket, store: { ...ticket.store, emailOptOut } } });
   } catch (err) {
     next(err);
   }
@@ -146,7 +158,7 @@ router.post('/:id/reply', requireRole('suporte'), async (req, res, next) => {
 
     const existing = await prisma.supportTicket.findUnique({
       where: { id },
-      select: { id: true, subject: true, store: { select: { email: true, name: true } } },
+      select: { id: true, subject: true, storeId: true, store: { select: { email: true, name: true } } },
     });
     if (!existing) throw new AppError('Ticket nao encontrado.', 404, 'TICKET_NOT_FOUND');
 
@@ -175,6 +187,7 @@ router.post('/:id/reply', requireRole('suporte'), async (req, res, next) => {
     // Notifica o lojista que respondemos (best-effort, não aguarda)
     notifyStoreOfReply({
       to: existing.store?.email,
+      storeId: existing.storeId,
       storeName: existing.store?.name,
       ticketId: id,
       subject: existing.subject,

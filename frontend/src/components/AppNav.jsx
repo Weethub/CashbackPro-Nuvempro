@@ -96,6 +96,8 @@ export default function AppNav() {
   const [reply, setReply] = useState({});              // { [ticketId]: texto }
   const [replyingId, setReplyingId] = useState(null);
   const [answeredCount, setAnsweredCount] = useState(0); // tickets respondidos (badge)
+  const [emailNotifications, setEmailNotifications] = useState(true); // opt-out de e-mail
+  const [savingPref, setSavingPref] = useState(false);
 
   // Resumo de tickets ao montar (badge "respondido" no botão de Suporte).
   useEffect(() => {
@@ -117,6 +119,28 @@ export default function AppNav() {
     if (!supportOpen) return;
     loadTickets();
   }, [supportOpen]);
+
+  // Carrega a preferência de e-mail ao abrir o suporte.
+  useEffect(() => {
+    if (!supportOpen) return;
+    api.get('/api/support/preferences')
+      .then((res) => setEmailNotifications(res.data?.emailNotifications !== false))
+      .catch(() => {});
+  }, [supportOpen]);
+
+  const toggleEmailPref = async () => {
+    if (savingPref) return;
+    const next = !emailNotifications;
+    setEmailNotifications(next); // otimista
+    setSavingPref(true);
+    try {
+      await api.put('/api/support/preferences', { emailNotifications: next });
+    } catch {
+      setEmailNotifications(!next); // reverte em erro
+    } finally {
+      setSavingPref(false);
+    }
+  };
 
   const loadTickets = () => {
     api.get('/api/support/tickets')
@@ -422,6 +446,18 @@ export default function AppNav() {
                 ))}
               </Box>
             )}
+
+            {/* Preferência de e-mail */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 4 }}>
+              <input
+                type="checkbox"
+                checked={emailNotifications}
+                disabled={savingPref}
+                onChange={toggleEmailPref}
+                style={{ cursor: 'pointer' }}
+              />
+              <Text fontSize="caption" color="neutral-textLow">{t('support.tickets.emailNotify')}</Text>
+            </label>
           </Box>
 
           {/* Loading state */}

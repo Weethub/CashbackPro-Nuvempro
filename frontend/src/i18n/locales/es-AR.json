@@ -205,7 +205,8 @@
       "reply": "Enviar",
       "you": "Vos",
       "us": "Soporte",
-      "status": { "open": "Abierto", "answered": "Respondido", "closed": "Cerrado" }
+      "status": { "open": "Abierto", "answered": "Respondido", "closed": "Cerrado" },
+      "emailNotify": "Recibir correos cuando respondamos"
     },
     "faq": [
       {

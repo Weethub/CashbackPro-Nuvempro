@@ -209,7 +209,8 @@
       "reply": "Enviar",
       "you": "Voc\u00ea",
       "us": "Suporte",
-      "status": { "open": "Aberto", "answered": "Respondido", "closed": "Fechado" }
+      "status": { "open": "Aberto", "answered": "Respondido", "closed": "Fechado" },
+      "emailNotify": "Receber e-mails quando respondermos"
     },
     "faq": [
       {

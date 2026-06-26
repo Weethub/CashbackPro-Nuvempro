@@ -139,6 +139,46 @@ router.get('/tickets/summary', requireAuth, async (req, res, next) => {
 });
 
 /**
+ * GET /api/support/preferences — preferências de suporte da loja.
+ * Retorna `{ emailNotifications }` (default: true). Guardado em StoreProfile.data.
+ */
+router.get('/preferences', requireAuth, async (req, res, next) => {
+  try {
+    const profile = await prisma.storeProfile.findUnique({ where: { storeId: req.store.id } });
+    const data = profile?.data || {};
+    res.json({ emailNotifications: data.supportEmailOptOut !== true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PUT /api/support/preferences — atualiza preferências de suporte da loja.
+ * Body: { emailNotifications: boolean }. Faz merge no StoreProfile.data (não sobrescreve).
+ */
+router.put('/preferences', requireAuth, async (req, res, next) => {
+  try {
+    const { emailNotifications } = req.body;
+    if (typeof emailNotifications !== 'boolean') {
+      throw new AppError('Campo "emailNotifications" deve ser booleano.', 400, 'INVALID_PREFERENCE');
+    }
+
+    const existing = await prisma.storeProfile.findUnique({ where: { storeId: req.store.id } });
+    const data = { ...(existing?.data || {}), supportEmailOptOut: !emailNotifications };
+
+    await prisma.storeProfile.upsert({
+      where: { storeId: req.store.id },
+      update: { data },
+      create: { storeId: req.store.id, data },
+    });
+
+    res.json({ emailNotifications });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /api/support/tickets — abre um ticket (1ª mensagem da loja).
  * Body: { subject?, message }
  */

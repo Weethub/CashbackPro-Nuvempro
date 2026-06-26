@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.9.4**
+> Versão atual do template: **1.9.5**
 
 ---
 
@@ -717,4 +717,4 @@ Formato:
 
 ---
 
-*Atualizado em: 2026-06-26 | Versão: 1.9.4*
+*Atualizado em: 2026-06-26 | Versão: 1.9.5*

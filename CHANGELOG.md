@@ -6,6 +6,15 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.9.5] - 2026-06-26
+
+### Adicionado
+
+- **Visibilidade do opt-out no admin** — no detalhe do ticket (`SupportPage`), aviso âmbar quando a loja desativou e-mails de resposta ("sua resposta não será notificada por e-mail"), para a equipe considerar outro canal. `GET /admin-api/support/:id` agora retorna `store.emailOptOut`.
+- **Testes do `lib/email.js`** — suite unitária (`email.test.js`, `node:test` + mock do `axios`): cobre os caminhos de no-op (sem key/remetente/destinatário/conteúdo), o payload/headers do Resend no happy path, `to` como array, fallback `APP_EMAIL` e a garantia de **nunca lançar** quando o axios falha.
+
+---
+
 ## [1.9.4] - 2026-06-26
 
 ### Adicionado

@@ -135,7 +135,12 @@ router.get('/:id', async (req, res, next) => {
       },
     });
     if (!ticket) throw new AppError('Ticket nao encontrado.', 404, 'TICKET_NOT_FOUND');
-    res.json({ ticket });
+
+    // Sinaliza se a loja desativou e-mails de resposta (StoreProfile.data.supportEmailOptOut)
+    const profile = await prisma.storeProfile.findUnique({ where: { storeId: ticket.storeId } });
+    const emailOptOut = profile?.data?.supportEmailOptOut === true;
+
+    res.json({ ticket: { ...ticket, store: { ...ticket.store, emailOptOut } } });
   } catch (err) {
     next(err);
   }

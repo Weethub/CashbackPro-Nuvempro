@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import adminApi from '../services/adminApi';
 import {
-  LifeBuoy, Loader2, X, Send, Store, Clock, CheckCircle, Lock, RotateCcw, MessageSquare,
+  LifeBuoy, Loader2, X, Send, Store, Clock, CheckCircle, Lock, RotateCcw, MessageSquare, BellOff,
 } from 'lucide-react';
 
 const TABS = [
@@ -193,6 +193,11 @@ function TicketModal({ ticket, onClose, onChanged }) {
               <Store size={12} /> {ticket.store?.name || `Loja ${ticket.storeId}`}
               {ticket.store?.email && <span>· {ticket.store.email}</span>}
             </p>
+            {ticket.store?.emailOptOut && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1.5" title="A loja desativou os e-mails de resposta. Considere outro canal (ex: WhatsApp).">
+                <BellOff size={12} /> Esta loja desativou e-mails de resposta — sua resposta não será notificada por e-mail.
+              </p>
+            )}
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100"><X size={20} /></button>
         </div>

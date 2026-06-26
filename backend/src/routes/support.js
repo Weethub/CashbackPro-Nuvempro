@@ -1,5 +1,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { AppError } = require('../lib/errors');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -52,6 +54,96 @@ router.get('/', async (req, res, next) => {
       mainVideoUrl: configMap.support_video_url || '',
       whatsapp: configMap.support_whatsapp || '',
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Tickets de suporte (tenant) — requer autenticação da loja ──────────────
+
+const MSG_MAX = 5000;
+const SUBJ_MAX = 200;
+
+/**
+ * GET /api/support/tickets — lista os tickets da loja (com a thread).
+ */
+router.get('/tickets', requireAuth, async (req, res, next) => {
+  try {
+    const tickets = await prisma.supportTicket.findMany({
+      where: { storeId: req.store.id },
+      orderBy: { lastMessageAt: 'desc' },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+    res.json({ tickets });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/support/tickets — abre um ticket (1ª mensagem da loja).
+ * Body: { subject?, message }
+ */
+router.post('/tickets', requireAuth, async (req, res, next) => {
+  try {
+    const subject = (req.body.subject || '').toString().trim().slice(0, SUBJ_MAX) || null;
+    const message = (req.body.message || '').toString().trim();
+    if (!message) {
+      throw new AppError('Mensagem é obrigatória.', 400, 'MISSING_MESSAGE');
+    }
+
+    const ticket = await prisma.supportTicket.create({
+      data: {
+        storeId: req.store.id,
+        subject,
+        status: 'open',
+        lastMessageAt: new Date(),
+        messages: { create: { author: 'store', body: message.slice(0, MSG_MAX) } },
+      },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    res.status(201).json({ ticket });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/support/tickets/:id/messages — loja adiciona follow-up.
+ * Reabre o ticket (status volta a 'open') se estava respondido/fechado.
+ */
+router.post('/tickets/:id/messages', requireAuth, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const message = (req.body.message || '').toString().trim();
+    if (!message) {
+      throw new AppError('Mensagem é obrigatória.', 400, 'MISSING_MESSAGE');
+    }
+
+    // Garante que o ticket pertence à loja (isolamento de tenant)
+    const ticket = await prisma.supportTicket.findFirst({
+      where: { id, storeId: req.store.id },
+      select: { id: true },
+    });
+    if (!ticket) {
+      throw new AppError('Ticket não encontrado.', 404, 'TICKET_NOT_FOUND');
+    }
+
+    const now = new Date();
+    await prisma.supportMessage.create({
+      data: { ticketId: id, author: 'store', body: message.slice(0, MSG_MAX) },
+    });
+    await prisma.supportTicket.update({
+      where: { id },
+      data: { status: 'open', lastMessageAt: now },
+    });
+
+    const updated = await prisma.supportTicket.findUnique({
+      where: { id },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+    res.json({ ticket: updated });
   } catch (err) {
     next(err);
   }

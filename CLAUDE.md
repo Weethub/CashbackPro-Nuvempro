@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.8.3**
+> Versão atual do template: **1.9.0**
 
 ---
 
@@ -659,4 +659,21 @@ cd backend && npm test
 
 ---
 
-*Atualizado em: 2026-06-03 | Versão: 1.8.3*
+## Comportamento Pós-Tarefa — Next Actions
+
+> **IMPORTANTE:** Ao concluir qualquer tarefa significativa (feature, bug fix, refactoring, CRUD, deploy, config), SEMPRE apresentar 3 sugestões de acompanhamento contextuais no final da resposta.
+
+As sugestões devem ser **acionáveis** (o usuário pode pedir e o Claude executa), **contextuais** (baseadas no que foi feito) e **progressivas** (segurança, performance, testes, UX, negócio). Seguir o formato da skill `saas-next-actions`.
+
+Formato:
+```
+---
+### Sugestões de acompanhamento
+1. **[Categoria] Ação** — Descrição curta do valor.
+2. **[Categoria] Ação** — Descrição curta do valor.
+3. **[Categoria] Ação** — Descrição curta do valor.
+```
+
+---
+
+*Atualizado em: 2026-06-18 | Versão: 1.9.0*

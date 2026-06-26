@@ -11,6 +11,7 @@ import CouponsPage from './pages/CouponsPage';
 import CommissionsPage from './pages/CommissionsPage';
 import TermsPage from './pages/TermsPage';
 import FaqPage from './pages/FaqPage';
+import SupportPage from './pages/SupportPage';
 import LogsPage from './pages/LogsPage';
 import SecurityPage from './pages/SecurityPage';
 import SettingsPage from './pages/SettingsPage';
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="commissions" element={<CommissionsPage />} />
             <Route path="terms" element={<TermsPage />} />
             <Route path="faq" element={<FaqPage />} />
+            <Route path="support" element={<SupportPage />} />
             <Route path="logs" element={<LogsPage />} />
             <Route path="security" element={<SecurityPage />} />
             <Route path="settings" element={<SettingsPage />} />

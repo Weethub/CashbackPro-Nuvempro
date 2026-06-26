@@ -6,6 +6,21 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.9.0] - 2026-06-18
+
+### Adicionado
+
+- **Módulo de Suporte (tickets)** — canal direto loja ↔ admin, padrão do template.
+  - **Schema**: `SupportTicket` (storeId, subject, status `open|answered|closed`, lastMessageAt) + `SupportMessage` (ticketId, author `store|admin`, body), ambos `onDelete: Cascade`. Migration `0005`.
+  - **App (tenant)**: no sidebar de Suporte, formulário "Fale com a gente" (assunto + mensagem → abre ticket) e "Minhas conversas" com a thread (respostas abaixo da pergunta) + follow-up. Endpoints `GET/POST /api/support/tickets` e `POST /api/support/tickets/:id/messages` (requireAuth, isolados por storeId). i18n pt-BR/es-AR/es-MX.
+  - **Admin**: nova aba **Suporte** (`/support`): lista de tickets com filtro por status, detalhe com a conversa, caixa de resposta (→ `answered`) e fechar/reabrir. Endpoints `GET /admin-api/support`, `GET /:id`, `POST /:id/reply`, `PATCH /:id/status`.
+
+> Requer migração no deploy (`migrate deploy`/`db push`).
+
+- **Padrão de comportamento "Next Actions" no `CLAUDE.md`** — ao concluir uma tarefa significativa, o Claude Code sempre apresenta 3 sugestões de acompanhamento contextuais (formato da skill `saas-next-actions`). Vale para todos os apps baseados no template.
+
+---
+
 ## [1.8.3] - 2026-06-03
 
 ### Corrigido

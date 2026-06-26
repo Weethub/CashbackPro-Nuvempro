@@ -64,6 +64,24 @@ router.get('/', async (req, res, next) => {
 });
 
 /**
+ * GET /admin-api/support/stats — contagem por status (para badge no menu).
+ * Definido ANTES de /:id para não casar com o param.
+ */
+router.get('/stats', async (req, res, next) => {
+  try {
+    const grouped = await prisma.supportTicket.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    });
+    const counts = { open: 0, answered: 0, closed: 0 };
+    for (const g of grouped) counts[g.status] = g._count._all;
+    res.json(counts);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /admin-api/support/:id — detalhe do ticket (loja + thread completa).
  */
 router.get('/:id', async (req, res, next) => {

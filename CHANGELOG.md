@@ -6,6 +6,20 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.9.1] - 2026-06-18
+
+### Adicionado
+
+- **Notificações de suporte (in-app)** — sinalização de tickets pendentes:
+  - **Admin**: badge com a contagem de tickets **abertos** no item "Suporte" do menu (`GET /admin-api/support/stats`).
+  - **App**: badge no botão "Suporte" quando há tickets **respondidos** pela equipe (`GET /api/support/tickets/summary`), some ao abrir o sidebar.
+
+### Segurança
+
+- **Anti-spam de tickets** — novo `ticketLimiter` (10 req / 10 min, chaveado por loja) aplicado a `POST /api/support/tickets` e `POST /api/support/tickets/:id/messages`.
+
+---
+
 ## [1.9.0] - 2026-06-18
 
 ### Adicionado

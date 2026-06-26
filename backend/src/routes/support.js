@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
 const { requireAuth } = require('../middleware/auth');
+const { ticketLimiter } = require('../middleware/rateLimiter');
 
 const router = express.Router();
 
@@ -81,10 +82,29 @@ router.get('/tickets', requireAuth, async (req, res, next) => {
 });
 
 /**
+ * GET /api/support/tickets/summary — contagem leve p/ badge no app.
+ * Definido antes de outras rotas /tickets/* para evitar conflito de match.
+ */
+router.get('/tickets/summary', requireAuth, async (req, res, next) => {
+  try {
+    const grouped = await prisma.supportTicket.groupBy({
+      by: ['status'],
+      where: { storeId: req.store.id },
+      _count: { _all: true },
+    });
+    const counts = { open: 0, answered: 0, closed: 0 };
+    for (const g of grouped) counts[g.status] = g._count._all;
+    res.json(counts);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * POST /api/support/tickets — abre um ticket (1ª mensagem da loja).
  * Body: { subject?, message }
  */
-router.post('/tickets', requireAuth, async (req, res, next) => {
+router.post('/tickets', requireAuth, ticketLimiter, async (req, res, next) => {
   try {
     const subject = (req.body.subject || '').toString().trim().slice(0, SUBJ_MAX) || null;
     const message = (req.body.message || '').toString().trim();
@@ -113,7 +133,7 @@ router.post('/tickets', requireAuth, async (req, res, next) => {
  * POST /api/support/tickets/:id/messages — loja adiciona follow-up.
  * Reabre o ticket (status volta a 'open') se estava respondido/fechado.
  */
-router.post('/tickets/:id/messages', requireAuth, async (req, res, next) => {
+router.post('/tickets/:id/messages', requireAuth, ticketLimiter, async (req, res, next) => {
   try {
     const id = parseInt(req.params.id, 10);
     const message = (req.body.message || '').toString().trim();

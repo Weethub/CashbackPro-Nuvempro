@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../providers/AuthProvider';
 import { useTemplateVersion } from '../../hooks/useTemplateVersion';
+import adminApi from '../../services/adminApi';
 import {
   LayoutDashboard,
   Store,
@@ -43,6 +45,13 @@ export default function Sidebar({ collapsed, onToggle }) {
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
   const { current, outdated, loading: versionLoading } = useTemplateVersion();
+  const [openTickets, setOpenTickets] = useState(0);
+
+  useEffect(() => {
+    adminApi.get('/support/stats')
+      .then((res) => setOpenTickets(res.data?.open || 0))
+      .catch(() => {});
+  }, []);
 
   const adminLevel = ROLE_LEVEL[admin?.role] || 0;
   const visibleItems = navItems.filter((item) => adminLevel >= ROLE_LEVEL[item.minRole]);
@@ -77,7 +86,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+              `relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-sidebar-active text-white'
                   : 'text-slate-300 hover:bg-sidebar-hover hover:text-white'
@@ -87,6 +96,15 @@ export default function Sidebar({ collapsed, onToggle }) {
           >
             <item.icon size={20} className={item.color} />
             {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
+            {item.to === '/support' && openTickets > 0 && (
+              !collapsed ? (
+                <span className="ml-auto bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 min-w-[18px] text-center">
+                  {openTickets > 99 ? '99+' : openTickets}
+                </span>
+              ) : (
+                <span className="absolute right-1.5 top-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              )
+            )}
           </NavLink>
         ))}
       </nav>

@@ -1,7 +1,7 @@
 # CLAUDE.md — NuvemPro App Template
 
 > Documento de contexto para o Claude Code. Leia este arquivo antes de qualquer tarefa.
-> Versão atual do template: **1.9.2**
+> Versão atual do template: **1.9.3**
 
 ---
 
@@ -360,10 +360,11 @@ Módulo padrão do template (v1.9.0+). Modelos `SupportTicket` (1:N) + `SupportM
 
 - UI no `SupportPage.jsx` + item "Suporte" no `Sidebar.jsx` com badge de tickets abertos.
 
-### Notificação por e-mail (v1.9.2)
+### Notificação por e-mail (v1.9.2 / v1.9.3)
 
 - `lib/email.js` → `sendEmail({ to, subject, html, replyTo })`: best-effort via API HTTP do **Resend** (usa `axios`, sem nova dep). **Nunca lança**; no-op (`{ skipped: true }`) se faltar `RESEND_API_KEY`, remetente ou destinatário.
-- Disparado fire-and-forget em `POST /tickets` e `POST /tickets/:id/messages` (helper `notifyAdminOfTicket`), enviando ao `AdminConfig['support_notify_email']`.
+- **Admin → recebe** (v1.9.2): fire-and-forget em `POST /tickets` e `POST /tickets/:id/messages` (helper `notifyAdminOfTicket` em `routes/support.js`), enviando ao `AdminConfig['support_notify_email']`.
+- **Lojista → recebe** (v1.9.3): fire-and-forget em `POST /admin-api/support/:id/reply` (helper `notifyStoreOfReply` em `admin/routes/adminSupport.js`), enviando ao `Store.email` com CTA via `FRONTEND_URL`.
 - Envs: `RESEND_API_KEY` (re_...) e `SUPPORT_FROM_EMAIL` (fallback `APP_EMAIL`). Sem chave configurada, o app funciona normalmente — apenas não envia e-mail.
 
 ---
@@ -715,4 +716,4 @@ Formato:
 
 ---
 
-*Atualizado em: 2026-06-26 | Versão: 1.9.2*
+*Atualizado em: 2026-06-26 | Versão: 1.9.3*

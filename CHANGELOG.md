@@ -6,6 +6,17 @@ versionado em [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [1.9.3] - 2026-06-26
+
+### Adicionado
+
+- **E-mail ao lojista quando o suporte responde** — fecha o loop dos dois lados:
+  - `POST /admin-api/support/:id/reply` dispara e-mail (fire-and-forget) ao `Store.email` com o texto da resposta e CTA para abrir o app.
+  - Reusa `lib/email.js` (Resend, best-effort) — no-op se a loja não tiver e-mail ou se `RESEND_API_KEY` não estiver configurada.
+  - Usa `FRONTEND_URL` para o botão "Abrir o app".
+
+---
+
 ## [1.9.2] - 2026-06-26
 
 ### Adicionado

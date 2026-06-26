@@ -4,11 +4,44 @@ const { AppError } = require('../../lib/errors');
 const { parsePagination, paginatedResponse } = require('../../lib/paginate');
 const { requireRole } = require('../middleware/requireRole');
 const adminLogService = require('../services/adminLogService');
+const { sendEmail } = require('../../lib/email');
 
 const router = express.Router();
 
 const STATUSES = ['open', 'answered', 'closed'];
 const MSG_MAX = 5000;
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"]/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+  ));
+}
+
+/**
+ * Notifica o lojista por e-mail que o suporte respondeu. Best-effort, fire-and-forget:
+ * só envia se a loja tiver e-mail e o `lib/email` estiver configurado. Nunca lança.
+ */
+async function notifyStoreOfReply({ to, storeName, ticketId, subject, message }) {
+  try {
+    if (!to) return;
+    const appName = process.env.APP_NAME || 'App';
+    const appUrl = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+
+    const html = `
+      <div style="font-family:system-ui,Arial,sans-serif;max-width:560px">
+        <h2 style="margin:0 0 4px">O suporte respondeu seu ticket — ${escapeHtml(appName)}</h2>
+        <p style="color:#555;margin:0 0 16px">Olá${storeName ? `, ${escapeHtml(storeName)}` : ''}! Recebemos sua mensagem (ticket #${ticketId}) e respondemos:</p>
+        ${subject ? `<p style="margin:0 0 8px"><strong>Assunto:</strong> ${escapeHtml(subject)}</p>` : ''}
+        <blockquote style="margin:0 0 16px;padding:12px 16px;background:#f5f5f5;border-left:3px solid #ccc;white-space:pre-wrap">${escapeHtml(message)}</blockquote>
+        <p style="color:#555;margin:0 0 16px">Para ver a conversa completa ou responder, abra o app e acesse <strong>Suporte</strong>.</p>
+        ${appUrl ? `<p><a href="${appUrl}" style="background:#111;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">Abrir o app</a></p>` : ''}
+      </div>`;
+
+    await sendEmail({ to, subject: `[${appName}] Resposta ao seu ticket #${ticketId}`, html });
+  } catch (err) {
+    console.error('[adminSupport] notifyStoreOfReply falhou (ignorado):', err.message);
+  }
+}
 
 /**
  * GET /admin-api/support — lista de tickets (paginada).
@@ -111,7 +144,10 @@ router.post('/:id/reply', requireRole('suporte'), async (req, res, next) => {
     const message = (req.body.message || '').toString().trim();
     if (!message) throw new AppError('Mensagem e obrigatoria.', 400, 'MISSING_MESSAGE');
 
-    const existing = await prisma.supportTicket.findUnique({ where: { id }, select: { id: true } });
+    const existing = await prisma.supportTicket.findUnique({
+      where: { id },
+      select: { id: true, subject: true, store: { select: { email: true, name: true } } },
+    });
     if (!existing) throw new AppError('Ticket nao encontrado.', 404, 'TICKET_NOT_FOUND');
 
     const now = new Date();
@@ -135,6 +171,16 @@ router.post('/:id/reply', requireRole('suporte'), async (req, res, next) => {
       where: { id },
       include: { messages: { orderBy: { createdAt: 'asc' } } },
     });
+
+    // Notifica o lojista que respondemos (best-effort, não aguarda)
+    notifyStoreOfReply({
+      to: existing.store?.email,
+      storeName: existing.store?.name,
+      ticketId: id,
+      subject: existing.subject,
+      message,
+    });
+
     res.json({ ticket: updated });
   } catch (err) {
     next(err);

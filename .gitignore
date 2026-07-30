@@ -6,3 +6,11 @@ dist/
 .DS_Store
 Thumbs.db
 .prisma/
+.tools/
+*.pem
+*-key.pem
+*.stackdump
+
+# Gerado por `npm run build:widget` (esbuild) — nunca editar direto, sempre
+# regenerado a partir de frontend/widget-src/index.js antes do build do Vite.
+frontend/public/widget.js

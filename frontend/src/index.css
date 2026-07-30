@@ -8,3 +8,18 @@ body {
   margin: 0;
   padding: 0;
 }
+
+/* Identidade visual do CashbackPro — verde extraído da proposta em PDF
+   (App-Cashback-Nuvemshop-Proposta-e-Plano.pdf: títulos de seção e cabeçalho
+   da tabela comparativa usam #0F7A5C). Sobrescreve os tokens "primary" do
+   Nimbus DS (carregados antes deste arquivo em main.jsx) para que botões,
+   links e destaques do app usem essa cor de forma consistente. */
+:root {
+  --nimbus-colors-primary-interactive: #0F7A5C;
+  --nimbus-colors-primary-interactiveHover: #0B5641;
+  --nimbus-colors-primary-interactivePressed: #063125;
+  --nimbus-colors-primary-surface: #E9F7F3;
+  --nimbus-colors-primary-surfaceHighlight: #B0E8D8;
+  --nimbus-colors-primary-textHigh: #FFFFFF;
+  --nimbus-colors-primary-textLow: #094D3A;
+}

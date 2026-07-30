@@ -17,6 +17,32 @@ describe('Auth Guards — App routes (JWT Nuvemshop)', () => {
     ['GET',  '/api/billing/invoices'],
     ['GET',  '/api/profile'],
     ['GET',  '/api/terms/status'],
+    ['GET',  '/api/cashback/config'],
+    ['PUT',  '/api/cashback/config'],
+    ['GET',  '/api/cashback/stats'],
+    ['GET',  '/api/cashback/tiers'],
+    ['PUT',  '/api/cashback/tiers'],
+    ['GET',  '/api/cashback/customers'],
+    ['GET',  '/api/cashback/redemptions'],
+  ];
+
+  for (const [method, path] of routes) {
+    it(`${method} ${path} → 401 sem token`, async () => {
+      const res = await fetch(`${BASE}${path}`, { method });
+      assert.strictEqual(res.status, 401, `${method} ${path} deveria ser 401`);
+
+      const body = await res.json();
+      assert.ok(body.error, 'Deve ter campo error');
+      assert.ok(body.code, 'Deve ter campo code');
+    });
+  }
+});
+
+describe('Auth Guards — Widget routes (JWT Cliente final)', () => {
+  const routes = [
+    ['GET',  '/api/widget/me'],
+    ['GET',  '/api/widget/history'],
+    ['POST', '/api/widget/redeem'],
   ];
 
   for (const [method, path] of routes) {

@@ -10,24 +10,29 @@ datasource db {
 // ═══ APP (Tenant) ═══
 
 model Store {
-  id                Int       @id @default(autoincrement())
-  nuvemshopId       String    @unique
-  name              String?
-  domain            String?
-  email             String?
-  accessToken       String?
-  plan              String    @default("starter")
-  trialEndsAt       DateTime?
-  uninstalledAt     DateTime? // setado pelo webhook app/uninstalled (null = app instalado)
-  stripeCustomerId  String?
-  partnerId         String?
-  partnerName       String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  subscription      Subscription?
-  profile           StoreProfile?
-  termsAcceptances  TermsAcceptance[]
-  supportTickets    SupportTicket[]
+  id               Int               @id @default(autoincrement())
+  nuvemshopId      String            @unique
+  name             String?
+  domain           String?
+  email            String?
+  accessToken      String?
+  plan             String            @default("starter")
+  trialEndsAt      DateTime?
+  uninstalledAt    DateTime? // setado pelo webhook app/uninstalled (null = app instalado)
+  stripeCustomerId String?
+  partnerId        String?
+  partnerName      String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  subscription     Subscription?
+  profile          StoreProfile?
+  termsAcceptances TermsAcceptance[]
+  supportTickets   SupportTicket[]
+  cashbackConfig   CashbackConfig?
+  customerPoints   CustomerPoints[]
+  cashbackTiers    CashbackTier[]
+  customerOtps     CustomerOtp[]
+
   @@map("stores")
 }
 
@@ -38,60 +43,65 @@ model StoreProfile {
   data      Json     @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   @@map("store_profiles")
 }
 
 model Subscription {
-  id                    Int       @id @default(autoincrement())
-  storeId               Int       @unique
-  store                 Store     @relation(fields: [storeId], references: [id])
-  stripeSubscriptionId  String?
-  status                String    @default("none")
-  planKey               String?
-  billingInterval       String?
-  currentPeriodStart    DateTime?
-  currentPeriodEnd      DateTime?
-  cancelAtPeriodEnd     Boolean   @default(false)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  id                   Int       @id @default(autoincrement())
+  storeId              Int       @unique
+  store                Store     @relation(fields: [storeId], references: [id])
+  stripeSubscriptionId String?
+  status               String    @default("none")
+  planKey              String?
+  billingInterval      String?
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
   @@map("subscriptions")
 }
 
 model Invoice {
-  id               Int      @id @default(autoincrement())
-  storeId          Int
-  stripeInvoiceId  String   @unique
-  amountPaid       Float
-  currency         String   @default("brl")
-  status           String
-  invoiceUrl       String?
-  invoicePdf       String?
-  periodStart      DateTime?
-  periodEnd        DateTime?
-  createdAt        DateTime @default(now())
+  id              Int       @id @default(autoincrement())
+  storeId         Int
+  stripeInvoiceId String    @unique
+  amountPaid      Float
+  currency        String    @default("brl")
+  status          String
+  invoiceUrl      String?
+  invoicePdf      String?
+  periodStart     DateTime?
+  periodEnd       DateTime?
+  createdAt       DateTime  @default(now())
+
   @@map("invoices")
 }
 
 model TermsVersion {
-  id          Int       @id @default(autoincrement())
+  id          Int               @id @default(autoincrement())
   version     String
   title       String
   content     String
-  isPublished Boolean   @default(false)
+  isPublished Boolean           @default(false)
   publishedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
   acceptances TermsAcceptance[]
+
   @@map("terms_versions")
 }
 
 model TermsAcceptance {
-  id              Int          @id @default(autoincrement())
-  storeId         Int
-  store           Store        @relation(fields: [storeId], references: [id])
-  termsVersionId  Int
-  termsVersion    TermsVersion @relation(fields: [termsVersionId], references: [id])
-  acceptedAt      DateTime     @default(now())
+  id             Int          @id @default(autoincrement())
+  storeId        Int
+  store          Store        @relation(fields: [storeId], references: [id])
+  termsVersionId Int
+  termsVersion   TermsVersion @relation(fields: [termsVersionId], references: [id])
+  acceptedAt     DateTime     @default(now())
+
   @@unique([storeId, termsVersionId])
   @@map("terms_acceptances")
 }
@@ -99,16 +109,17 @@ model TermsAcceptance {
 // ═══ ADMIN ═══
 
 model AdminUser {
-  id           Int       @id @default(autoincrement())
+  id           Int            @id @default(autoincrement())
   name         String
-  email        String    @unique
+  email        String         @unique
   passwordHash String
-  role         String    @default("suporte")
-  isActive     Boolean   @default(true)
+  role         String         @default("suporte")
+  isActive     Boolean        @default(true)
   lastLogin    DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   sessions     AdminSession[]
+
   @@map("admin_users")
 }
 
@@ -122,6 +133,7 @@ model AdminSession {
   isActive  Boolean   @default(true)
   expiresAt DateTime
   createdAt DateTime  @default(now())
+
   @@map("admin_sessions")
 }
 
@@ -138,6 +150,7 @@ model AdminPlan {
   sortOrder        Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
   @@unique([appId, name])
   @@map("admin_plans")
 }
@@ -150,6 +163,7 @@ model AdminConfig {
   label     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
   @@map("admin_configs")
 }
 
@@ -163,6 +177,7 @@ model AdminLog {
   ipAddress String?
   severity  String   @default("info")
   createdAt DateTime @default(now())
+
   @@map("admin_logs")
 }
 
@@ -178,6 +193,7 @@ model AdminCommission {
   status           String   @default("pending")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
   @@unique([invoiceId]) // 1 comissão por fatura — backstop contra reentrega concorrente
   @@map("admin_commissions")
 }
@@ -195,6 +211,7 @@ model AdminCoupon {
   stripePromotionCodeId String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+
   @@map("admin_coupons")
 }
 
@@ -209,6 +226,7 @@ model AdminFaq {
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
   @@map("admin_faqs")
 }
 
@@ -216,13 +234,13 @@ model AdminFaq {
 // Ticket aberto pela loja (tenant) no app; respondido pelo admin. Thread de
 // mensagens (author = store | admin). Isolado por storeId.
 model SupportTicket {
-  id            Int             @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   storeId       Int
   subject       String?
-  status        String          @default("open") // open | answered | closed
-  lastMessageAt DateTime        @default(now())
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  status        String   @default("open") // open | answered | closed
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   store    Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   messages SupportMessage[]
@@ -235,7 +253,7 @@ model SupportTicket {
 model SupportMessage {
   id        Int      @id @default(autoincrement())
   ticketId  Int
-  author    String   // store | admin
+  author    String // store | admin
   body      String
   createdAt DateTime @default(now())
 
@@ -243,4 +261,124 @@ model SupportMessage {
 
   @@index([ticketId, createdAt])
   @@map("support_messages")
+}
+
+// ─── Cashback / Fidelidade (domínio específico do CashbackPro) ─────────────
+// Config do programa por loja (tenant). 1:1 com Store.
+model CashbackConfig {
+  id                 Int      @id @default(autoincrement())
+  storeId            Int      @unique
+  store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  isActive           Boolean  @default(false)
+  pointsPerCurrency  Float    @default(1) // pontos ganhos por unidade de moeda gasta (ex: 1 ponto por R$1)
+  // Legado — substituído por CashbackTier (múltiplos níveis). Mantido só para a
+  // migração one-off (migrate-tiers.js); o motor de pontos não lê mais estes campos.
+  redeemThreshold    Int      @default(100)
+  couponType         String   @default("percent_off") // percent_off | amount_off (mesmo shape do AdminCoupon)
+  couponValue        Float    @default(10)
+  nuvemshopFieldId   String? // id do Customer Custom Field criado na Nuvemshop p/ espelhar o saldo (roadmap: UI Slot)
+  welcomeMessage     String?
+  redeemMessage      String?
+  // Config do widget flutuante na vitrine
+  widgetIconPosition String   @default("bottom-right") // bottom-right | bottom-left | top-right | top-left
+  widgetIconSize     String   @default("md") // sm | md | lg
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("cashback_configs")
+}
+
+// Nível de fidelidade configurável pelo lojista (ex: Bronze/Prata/Ouro).
+// Resgate consome o tier mais alto que o saldo do cliente alcançar.
+model CashbackTier {
+  id             Int      @id @default(autoincrement())
+  storeId        Int
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name           String
+  pointsRequired Int
+  couponType     String // percent_off | amount_off
+  couponValue    Float
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([storeId, sortOrder])
+  @@map("cashback_tiers")
+}
+
+// Saldo de pontos por cliente final da loja (cliente da Nuvemshop, não confundir com Store).
+model CustomerPoints {
+  id                  Int      @id @default(autoincrement())
+  storeId             Int
+  store               Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  nuvemshopCustomerId String // id do cliente na Nuvemshop
+  email               String?
+  pointsBalance       Int      @default(0)
+  // Início do ciclo atual de acúmulo — reseta a cada 6 meses (checagem lazy,
+  // feita em ensureCycleFresh() no momento de creditar/resgatar, sem cron job).
+  cycleStartedAt      DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  transactions PointsTransaction[]
+  sessions     CustomerSession[]
+
+  @@unique([storeId, nuvemshopCustomerId])
+  @@index([storeId])
+  @@map("customer_points")
+}
+
+// Histórico de créditos (compra paga), débitos (resgate de cupom) e resets de
+// ciclo de pontos.
+model PointsTransaction {
+  id               Int            @id @default(autoincrement())
+  customerPointsId Int
+  customerPoints   CustomerPoints @relation(fields: [customerPointsId], references: [id], onDelete: Cascade)
+  storeId          Int // denormalizado — permite listar transações da loja sem join
+  type             String // earn | redeem | adjustment | reset
+  points           Int // positivo (earn) ou negativo (redeem/adjustment/reset)
+  nuvemshopOrderId String? // pedido que originou o crédito (earn)
+  couponCode       String? // cupom gerado no resgate (redeem)
+  note             String? // texto legível opcional (ex: "Resgate nível Ouro", "Reset de ciclo")
+  createdAt        DateTime       @default(now())
+
+  @@index([customerPointsId])
+  @@index([storeId, createdAt(sort: Desc)])
+  @@map("points_transactions")
+}
+
+// Código OTP de login passwordless do cliente final na vitrine (widget).
+// Sem FK para CustomerPoints — é solicitado antes de esse registro existir.
+model CustomerOtp {
+  id                  Int       @id @default(autoincrement())
+  storeId             Int
+  store               Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  nuvemshopCustomerId String
+  email               String
+  codeHash            String
+  expiresAt           DateTime
+  attempts            Int       @default(0)
+  consumedAt          DateTime?
+  createdAt           DateTime  @default(now())
+
+  @@index([storeId, nuvemshopCustomerId])
+  @@map("customer_otps")
+}
+
+// Sessão revogável do cliente final (30 dias). Cascade de CustomerPoints —
+// ao apagar CustomerPoints (LGPD redact) as sessões morrem junto.
+model CustomerSession {
+  id               Int            @id @default(autoincrement())
+  customerPointsId Int
+  customerPoints   CustomerPoints @relation(fields: [customerPointsId], references: [id], onDelete: Cascade)
+  storeId          Int // denormalizado — revogar por loja sem join
+  token            String         @unique
+  userAgent        String?
+  ipAddress        String?
+  isActive         Boolean        @default(true)
+  expiresAt        DateTime
+  createdAt        DateTime       @default(now())
+
+  @@index([customerPointsId])
+  @@map("customer_sessions")
 }

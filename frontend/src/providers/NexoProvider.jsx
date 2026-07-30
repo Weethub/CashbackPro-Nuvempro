@@ -92,11 +92,18 @@ export default function NexoProvider({ children }) {
         let token = null;
 
         if (isDevLocal && !isEmbedded) {
-          // Dev token flow
-          const res = await api.post('/auth/dev-token', {});
+          // Dev token flow — reaproveita a mesma loja dev entre reloads (senão cada
+          // reload cria uma loja nova e a config feita em Configurações "some").
+          const devNuvemshopId = localStorage.getItem('dev_nuvemshop_id') || undefined;
+          const res = await api.post('/auth/dev-token', { nuvemshopId: devNuvemshopId });
           token = res.data.token;
           setSessionToken(token);
-          if (res.data.store) setStore(res.data.store);
+          if (res.data.store) {
+            setStore(res.data.store);
+            if (res.data.store.nuvemshopId) {
+              localStorage.setItem('dev_nuvemshop_id', res.data.store.nuvemshopId);
+            }
+          }
         } else {
           // Nexo SDK flow
           const nexoInstance = nexo.create({

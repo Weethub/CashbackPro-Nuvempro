@@ -37,4 +37,33 @@ const ticketLimiter = rateLimit({
   message: { error: 'Muitas mensagens em pouco tempo. Aguarde alguns minutos.', code: 'SUPPORT_RATE_LIMIT' },
 });
 
-module.exports = { globalLimiter, authLimiter, checkoutLimiter, adminLoginLimiter, ticketLimiter };
+// OTP do widget (login do cliente final) — chaveado por IP+email pra não deixar
+// alguém esgotar a tentativa de outra pessoa nem martelar o mesmo e-mail via IPs diferentes sozinho.
+const widgetOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${req.ip}:${String(req.body?.email || '').toLowerCase()}`,
+  message: { error: 'Muitas tentativas. Aguarde 15 minutos.', code: 'WIDGET_OTP_RATE_LIMIT' },
+});
+
+// Resgate do widget — chaveado por cliente autenticado (após requireCustomerAuth).
+const widgetRedeemLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.customerPoints?.id ? `customer:${req.customerPoints.id}` : req.ip),
+  message: { error: 'Muitas tentativas de resgate. Aguarde um minuto.', code: 'WIDGET_REDEEM_RATE_LIMIT' },
+});
+
+module.exports = {
+  globalLimiter,
+  authLimiter,
+  checkoutLimiter,
+  adminLoginLimiter,
+  ticketLimiter,
+  widgetOtpLimiter,
+  widgetRedeemLimiter,
+};

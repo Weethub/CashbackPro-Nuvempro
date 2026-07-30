@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Teste do Widget CashbackPro</title>
+    <style>
+      body {
+        font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        margin: 0;
+        padding: 40px;
+        background: #f4f4f4;
+        color: #16211D;
+      }
+      .fake-store {
+        max-width: 700px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 12px;
+        padding: 32px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      }
+      h1 { font-size: 20px; }
+      p { color: #5C6D67; font-size: 14px; line-height: 1.6; }
+      code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div class="fake-store">
+      <h1>🛍️ Loja Fictícia — simulação de vitrine</h1>
+      <p>
+        Essa página simula uma vitrine da Nuvemshop só pra você ver o widget do CashbackPro
+        funcionando. O ícone flutuante deve aparecer no canto configurado em
+        <strong>Configurações → Ícone flutuante</strong> do app.
+      </p>
+      <p>
+        Loja usada no teste: <code>store=7345965</code> (To Amando Demo — a loja real que já
+        testamos). Pra logar, use um e-mail de cliente real dessa loja
+        (ex: <code>wendell@weethub.com</code>) — o código chega por e-mail se o Resend estiver
+        configurado; se não, me avisa que eu leio o código direto do banco pra você testar.
+      </p>
+      <p>
+        Se quiser testar com outra loja, troque o número depois de <code>?store=</code> na tag
+        de script no final deste arquivo.
+      </p>
+    </div>
+
+    <script src="https://localhost:5173/widget.js?store=7345965"></script>
+  </body>
+</html>

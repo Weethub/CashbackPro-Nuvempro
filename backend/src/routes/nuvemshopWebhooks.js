@@ -1,6 +1,8 @@
 const express = require('express');
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
+const { createNuvemshopClient } = require('../config/nuvemshop');
+const cashbackService = require('../services/cashbackService');
 
 const router = express.Router();
 
@@ -75,19 +77,95 @@ router.post('/store/redact', async (req, res) => {
 });
 
 /**
- * POST /webhooks/customers/redact — LGPD (não armazenamos PII de clientes da loja).
+ * POST /webhooks/customers/redact — LGPD: exclui o saldo/histórico de pontos do
+ * cliente indicado. O CashbackPro guarda e-mail + saldo em CustomerPoints
+ * (diferente do template base, que não guarda PII) — precisa apagar de fato aqui.
+ * NOTA: payload assumido { store_id, customer: { id } } — validar o shape real
+ * assim que os webhooks forem testados com o app cadastrado no Partners Portal.
  */
-router.post('/customers/redact', (req, res) => {
-  console.log(`[nuvemshop][LGPD] customers/redact store_id=${req.body?.store_id}`);
+router.post('/customers/redact', async (req, res) => {
+  const storeId = req.body?.store_id;
+  const customerId = req.body?.customer?.id || req.body?.customer_id;
+  console.log(`[nuvemshop][LGPD] customers/redact store_id=${storeId} customer_id=${customerId}`);
+
+  if (checkHmac(req) !== false && storeId && customerId) {
+    try {
+      const store = await prisma.store.findUnique({ where: { nuvemshopId: String(storeId) } });
+      if (store) {
+        await prisma.customerPoints.deleteMany({
+          where: { storeId: store.id, nuvemshopCustomerId: String(customerId) },
+        });
+      }
+    } catch (err) {
+      console.error('[nuvemshop][LGPD] customers/redact falhou:', err.message);
+    }
+  }
+
   res.status(200).json({ success: true });
 });
 
 /**
- * POST /webhooks/customers/data_request — LGPD (não armazenamos PII de clientes da loja).
+ * POST /webhooks/customers/data_request — LGPD: retorna os dados de pontos
+ * guardados sobre o cliente indicado. Mesmo aviso de shape do payload acima.
  */
-router.post('/customers/data_request', (req, res) => {
-  console.log(`[nuvemshop][LGPD] customers/data_request store_id=${req.body?.store_id}`);
-  res.status(200).json({ success: true, data: [] });
+router.post('/customers/data_request', async (req, res) => {
+  const storeId = req.body?.store_id;
+  const customerId = req.body?.customer?.id || req.body?.customer_id;
+  console.log(`[nuvemshop][LGPD] customers/data_request store_id=${storeId} customer_id=${customerId}`);
+
+  let data = [];
+  try {
+    const store = storeId
+      ? await prisma.store.findUnique({ where: { nuvemshopId: String(storeId) } })
+      : null;
+    if (store && customerId) {
+      const record = await prisma.customerPoints.findUnique({
+        where: { storeId_nuvemshopCustomerId: { storeId: store.id, nuvemshopCustomerId: String(customerId) } },
+      });
+      if (record) data = [{ email: record.email, pointsBalance: record.pointsBalance }];
+    }
+  } catch (err) {
+    console.error('[nuvemshop][LGPD] customers/data_request falhou:', err.message);
+  }
+
+  res.status(200).json({ success: true, data });
+});
+
+/**
+ * POST /webhooks/order/paid — dispara o motor de pontos do CashbackPro.
+ * Payload assumido { store_id, event, id } (id = id do pedido na Nuvemshop) — o
+ * webhook só sinaliza o evento; os dados completos são buscados via API.
+ */
+router.post('/order/paid', async (req, res) => {
+  if (checkHmac(req) === false) {
+    console.warn('[nuvemshop] order/paid com HMAC invalido — ignorado');
+    return res.status(401).json({ error: 'Invalid HMAC.' });
+  }
+
+  const nuvemshopStoreId = req.body?.store_id;
+  const orderId = req.body?.id;
+  console.log(`[nuvemshop] order/paid store_id=${nuvemshopStoreId} order_id=${orderId}`);
+
+  try {
+    if (!nuvemshopStoreId || !orderId) {
+      return res.status(200).json({ success: true, skipped: 'missing_ids' });
+    }
+
+    const store = await prisma.store.findUnique({ where: { nuvemshopId: String(nuvemshopStoreId) } });
+    if (!store || !store.accessToken) {
+      return res.status(200).json({ success: true, skipped: 'store_not_found' });
+    }
+
+    const client = createNuvemshopClient(store.nuvemshopId, store.accessToken);
+    const { data: order } = await client.get(`/orders/${orderId}`);
+
+    const result = await cashbackService.creditPointsForOrder(store, order);
+    res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    // Webhook deve sempre responder 200 (evita reentregas em loop); erro fica só no log.
+    console.error('[nuvemshop] order/paid falhou:', err.message);
+    res.status(200).json({ success: true, error: 'processing_failed' });
+  }
 });
 
 module.exports = router;

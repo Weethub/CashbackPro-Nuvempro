@@ -9,6 +9,8 @@ import TermsPage from './pages/TermsPage.jsx';
 import BillingPage from './pages/BillingPage.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Settings from './pages/Settings.jsx';
+import Customers from './pages/Customers.jsx';
 import { Box, Alert, Text, Button } from '@nimbus-ds/components';
 import { useNavigate } from 'react-router-dom';
 
@@ -78,6 +80,8 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="billing" element={<BillingPage />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="customers" element={<Customers />} />
           {/* Adicione aqui as rotas específicas do seu app */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

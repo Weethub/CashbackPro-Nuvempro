@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const fs = require('fs');
+const https = require('https');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -26,14 +28,22 @@ const allowedOrigins = [
   process.env.ADMIN_FRONTEND_URL,
 ].filter(Boolean);
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
+// /api/widget roda injetado na vitrine da loja — domínio arbitrário (inclusive
+// custom domains), impossível de colocar numa whitelist fixa. Liberado com
+// origin:true SEM credentials (Bearer no header, não cookie — sem risco de CSRF).
+// Usa a forma "delegate" do pacote cors (recebe req) para decidir por rota.
+app.use(cors((req, callback) => {
+  if (req.path.startsWith('/api/widget')) {
+    return callback(null, { origin: true, credentials: false });
+  }
+  return callback(null, {
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // mobile apps, curl, etc.
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      cb(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  });
 }));
 
 // ─── Webhook Stripe: raw body, ANTES do express.json e SEM o rate limit global
@@ -70,6 +80,8 @@ const billingRouter = require('./routes/billing');
 const termsRouter = require('./routes/terms');
 const profileRouter = require('./routes/profile');
 const supportRouter = require('./routes/support');
+const cashbackRouter = require('./routes/cashback');
+const widgetRouter = require('./routes/widget');
 const nuvemshopWebhooksRouter = require('./routes/nuvemshopWebhooks');
 
 app.use('/auth', authRouter);
@@ -77,6 +89,8 @@ app.use('/api/billing', billingRouter);
 app.use('/api/terms', termsRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/support', supportRouter);
+app.use('/api/cashback', cashbackRouter);
+app.use('/api/widget', widgetRouter);
 app.use('/webhooks', nuvemshopWebhooksRouter);
 
 // ═══════════════════════════════════════════
@@ -186,8 +200,21 @@ app.use((err, req, res, _next) => {
 });
 
 // ─── Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
-});
+// Em dev, se SSL_CERT_FILE/SSL_KEY_FILE apontarem para certificados locais válidos
+// (ex.: gerados com mkcert), sobe em HTTPS — necessário para o OAuth callback da
+// Nuvemshop (o campo do Partners Portal só aceita https://) e para o app embedado
+// no iframe (mixed content bloqueia https origin no admin da Nuvemshop carregando https na iframe).
+const certFile = process.env.SSL_CERT_FILE;
+const keyFile = process.env.SSL_KEY_FILE;
+if (certFile && keyFile && fs.existsSync(certFile) && fs.existsSync(keyFile)) {
+  const httpsOptions = { cert: fs.readFileSync(certFile), key: fs.readFileSync(keyFile) };
+  https.createServer(httpsOptions, app).listen(PORT, () => {
+    console.log(`Server running on port ${PORT} via HTTPS (${process.env.NODE_ENV || 'development'})`);
+  });
+} else {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} (${process.env.NODE_ENV || 'development'})`);
+  });
+}
 
 module.exports = app;

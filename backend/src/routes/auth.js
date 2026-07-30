@@ -160,6 +160,9 @@ router.post('/dev-token', async (req, res, next) => {
           name: 'Dev Store',
           plan: 'starter',
           trialEndsAt,
+          // requireAuth exige accessToken — lojas reais só têm isso após o OAuth.
+          // Placeholder só para permitir testar rotas autenticadas em dev.
+          accessToken: 'dev-mode-token',
         },
       });
 

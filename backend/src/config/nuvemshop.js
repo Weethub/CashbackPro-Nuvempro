@@ -48,10 +48,44 @@ async function fetchStoreInfo(storeNuvemshopId, accessToken) {
   return response.data;
 }
 
+// customers/redact e customers/data_request (LGPD) retornam 422 "invalid event"
+// nesse endpoint — a API de Webhooks por loja não aceita esses dois eventos.
+// Precisam ser configurados manualmente no Partners Portal (seção de LGPD/
+// compliance do app), não programaticamente por loja como os demais.
+const WEBHOOK_EVENTS = ['order/paid', 'app/uninstalled'];
+
+/**
+ * Registra os webhooks da loja na Nuvemshop (não é feito automaticamente pelo
+ * OAuth — precisa de POST /webhooks por evento, uma vez por loja). BACKEND_URL
+ * precisa ser a URL pública real (Railway em produção); sem isso os webhooks
+ * nunca chegam e todo crédito de pontos fica manual. Best-effort por evento:
+ * um evento já registrado (422) não deve derrubar os outros.
+ */
+async function registerWebhooks(storeNuvemshopId, accessToken) {
+  const backendUrl = process.env.BACKEND_URL;
+  if (!backendUrl) {
+    console.warn('[nuvemshop] BACKEND_URL nao configurado — webhooks NAO registrados.');
+    return;
+  }
+  const client = createNuvemshopClient(storeNuvemshopId, accessToken);
+  for (const event of WEBHOOK_EVENTS) {
+    try {
+      await client.post('/webhooks', { event, url: `${backendUrl}/webhooks/${event}` });
+    } catch (err) {
+      const status = err.response?.status;
+      // 422 geralmente significa "já registrado para essa URL" — não é erro real.
+      if (status !== 422) {
+        console.error(`[nuvemshop] falha ao registrar webhook ${event}:`, err.response?.data || err.message);
+      }
+    }
+  }
+}
+
 module.exports = {
   exchangeCodeForToken,
   createNuvemshopClient,
   fetchStoreInfo,
+  registerWebhooks,
   NUVEMSHOP_AUTH_URL,
   NUVEMSHOP_API_BASE,
 };

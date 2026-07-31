@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
-const { exchangeCodeForToken, fetchStoreInfo } = require('../config/nuvemshop');
+const { exchangeCodeForToken, fetchStoreInfo, registerWebhooks } = require('../config/nuvemshop');
 const { requireAuth } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimiter');
 
@@ -69,6 +69,14 @@ router.get('/callback', authLimiter, async (req, res, next) => {
       update: {},
       create: { storeId: store.id, status: 'none' },
     });
+
+    // Best-effort: registra os webhooks na Nuvemshop (order/paid etc.). Não
+    // bloqueia o login se falhar — só faltará crédito automático até resolver.
+    try {
+      await registerWebhooks(store.nuvemshopId, accessToken);
+    } catch (err) {
+      console.error('[auth/callback] registerWebhooks falhou:', err.message);
+    }
 
     // Generate JWT (kept for session use if needed)
     const token = jwt.sign(

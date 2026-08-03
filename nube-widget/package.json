@@ -1,0 +1,15 @@
+{
+	"name": "cashbackpro-nube-widget",
+	"version": "0.1.0",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"build": "tsup"
+	},
+	"devDependencies": {
+		"@tiendanube/nube-sdk-jsx": "^0.18.0",
+		"@tiendanube/nube-sdk-types": "^0.81.0",
+		"tsup": "^8.3.0",
+		"typescript": "^5.6.2"
+	}
+}

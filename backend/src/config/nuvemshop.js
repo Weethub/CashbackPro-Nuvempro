@@ -14,10 +14,19 @@ async function exchangeCodeForToken(code) {
     code,
   });
 
+  const { access_token, user_id, token_type } = response.data || {};
+  if (!access_token || !user_id) {
+    // A Nuvemshop pode responder 200 mesmo com code invalido/expirado/de outro
+    // app (client_id/secret nao correspondem) — sem essa checagem, a loja era
+    // criada com nuvemshopId="undefined" e accessToken vazio, silenciosamente.
+    console.error('[nuvemshop] resposta de OAuth sem access_token/user_id:', JSON.stringify(response.data));
+    throw new Error('Nuvemshop OAuth nao retornou access_token/user_id validos.');
+  }
+
   return {
-    accessToken: response.data.access_token,
-    userId: String(response.data.user_id),
-    tokenType: response.data.token_type,
+    accessToken: access_token,
+    userId: String(user_id),
+    tokenType: token_type,
   };
 }
 

@@ -192,6 +192,8 @@ async function creditPointsForOrder(store, order) {
   const pointsEarned = Math.floor(orderTotal * config.pointsPerCurrency);
   if (pointsEarned <= 0) return { skipped: 'zero_points' };
 
+  const { currentTier: tierBefore } = await getTierProgress(store.id, customerPoints);
+
   const updated = await prisma.$transaction(async (tx) => {
     const fresh = await ensureCycleFresh(tx, customerPoints);
     await tx.pointsTransaction.create({
@@ -217,6 +219,20 @@ async function creditPointsForOrder(store, order) {
         config.welcomeMessage ||
         `<p>Você ganhou <strong>${pointsEarned} pontos</strong> nesta compra. Saldo atual: ${updated.pointsBalance} pontos.</p>`,
     });
+
+    const { currentTier: tierAfter } = await getTierProgress(store.id, updated);
+    // Só notifica em SUBIDA real de nível (não repete no mesmo nível a cada compra).
+    if (tierAfter && (!tierBefore || tierAfter.pointsRequired > tierBefore.pointsRequired)) {
+      const discountLabel =
+        tierAfter.couponType === 'amount_off'
+          ? `R$ ${tierAfter.couponValue} de desconto`
+          : `${tierAfter.couponValue}% de desconto`;
+      sendEmail({
+        to: order.customer.email,
+        subject: `Você subiu para o nível ${tierAfter.name}!`,
+        html: `<p>Parabéns! Você alcançou o nível <strong>${tierAfter.name}</strong> e já pode resgatar ${discountLabel} no seu próximo pedido. Saldo atual: ${updated.pointsBalance} pontos.</p>`,
+      });
+    }
   }
 
   return { pointsEarned, balance: updated.pointsBalance };

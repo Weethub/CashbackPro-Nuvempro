@@ -379,10 +379,35 @@ async function listCustomers(storeId, { page, limit, skip, sortBy, sortDir, sear
 }
 
 /**
- * Lista resgates (cupons usados) da loja, paginada, com e-mail do cliente.
+ * Consulta na Nuvemshop se cada cupom gerado foi de fato usado no checkout
+ * (não só emitido). Sem isso não há como saber a taxa de resgate real —
+ * "cupom gerado" não é o mesmo que "cupom usado". Best-effort por cupom:
+ * falha individual não derruba a lista inteira (used: null quando não dá
+ * pra confirmar).
  */
-async function listRedemptions(storeId, { page, limit, skip }) {
-  const where = { storeId, type: 'redeem' };
+async function enrichCouponsWithUsage(store, redemptions) {
+  if (redemptions.length === 0) return redemptions;
+  const client = createNuvemshopClient(store.nuvemshopId, store.accessToken);
+  return Promise.all(
+    redemptions.map(async (r) => {
+      if (!r.couponCode) return { ...r, used: null };
+      try {
+        const { data } = await client.get('/coupons', { params: { code: r.couponCode } });
+        const match = Array.isArray(data) ? data[0] : null;
+        return { ...r, used: match ? match.used > 0 : null };
+      } catch {
+        return { ...r, used: null };
+      }
+    })
+  );
+}
+
+/**
+ * Lista resgates (cupons gerados) da loja, paginada, com e-mail do cliente e
+ * status real de uso do cupom na Nuvemshop.
+ */
+async function listRedemptions(store, { page, limit, skip }) {
+  const where = { storeId: store.id, type: 'redeem' };
 
   const [transactions, total] = await Promise.all([
     prisma.pointsTransaction.findMany({
@@ -395,14 +420,17 @@ async function listRedemptions(storeId, { page, limit, skip }) {
     prisma.pointsTransaction.count({ where }),
   ]);
 
-  const data = transactions.map((t) => ({
-    id: t.id,
-    email: t.customerPoints?.email || null,
-    points: t.points,
-    couponCode: t.couponCode,
-    note: t.note,
-    createdAt: t.createdAt,
-  }));
+  const data = await enrichCouponsWithUsage(
+    store,
+    transactions.map((t) => ({
+      id: t.id,
+      email: t.customerPoints?.email || null,
+      points: t.points,
+      couponCode: t.couponCode,
+      note: t.note,
+      createdAt: t.createdAt,
+    }))
+  );
 
   return { data, total };
 }
@@ -433,7 +461,11 @@ async function listStorePages(store) {
     throw err;
   }
 
-  return (Array.isArray(data) ? data : []).map((page) => ({
+  // A resposta vem como { pages: { results: [...], total, page, ... } }, não
+  // um array na raiz — sem isso, o dropdown sempre ficava vazio mesmo com
+  // páginas reais na loja.
+  const results = data?.pages?.results || [];
+  return results.map((page) => ({
     handle: page.handle?.pt || page.handle?.es || page.handle?.en || null,
     name: page.name?.pt || page.name?.es || page.name?.en || '(sem título)',
   })).filter((page) => page.handle);
@@ -441,22 +473,34 @@ async function listStorePages(store) {
 
 // ─── Dashboard (painel do lojista) ─────────────────────────────────────────
 
-async function getStats(storeId) {
-  const [pointsEmitted, redemptions, activeCustomers] = await Promise.all([
+async function getStats(store) {
+  const storeId = store.id;
+  const [pointsEmitted, redeemTransactions, activeCustomers] = await Promise.all([
     prisma.pointsTransaction.aggregate({
       where: { storeId, type: 'earn' },
       _sum: { points: true },
     }),
-    prisma.pointsTransaction.count({ where: { storeId, type: 'redeem' } }),
+    prisma.pointsTransaction.findMany({
+      where: { storeId, type: 'redeem' },
+      select: { couponCode: true },
+    }),
     prisma.customerPoints.count({ where: { storeId } }),
   ]);
 
   const pointsIssued = pointsEmitted._sum.points || 0;
-  const redemptionRate = activeCustomers > 0 ? (redemptions * 100) / activeCustomers : 0;
+  const couponsGenerated = redeemTransactions.length;
+
+  // Taxa de resgate = % dos cupons GERADOS que foram de fato USADOS no
+  // checkout (dado real da Nuvemshop) — nao emitidos/clientes, que pode
+  // passar de 100% se um cliente resgatar mais de uma vez.
+  const enriched = await enrichCouponsWithUsage(store, redeemTransactions);
+  const withKnownUsage = enriched.filter((r) => r.used !== null);
+  const usedCount = withKnownUsage.filter((r) => r.used).length;
+  const redemptionRate = withKnownUsage.length > 0 ? (usedCount * 100) / withKnownUsage.length : 0;
 
   return {
     pointsIssued,
-    couponsGenerated: redemptions,
+    couponsGenerated,
     redemptionRate: Math.round(redemptionRate * 10) / 10,
     activeCustomers,
   };

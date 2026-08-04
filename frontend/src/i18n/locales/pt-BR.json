@@ -154,7 +154,8 @@
       "notFound": "Parceiro não encontrado. Verifique o código e tente novamente.",
       "suspended": "Este parceiro está suspenso e não pode receber indicações.",
       "notConfigured": "Integração de parceiros não configurada."
-    }
+    },
+    "recommended": "Melhor custo-benefício"
   },
   "support": {
     "title": "Suporte",
@@ -215,7 +216,20 @@
       "redemptions": "Resgates",
       "distributionTitle": "Clientes por nível",
       "noTier": "Sem nível",
-      "empty": "Ainda não há dados suficientes para exibir o gráfico."
+      "empty": "Ainda não há dados suficientes para exibir o gráfico.",
+      "daysOption": "Últimos {{count}} dias"
+    },
+    "coupons": {
+      "title": "Cupons gerados",
+      "empty": "Nenhum cupom gerado ainda.",
+      "code": "Código",
+      "email": "Cliente",
+      "points": "Pontos",
+      "date": "Data",
+      "status": "Status",
+      "statusUsed": "Usado",
+      "statusPending": "Pendente",
+      "statusUnknown": "—"
     }
   },
   "settings": {

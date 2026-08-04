@@ -151,7 +151,8 @@
       "notFound": "Socio no encontrado. Verifica el código e intenta de nuevo.",
       "suspended": "Este socio está suspendido y no puede recibir indicaciones.",
       "notConfigured": "Integración de socios no configurada."
-    }
+    },
+    "recommended": "Mejor relación precio-beneficio"
   },
   "support": {
     "title": "Soporte",
@@ -212,7 +213,20 @@
       "redemptions": "Canjes",
       "distributionTitle": "Clientes por nivel",
       "noTier": "Sin nivel",
-      "empty": "Todavía no hay suficientes datos para mostrar el gráfico."
+      "empty": "Todavía no hay suficientes datos para mostrar el gráfico.",
+      "daysOption": "Últimos {{count}} días"
+    },
+    "coupons": {
+      "title": "Cupones generados",
+      "empty": "Todavía no se generó ningún cupón.",
+      "code": "Código",
+      "email": "Cliente",
+      "points": "Puntos",
+      "date": "Fecha",
+      "status": "Estado",
+      "statusUsed": "Usado",
+      "statusPending": "Pendiente",
+      "statusUnknown": "—"
     }
   },
   "settings": {

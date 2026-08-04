@@ -37,7 +37,7 @@ router.put('/config', async (req, res, next) => {
  */
 router.get('/stats', async (req, res, next) => {
   try {
-    const stats = await cashbackService.getStats(req.storeId);
+    const stats = await cashbackService.getStats(req.store);
     res.json({ stats });
   } catch (err) {
     next(err);
@@ -136,7 +136,7 @@ router.get('/customers', async (req, res, next) => {
 router.get('/redemptions', async (req, res, next) => {
   try {
     const { page, limit, skip } = parsePagination(req.query);
-    const { data, total } = await cashbackService.listRedemptions(req.storeId, { page, limit, skip });
+    const { data, total } = await cashbackService.listRedemptions(req.store, { page, limit, skip });
     res.json(paginatedResponse(data, total, { page, limit }));
   } catch (err) {
     next(err);

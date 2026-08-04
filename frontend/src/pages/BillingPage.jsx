@@ -1,25 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Card, Button, Text, Title, Tag, Badge, Alert, Table, Spinner } from '@nimbus-ds/components';
+import { Box, Card, Button, Text, Title, Tag, Alert, Table, Spinner } from '@nimbus-ds/components';
+import { CheckIcon } from '@nimbus-ds/icons';
 import { useNexo } from '../providers/NexoProvider.jsx';
 import api from '../services/api.js';
 
-const INTERVALS = ['monthly', 'semestral', 'annual'];
+// Plano "recomendado" — recebe a faixa de destaque no meio dos 3 cards.
+const RECOMMENDED_PLAN_KEY = 'growth';
 
 function formatPrice(value, t) {
   if (value == null || value === 0) return t('billing.free');
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-function StatusBadge({ status, t }) {
-  const map = {
-    active: { appearance: 'success', label: t('billing.status.active') },
-    canceled: { appearance: 'danger', label: t('billing.status.canceled') },
-    past_due: { appearance: 'warning', label: t('billing.status.pastDue') },
-    trialing: { appearance: 'primary', label: t('billing.status.trialing') },
-  };
-  const cfg = map[status] || map.active;
-  return <Badge appearance={cfg.appearance}>{cfg.label}</Badge>;
+const STATUS_DOT_TOKEN = {
+  active: 'success-textLow',
+  canceled: 'danger-textLow',
+  past_due: 'warning-textLow',
+  trialing: 'primary-textLow',
+};
+
+function StatusDot({ status }) {
+  return (
+    <Box
+      as="span"
+      display="inline-flex"
+      width="8px"
+      height="8px"
+      borderRadius="50%"
+      backgroundColor={STATUS_DOT_TOKEN[status] || STATUS_DOT_TOKEN.active}
+    />
+  );
 }
 
 export default function BillingPage({ locked = false }) {
@@ -229,7 +240,7 @@ export default function BillingPage({ locked = false }) {
                   <Text fontWeight="bold">{t('billing.status.currentPlan')}</Text>
                   <Box display="flex" gap="2" alignItems="center">
                     <Title as="h3">{billingStatus.plan}</Title>
-                    <StatusBadge status={subStatus} t={t} />
+                    <StatusDot status={subStatus} />
                   </Box>
                 </Box>
                 {renewalDate && (
@@ -280,39 +291,13 @@ export default function BillingPage({ locked = false }) {
         </Card>
       )}
 
-      {/* Interval toggle — calcula desconto comparando com preço mensal do primeiro plano pago */}
-      <Box display="flex" gap="2" justifyContent="center">
-        {INTERVALS.map((intv) => {
-          let discountLabel = '';
-          if (intv !== 'monthly' && plans.length > 0) {
-            const paidPlans = plans.filter(
-              (p) => !p.isFree && (p.price?.monthly || 0) > 0 && (p.price?.[intv] || 0) > 0
-            );
-            if (paidPlans.length > 0) {
-              const ref = paidPlans[0];
-              const discount = Math.round((1 - ref.price[intv] / ref.price.monthly) * 100);
-              if (discount > 0) discountLabel = ` -${discount}%`;
-            }
-          }
-          return (
-            <Button
-              key={intv}
-              appearance={interval === intv ? 'primary' : 'neutral'}
-              onClick={() => setInterval_(intv)}
-            >
-              {t(`billing.interval.${intv}`)}{discountLabel}
-            </Button>
-          );
-        })}
-      </Box>
-
       {/* Plan cards */}
       {loadingPlans ? (
         <Box display="flex" justifyContent="center" padding="4">
           <Spinner />
         </Box>
       ) : (
-        <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center">
+        <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center" alignItems="flex-start">
           {plans.map((plan) => {
             const features = Array.isArray(plan.features)
               ? plan.features
@@ -330,10 +315,26 @@ export default function BillingPage({ locked = false }) {
             const intervalAvail = isFreeplan || (plan.intervals || []).includes(interval);
 
             const planName = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
+            const isRecommended = plan.key === RECOMMENDED_PLAN_KEY;
 
             return (
-              <Box key={plan.key} width="280px">
+              <Box
+                key={plan.key}
+                width="280px"
+                borderColor={isRecommended ? 'primary-interactive' : 'neutral-surfaceHighlight'}
+                borderStyle="solid"
+                borderWidth={isRecommended ? '2' : '1'}
+                borderRadius="2"
+                overflow="hidden"
+              >
                 <Card>
+                  {isRecommended && (
+                    <Box backgroundColor="primary-interactive" padding="2" display="flex" justifyContent="center">
+                      <Text color="primary-textHigh" fontWeight="bold" fontSize="caption">
+                        {t('billing.recommended')}
+                      </Text>
+                    </Box>
+                  )}
                   <Card.Header>
                     <Box display="flex" justifyContent="space-between" alignItems="center">
                       <Title as="h3">{planName}</Title>
@@ -342,7 +343,14 @@ export default function BillingPage({ locked = false }) {
                   </Card.Header>
                   <Card.Body>
                     <Box display="flex" flexDirection="column" gap="3">
-                      <Title as="h2">{priceDisplay}</Title>
+                      <Box display="flex" alignItems="baseline" gap="1">
+                        <Title as="h2">{priceDisplay}</Title>
+                        {!isFreeplan && (
+                          <Text fontSize="caption" color="neutral-textLow">
+                            {t('billing.perMonth')}
+                          </Text>
+                        )}
+                      </Box>
 
                       {/* Badge de trial: só em planos pagos e quando trial está configurado */}
                       {!isFreeplan && trialMode === 'paid' && trialDays > 0 && (
@@ -356,14 +364,27 @@ export default function BillingPage({ locked = false }) {
                         </Tag>
                       )}
 
-                      <Box display="flex" flexDirection="column" gap="1">
+                      <Box display="flex" flexDirection="column" gap="2">
                         {features.map((feat, idx) => (
-                          <Text key={idx}>{feat}</Text>
+                          <Box key={idx} display="flex" gap="2" alignItems="center">
+                            <CheckIcon color="success-textLow" />
+                            <Text>{feat}</Text>
+                          </Box>
                         ))}
                       </Box>
 
-                      {/* Assinar: aparece quando não é o plano+intervalo atual E o intervalo tem preço configurado */}
-                      {!isFreeplan && !isCurrent && intervalAvail && (
+                      {isCurrent ? (
+                        <>
+                          <Button appearance="neutral" disabled>
+                            {t('billing.status.currentPlan')}
+                          </Button>
+                          {!isFreeplan && subStatus !== 'canceled' && (
+                            <Text fontSize="caption" color="neutral-textLow">
+                              {t('billing.cancelHint')}
+                            </Text>
+                          )}
+                        </>
+                      ) : !isFreeplan && intervalAvail ? (
                         <Button
                           appearance="primary"
                           onClick={() => handleCheckout(plan.key)}
@@ -371,20 +392,11 @@ export default function BillingPage({ locked = false }) {
                         >
                           {checkoutLoading === plan.key ? t('common.loading') : t('billing.checkout')}
                         </Button>
-                      )}
-
-                      {/* Intervalo não disponível para este plano */}
-                      {!isFreeplan && !isCurrent && !intervalAvail && (
+                      ) : !isFreeplan ? (
                         <Text fontSize="caption" color="neutral-textDisabled">
                           {t('billing.notAvailableInterval')}
                         </Text>
-                      )}
-
-                      {isCurrent && !isFreeplan && subStatus !== 'canceled' && (
-                        <Text fontSize="caption" color="neutral-textLow">
-                          {t('billing.cancelHint')}
-                        </Text>
-                      )}
+                      ) : null}
                     </Box>
                   </Card.Body>
                 </Card>

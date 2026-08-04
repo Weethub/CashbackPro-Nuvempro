@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Box, Card, Text, Title } from '@nimbus-ds/components';
+import { Box, Card, Text, Title, Select, Table } from '@nimbus-ds/components';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -23,14 +23,27 @@ const CHART_ACCENT_LIGHT = '#9DC7F0';
 const GRAY = '#B7BDBA';
 const FALLBACK_TIER_COLORS = [CHART_ACCENT, '#5EA8ED', CHART_ACCENT_LIGHT, '#1C6BB8', '#C7E0F8'];
 
-function StatCard({ label, value }) {
+function StatCard({ label, value, onClick, expanded }) {
   return (
     <Card>
       <Card.Body padding="small">
-        <Box display="flex" flexDirection="column" gap="1">
-          <Text fontSize="caption" color="neutral-textLow">
-            {label}
-          </Text>
+        <Box
+          display="flex"
+          flexDirection="column"
+          gap="1"
+          cursor={onClick ? 'pointer' : undefined}
+          onClick={onClick}
+        >
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Text fontSize="caption" color="neutral-textLow">
+              {label}
+            </Text>
+            {onClick && (
+              <Text fontSize="caption" color="neutral-textLow">
+                {expanded ? '▲' : '▼'}
+              </Text>
+            )}
+          </Box>
           <Text fontSize="highlight" fontWeight="bold" color="primary-textLow">
             {value}
           </Text>
@@ -45,32 +58,61 @@ function formatDay(isoDate) {
   return `${day}/${month}`;
 }
 
+const DAY_OPTIONS = [7, 30, 60, 90];
+
 export default function Dashboard() {
   const { t } = useTranslation();
   const { store } = useNexo();
   const [stats, setStats] = useState(null);
   const [series, setSeries] = useState([]);
+  const [seriesDays, setSeriesDays] = useState(30);
+  const [seriesLoading, setSeriesLoading] = useState(true);
   const [distribution, setDistribution] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [couponsExpanded, setCouponsExpanded] = useState(false);
+  const [coupons, setCoupons] = useState([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
       api.get('/api/cashback/stats'),
-      api.get('/api/cashback/stats/timeseries?days=30'),
       api.get('/api/cashback/stats/tier-distribution'),
     ])
-      .then(([statsRes, seriesRes, distRes]) => {
+      .then(([statsRes, distRes]) => {
         setStats(statsRes.data.stats);
-        setSeries(seriesRes.data.series || []);
         setDistribution(distRes.data);
       })
       .catch(() => {
         setStats(null);
-        setSeries([]);
         setDistribution(null);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    setSeriesLoading(true);
+    api
+      .get(`/api/cashback/stats/timeseries?days=${seriesDays}`)
+      .then((res) => setSeries(res.data.series || []))
+      .catch(() => setSeries([]))
+      .finally(() => setSeriesLoading(false));
+  }, [seriesDays]);
+
+  const toggleCoupons = useCallback(() => {
+    setCouponsExpanded((prev) => {
+      const next = !prev;
+      if (next && coupons.length === 0) {
+        setCouponsLoading(true);
+        api
+          .get('/api/cashback/redemptions', { params: { limit: 50 } })
+          .then((res) => setCoupons(res.data.data || []))
+          .catch(() => setCoupons([]))
+          .finally(() => setCouponsLoading(false));
+      }
+      return next;
+    });
+  }, [coupons.length]);
 
   const chartData = series.map((point) => ({ ...point, label: formatDay(point.date) }));
 
@@ -96,9 +138,7 @@ export default function Dashboard() {
           <Box display="flex" flexDirection="column" gap="2">
             <Text fontSize="highlight">{t('dashboard.welcome')}</Text>
             {store && (
-              <Text color="neutral-textLow">
-                {store.name || 'Store'} (ID: {store.id || store.storeId || '---'})
-              </Text>
+              <Text color="neutral-textLow">{store.name || 'Store'}</Text>
             )}
           </Box>
         </Card.Body>
@@ -116,6 +156,8 @@ export default function Dashboard() {
         <StatCard
           label={t('dashboard.stats.couponsGenerated')}
           value={loading ? '—' : stats?.couponsGenerated ?? 0}
+          onClick={toggleCoupons}
+          expanded={couponsExpanded}
         />
         <StatCard
           label={t('dashboard.stats.redemptionRate')}
@@ -127,13 +169,73 @@ export default function Dashboard() {
         />
       </Box>
 
+      {couponsExpanded && (
+        <Card>
+          <Card.Header>
+            <Title as="h3">{t('dashboard.coupons.title')}</Title>
+          </Card.Header>
+          <Card.Body>
+            {couponsLoading ? (
+              <Text color="neutral-textDisabled">{t('common.loading')}</Text>
+            ) : coupons.length === 0 ? (
+              <Text color="neutral-textLow">{t('dashboard.coupons.empty')}</Text>
+            ) : (
+              <Table>
+                <Table.Head>
+                  <Table.Row>
+                    <Table.Cell as="th">{t('dashboard.coupons.code')}</Table.Cell>
+                    <Table.Cell as="th">{t('dashboard.coupons.email')}</Table.Cell>
+                    <Table.Cell as="th">{t('dashboard.coupons.points')}</Table.Cell>
+                    <Table.Cell as="th">{t('dashboard.coupons.date')}</Table.Cell>
+                    <Table.Cell as="th">{t('dashboard.coupons.status')}</Table.Cell>
+                  </Table.Row>
+                </Table.Head>
+                <Table.Body>
+                  {coupons.map((c) => (
+                    <Table.Row key={c.id}>
+                      <Table.Cell>{c.couponCode || '—'}</Table.Cell>
+                      <Table.Cell>{c.email || '—'}</Table.Cell>
+                      <Table.Cell>{Math.abs(c.points)}</Table.Cell>
+                      <Table.Cell>{new Date(c.createdAt).toLocaleDateString('pt-BR')}</Table.Cell>
+                      <Table.Cell>
+                        {c.used === null
+                          ? t('dashboard.coupons.statusUnknown')
+                          : c.used
+                          ? t('dashboard.coupons.statusUsed')
+                          : t('dashboard.coupons.statusPending')}
+                      </Table.Cell>
+                    </Table.Row>
+                  ))}
+                </Table.Body>
+              </Table>
+            )}
+          </Card.Body>
+        </Card>
+      )}
+
       <Box display="grid" gridTemplateColumns="minmax(0, 2fr) minmax(0, 1fr)" gap="4">
         <Card>
           <Card.Header>
-            <Title as="h3">{t('dashboard.charts.activityTitle')}</Title>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Title as="h3">{t('dashboard.charts.activityTitle')}</Title>
+              <Box minWidth="110px">
+                <Select
+                  name="seriesDays"
+                  id="seriesDays"
+                  value={String(seriesDays)}
+                  onChange={(e) => setSeriesDays(Number(e.target.value))}
+                >
+                  {DAY_OPTIONS.map((d) => (
+                    <Select.Option key={d} value={String(d)} label={t('dashboard.charts.daysOption', { count: d })}>
+                      {t('dashboard.charts.daysOption', { count: d })}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Box>
+            </Box>
           </Card.Header>
           <Card.Body>
-            {loading ? (
+            {seriesLoading ? (
               <Text color="neutral-textDisabled">{t('common.loading')}</Text>
             ) : chartData.length === 0 ? (
               <Text color="neutral-textLow">{t('dashboard.charts.empty')}</Text>

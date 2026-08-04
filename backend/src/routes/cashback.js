@@ -45,6 +45,45 @@ router.get('/stats', async (req, res, next) => {
 });
 
 /**
+ * GET /api/cashback/stats/timeseries — pontos emitidos e resgates por dia
+ * (últimos N dias, default 30) pra gráfico de linha no dashboard.
+ */
+router.get('/stats/timeseries', async (req, res, next) => {
+  try {
+    const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
+    const series = await cashbackService.getStatsTimeSeries(req.storeId, days);
+    res.json({ series });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/cashback/stats/tier-distribution — quantidade de clientes por nível.
+ */
+router.get('/stats/tier-distribution', async (req, res, next) => {
+  try {
+    const distribution = await cashbackService.getTierDistribution(req.storeId);
+    res.json(distribution);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/cashback/customer-page — cria a página "Minha Fidelidade" na loja
+ * (Nuvemshop Pages API). Idempotente: se já existe, retorna o handle salvo.
+ */
+router.post('/customer-page', async (req, res, next) => {
+  try {
+    const result = await cashbackService.createCustomerPage(req.store);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/cashback/tiers — níveis de fidelidade configurados (ordenados).
  */
 router.get('/tiers', async (req, res, next) => {

@@ -19,4 +19,15 @@ esbuild.buildSync({
   },
 });
 
-console.log(`widget.js gerado (API_BASE_URL=${apiBaseUrl})`);
+esbuild.buildSync({
+  entryPoints: ['widget-src/fidelidade-page.js'],
+  bundle: true,
+  minify: true,
+  format: 'iife',
+  outfile: 'public/fidelidade-page.js',
+  define: {
+    API_BASE_URL: JSON.stringify(apiBaseUrl),
+  },
+});
+
+console.log(`widget.js e fidelidade-page.js gerados (API_BASE_URL=${apiBaseUrl})`);

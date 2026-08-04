@@ -1,8 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Card, Text, Title } from '@nimbus-ds/components';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { useNexo } from '../providers/NexoProvider.jsx';
 import api from '../services/api.js';
+
+const GREEN = '#0F7A5C';
+const GREEN_LIGHT = '#4FA98A';
+const GREEN_LIGHTER = '#8FCBB2';
+const GRAY = '#B7BDBA';
+const TIER_COLORS = [GREEN, GREEN_LIGHT, GREEN_LIGHTER, '#0B5641', '#B0E8D8'];
 
 function StatCard({ label, value }) {
   return (
@@ -21,19 +41,46 @@ function StatCard({ label, value }) {
   );
 }
 
+function formatDay(isoDate) {
+  const [, month, day] = isoDate.split('-');
+  return `${day}/${month}`;
+}
+
 export default function Dashboard() {
   const { t } = useTranslation();
   const { store } = useNexo();
   const [stats, setStats] = useState(null);
+  const [series, setSeries] = useState([]);
+  const [distribution, setDistribution] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get('/api/cashback/stats')
-      .then((res) => setStats(res.data.stats))
-      .catch(() => setStats(null))
+    Promise.all([
+      api.get('/api/cashback/stats'),
+      api.get('/api/cashback/stats/timeseries?days=30'),
+      api.get('/api/cashback/stats/tier-distribution'),
+    ])
+      .then(([statsRes, seriesRes, distRes]) => {
+        setStats(statsRes.data.stats);
+        setSeries(seriesRes.data.series || []);
+        setDistribution(distRes.data);
+      })
+      .catch(() => {
+        setStats(null);
+        setSeries([]);
+        setDistribution(null);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  const chartData = series.map((point) => ({ ...point, label: formatDay(point.date) }));
+
+  const pieData = distribution
+    ? [
+        ...distribution.tiers.map((tier) => ({ name: tier.name, value: tier.count })),
+        ...(distribution.noTier > 0 ? [{ name: t('dashboard.charts.noTier'), value: distribution.noTier }] : []),
+      ].filter((d) => d.value > 0)
+    : [];
 
   return (
     <Box display="flex" flexDirection="column" gap="4">
@@ -73,6 +120,100 @@ export default function Dashboard() {
           label={t('dashboard.stats.activeCustomers')}
           value={loading ? '—' : stats?.activeCustomers ?? 0}
         />
+      </Box>
+
+      <Box display="grid" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }} gap="4">
+        <Card>
+          <Card.Header>
+            <Title as="h3">{t('dashboard.charts.activityTitle')}</Title>
+          </Card.Header>
+          <Card.Body>
+            {loading ? (
+              <Text color="neutral-textDisabled">{t('common.loading')}</Text>
+            ) : chartData.length === 0 ? (
+              <Text color="neutral-textLow">{t('dashboard.charts.empty')}</Text>
+            ) : (
+              <Box style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#EDEEED" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#5C6D67' }} axisLine={false} tickLine={false} />
+                    <YAxis
+                      yAxisId="points"
+                      tick={{ fontSize: 11, fill: '#5C6D67' }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={40}
+                    />
+                    <YAxis
+                      yAxisId="redemptions"
+                      orientation="right"
+                      allowDecimals={false}
+                      tick={{ fontSize: 11, fill: '#5C6D67' }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={30}
+                    />
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar
+                      yAxisId="points"
+                      dataKey="pointsIssued"
+                      name={t('dashboard.charts.pointsIssued')}
+                      fill={GREEN_LIGHTER}
+                      radius={[3, 3, 0, 0]}
+                    />
+                    <Line
+                      yAxisId="redemptions"
+                      dataKey="redemptions"
+                      name={t('dashboard.charts.redemptions')}
+                      stroke={GREEN}
+                      strokeWidth={2.5}
+                      dot={false}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </Box>
+            )}
+          </Card.Body>
+        </Card>
+
+        <Card>
+          <Card.Header>
+            <Title as="h3">{t('dashboard.charts.distributionTitle')}</Title>
+          </Card.Header>
+          <Card.Body>
+            {loading ? (
+              <Text color="neutral-textDisabled">{t('common.loading')}</Text>
+            ) : pieData.length === 0 ? (
+              <Text color="neutral-textLow">{t('dashboard.charts.empty')}</Text>
+            ) : (
+              <Box style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={2}
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell
+                          key={entry.name}
+                          fill={entry.name === t('dashboard.charts.noTier') ? GRAY : TIER_COLORS[index % TIER_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </Box>
+            )}
+          </Card.Body>
+        </Card>
       </Box>
     </Box>
   );

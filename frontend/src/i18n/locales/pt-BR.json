@@ -208,6 +208,14 @@
       "couponsGenerated": "Cupons gerados",
       "redemptionRate": "Taxa de resgate",
       "activeCustomers": "Clientes ativos"
+    },
+    "charts": {
+      "activityTitle": "Pontos e resgates (30 dias)",
+      "pointsIssued": "Pontos emitidos",
+      "redemptions": "Resgates",
+      "distributionTitle": "Clientes por nível",
+      "noTier": "Sem nível",
+      "empty": "Ainda não há dados suficientes para exibir o gráfico."
     }
   },
   "settings": {
@@ -280,6 +288,15 @@
         "sm": "Pequeno",
         "md": "Médio",
         "lg": "Grande"
+      },
+      "customerPage": {
+        "title": "Página \"Minha Fidelidade\"",
+        "hint": "Cria uma página de verdade na loja onde o cliente acessa saldo, nível, histórico e resgate.",
+        "createButton": "Criar página",
+        "creating": "Criando...",
+        "alreadyCreated": "Página já criada.",
+        "openLink": "Abrir página",
+        "createError": "Não foi possível criar a página agora. Tente novamente."
       }
     }
   },

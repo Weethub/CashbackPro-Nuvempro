@@ -282,6 +282,10 @@ model CashbackConfig {
   // Config do widget flutuante na vitrine
   widgetIconPosition String   @default("bottom-right") // bottom-right | bottom-left | top-right | top-left
   widgetIconSize     String   @default("md") // sm | md | lg
+  // Página "Minha Fidelidade" criada via Nuvemshop Pages API — handle (slug) da
+  // página real na loja. Null = ainda não criada. Ícone flutuante navega pra ela
+  // em vez de abrir modal.
+  customerPageHandle String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

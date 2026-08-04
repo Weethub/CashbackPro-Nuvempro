@@ -205,6 +205,14 @@
       "couponsGenerated": "Cupones generados",
       "redemptionRate": "Tasa de canje",
       "activeCustomers": "Clientes activos"
+    },
+    "charts": {
+      "activityTitle": "Puntos y canjes (30 días)",
+      "pointsIssued": "Puntos emitidos",
+      "redemptions": "Canjes",
+      "distributionTitle": "Clientes por nivel",
+      "noTier": "Sin nivel",
+      "empty": "Todavía no hay suficientes datos para mostrar el gráfico."
     }
   },
   "settings": {
@@ -277,6 +285,15 @@
         "sm": "Chico",
         "md": "Mediano",
         "lg": "Grande"
+      },
+      "customerPage": {
+        "title": "Página \"Mi Fidelidad\"",
+        "hint": "Crea una página real en la tienda donde el cliente accede a saldo, nivel, historial y canje.",
+        "createButton": "Crear página",
+        "creating": "Creando...",
+        "alreadyCreated": "Página ya creada.",
+        "openLink": "Abrir página",
+        "createError": "No se pudo crear la página ahora. Intenta de nuevo."
       }
     }
   },

@@ -35,6 +35,9 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [pageResult, setPageResult] = useState(null);
+  const [creatingPage, setCreatingPage] = useState(false);
+  const [pageError, setPageError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -69,6 +72,20 @@ export default function Settings() {
     ]);
 
   const removeTier = (index) => setTiers((prev) => prev.filter((_, i) => i !== index));
+
+  const handleCreatePage = async () => {
+    setCreatingPage(true);
+    setPageError(null);
+    try {
+      const res = await api.post('/api/cashback/customer-page');
+      setPageResult(res.data);
+      setConfig((prev) => ({ ...prev, customerPageHandle: res.data.handle }));
+    } catch (err) {
+      setPageError(err.response?.data?.error || err.message);
+    } finally {
+      setCreatingPage(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -302,6 +319,45 @@ export default function Settings() {
                   </Select.Option>
                 ))}
               </Select>
+            </Box>
+          </Box>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.widget.customerPage.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.widget.customerPage.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Box display="flex" flexDirection="column" gap="3">
+            {pageError && (
+              <Alert appearance="danger">
+                <Text>{pageError}</Text>
+              </Alert>
+            )}
+
+            {(pageResult?.storeUrl || pageResult?.pageUrl) && (
+              <Alert appearance="success">
+                <Text>
+                  {t('cashback.widget.customerPage.alreadyCreated')}{' '}
+                  <a href={pageResult.storeUrl || pageResult.pageUrl} target="_blank" rel="noreferrer">
+                    {t('cashback.widget.customerPage.openLink')}
+                  </a>
+                </Text>
+              </Alert>
+            )}
+
+            <Box>
+              <Button appearance="primary" onClick={handleCreatePage} disabled={creatingPage}>
+                {creatingPage
+                  ? t('cashback.widget.customerPage.creating')
+                  : config.customerPageHandle
+                    ? t('cashback.widget.customerPage.openLink')
+                    : t('cashback.widget.customerPage.createButton')}
+              </Button>
             </Box>
           </Box>
         </Card.Body>

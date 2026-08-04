@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minha Fidelidade — CashbackPro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #F5F6F5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+      color: #16211D;
+    }
+    #cashbackpro-root { width: 100%; max-width: 560px; }
+    .cbp-card {
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #E4E7E6;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .cbp-banner {
+      background: #0F7A5C; padding: 32px 32px 26px; color: #fff;
+      border-bottom: 3px solid #0B5641;
+    }
+    .cbp-brand { font-size: 13px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; opacity: 0.85; }
+    .cbp-banner-title { font-size: 24px; font-weight: 700; margin: 6px 0 4px; }
+    .cbp-banner-subtitle { font-size: 14px; opacity: 0.85; margin: 0; }
+    .cbp-body { padding: 32px; }
+    .cbp-label { font-size: 13px; font-weight: 600; color: #5C6D67; display: block; margin-bottom: 6px; }
+    .cbp-input {
+      width: 100%; padding: 13px 14px; border: 1px solid #D5D9D7; border-radius: 4px;
+      font-size: 16px; margin-bottom: 18px; color: #16211D;
+      transition: border-color 0.15s ease;
+    }
+    .cbp-input:focus { outline: none; border-color: #0F7A5C; }
+    .cbp-btn-primary {
+      width: 100%; padding: 14px; border-radius: 4px; border: none;
+      background: #0F7A5C; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .cbp-btn-primary:hover:not(:disabled) { background: #0B5641; }
+    .cbp-btn-primary:disabled { opacity: 0.5; cursor: default; }
+    .cbp-btn-secondary {
+      width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #D5D9D7;
+      background: #fff; color: #16211D; font-size: 14px; font-weight: 600; cursor: pointer;
+      margin-top: 12px;
+    }
+    .cbp-btn-secondary:hover { border-color: #0F7A5C; color: #0F7A5C; }
+    .cbp-link {
+      background: none; border: none; color: #5C6D67; font-size: 13px; cursor: pointer; padding: 4px;
+      text-decoration: underline;
+    }
+    .cbp-link:hover { color: #0F7A5C; }
+    .cbp-error {
+      background: #FDECEA; color: #A82F1F; font-size: 13.5px; padding: 12px 14px;
+      border-radius: 4px; margin-bottom: 18px; border-left: 3px solid #C0392B;
+    }
+    .cbp-success {
+      background: #E9F7F3; color: #0B5641; font-size: 14.5px; padding: 16px 18px;
+      border-radius: 4px; font-weight: 600; border-left: 3px solid #0F7A5C;
+    }
+    .cbp-header-row {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid #EDEEED;
+    }
+    .cbp-avatar-name { display: flex; align-items: center; gap: 12px; }
+    .cbp-avatar {
+      width: 40px; height: 40px; border-radius: 6px; background: #E9F7F3; color: #0B5641;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;
+    }
+    .cbp-email { font-size: 14px; font-weight: 600; color: #16211D; }
+    .cbp-logout { font-size: 12px; color: #999; cursor: pointer; text-decoration: underline; margin-top: 2px; }
+    .cbp-balance-card {
+      background: #F5F6F5; border-radius: 6px; padding: 26px; margin-bottom: 26px;
+      border: 1px solid #EDEEED;
+    }
+    .cbp-balance-row { display: flex; align-items: baseline; gap: 10px; }
+    .cbp-balance-number { font-size: 40px; font-weight: 700; color: #0F7A5C; line-height: 1; }
+    .cbp-balance-label { font-size: 13px; color: #5C6D67; }
+    .cbp-progress-track { height: 8px; background: #E4E7E6; border-radius: 4px; margin-top: 18px; overflow: hidden; }
+    .cbp-progress-fill { height: 100%; background: #0F7A5C; border-radius: 4px; transition: width 0.4s ease; }
+    .cbp-progress-hint { font-size: 13px; margin-top: 10px; color: #5C6D67; }
+    .cbp-section-label {
+      font-size: 13px; font-weight: 700; color: #16211D; text-transform: uppercase;
+      letter-spacing: 0.4px; margin: 0 0 14px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .cbp-tiers-section { margin-bottom: 26px; }
+    .cbp-tier-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-radius: 4px; margin-bottom: 8px; background: #F8F9F8;
+      border-left: 3px solid transparent;
+    }
+    .cbp-tier-active { border-left-color: #0F7A5C; background: #E9F7F3; }
+    .cbp-tier-name { font-size: 14px; font-weight: 600; color: #16211D; }
+    .cbp-tier-meta { font-size: 12.5px; color: #5C6D67; }
+    .cbp-tier-active .cbp-tier-meta { color: #0B5641; }
+    .cbp-history-list { display: flex; flex-direction: column; margin-bottom: 26px; }
+    .cbp-history-item {
+      display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+      padding: 12px 0; border-bottom: 1px solid #EDEEED;
+    }
+    .cbp-history-item:last-child { border-bottom: none; }
+    .cbp-history-date { color: #5C6D67; }
+    .cbp-history-points { color: #0F7A5C; font-weight: 700; }
+    .cbp-empty-hint { font-size: 13.5px; color: #999; padding: 8px 0; }
+    .cbp-disclaimer { font-size: 12.5px; color: #999; margin-top: 14px; line-height: 1.4; }
+    .cbp-skeleton { height: 110px; border-radius: 6px; background: #F0F1F0; margin-bottom: 26px; }
+  </style>
+</head>
+<body>
+  <div id="cashbackpro-root"></div>
+  <script src="fidelidade-page.js"></script>
+</body>
+</html>

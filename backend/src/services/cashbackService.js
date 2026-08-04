@@ -396,6 +396,55 @@ async function listRedemptions(storeId, { page, limit, skip }) {
   return { data, total };
 }
 
+// ─── Página "Minha Fidelidade" ──────────────────────────────────────────────
+
+/**
+ * Cria a página real "Minha Fidelidade" na loja via Nuvemshop Pages API.
+ * A Nuvemshop remove tags <script> do conteúdo (sanitização de segurança),
+ * então o conteúdo é só um link estilizado apontando pra experiência completa
+ * hospedada no nosso domínio (FRONTEND_URL/fidelidade.html) — não dá pra
+ * embutir a lógica direto na página da loja. Idempotente: se já existe
+ * (customerPageHandle salvo), não cria de novo.
+ */
+async function createCustomerPage(store) {
+  const config = await getOrCreateConfig(store.id);
+  const pageUrl = `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
+
+  if (config.customerPageHandle) {
+    return { created: false, handle: config.customerPageHandle, pageUrl };
+  }
+
+  const content =
+    '<div style="text-align:center;padding:32px 16px;">' +
+    '<h2>Minha Fidelidade</h2>' +
+    '<p>Acompanhe seus pontos, seu nível e resgate seus cupons de desconto.</p>' +
+    '<p><a href="' +
+    pageUrl +
+    '" style="display:inline-block;background:#0F7A5C;color:#ffffff;padding:14px 28px;border-radius:4px;text-decoration:none;font-weight:bold;">Acessar minha conta</a></p>' +
+    '</div>';
+
+  const client = createNuvemshopClient(store.nuvemshopId, store.accessToken);
+  const { data } = await client.post('/pages', {
+    page: {
+      publish: true,
+      i18n: {
+        pt: {
+          title: 'Minha Fidelidade',
+          content,
+          seo_handle: 'minha-fidelidade',
+          seo_title: 'Minha Fidelidade',
+          seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
+        },
+      },
+    },
+  });
+
+  const handle = data?.handle?.pt || data?.i18n?.pt?.seo_handle || 'minha-fidelidade';
+  await prisma.cashbackConfig.update({ where: { storeId: store.id }, data: { customerPageHandle: handle } });
+
+  return { created: true, handle, pageUrl, storeUrl: store.domain ? `https://${store.domain}/paginas/${handle}` : null };
+}
+
 // ─── Dashboard (painel do lojista) ─────────────────────────────────────────
 
 async function getStats(storeId) {
@@ -419,6 +468,67 @@ async function getStats(storeId) {
   };
 }
 
+/**
+ * Série diária de pontos emitidos (earn) e resgates (redeem) dos últimos `days`
+ * dias, pra gráfico de linha no dashboard. Preenche dias sem movimento com 0
+ * (não pula datas) pra o eixo X do gráfico ficar contínuo.
+ */
+async function getStatsTimeSeries(storeId, days = 30) {
+  const since = new Date();
+  since.setDate(since.getDate() - (days - 1));
+  since.setHours(0, 0, 0, 0);
+
+  const transactions = await prisma.pointsTransaction.findMany({
+    where: { storeId, createdAt: { gte: since }, type: { in: ['earn', 'redeem'] } },
+    select: { type: true, points: true, createdAt: true },
+  });
+
+  const byDay = new Map();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(since);
+    d.setDate(d.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    byDay.set(key, { date: key, pointsIssued: 0, redemptions: 0 });
+  }
+
+  for (const tx of transactions) {
+    const key = tx.createdAt.toISOString().slice(0, 10);
+    const bucket = byDay.get(key);
+    if (!bucket) continue;
+    if (tx.type === 'earn') bucket.pointsIssued += tx.points;
+    else bucket.redemptions += 1;
+  }
+
+  return Array.from(byDay.values());
+}
+
+/**
+ * Quantidade de clientes por nível atual (o maior tier que o saldo alcança) +
+ * bucket "sem nível" pra quem ainda não bateu o primeiro tier. Pra gráfico de
+ * barras/donut de distribuição no dashboard.
+ */
+async function getTierDistribution(storeId) {
+  const [tiers, customers] = await Promise.all([
+    prisma.cashbackTier.findMany({ where: { storeId }, orderBy: { pointsRequired: 'asc' } }),
+    prisma.customerPoints.findMany({ where: { storeId }, select: { pointsBalance: true, cycleStartedAt: true } }),
+  ]);
+
+  const counts = tiers.map((t) => ({ name: t.name, pointsRequired: t.pointsRequired, count: 0 }));
+  let noTier = 0;
+
+  for (const customer of customers) {
+    const balance = computeEffectiveBalance(customer);
+    let reachedIndex = -1;
+    tiers.forEach((t, i) => {
+      if (t.pointsRequired <= balance) reachedIndex = i;
+    });
+    if (reachedIndex === -1) noTier += 1;
+    else counts[reachedIndex].count += 1;
+  }
+
+  return { noTier, tiers: counts };
+}
+
 module.exports = {
   getOrCreateConfig,
   updateConfig,
@@ -432,4 +542,7 @@ module.exports = {
   listCustomers,
   listRedemptions,
   getStats,
+  getStatsTimeSeries,
+  getTierDistribution,
+  createCustomerPage,
 };

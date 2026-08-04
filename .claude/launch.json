@@ -5,15 +5,22 @@
       "name": "frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "D:\\AI\\nuvempro-app-template\\frontend",
+      "cwd": "C:\\Users\\wende\\Documents\\WEETHUB\\NuvemPro - Cashback\\frontend",
       "port": 5173
     },
     {
       "name": "admin-frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "D:\\AI\\nuvempro-app-template\\admin-frontend",
+      "cwd": "C:\\Users\\wende\\Documents\\WEETHUB\\NuvemPro - Cashback\\admin-frontend",
       "port": 5174
+    },
+    {
+      "name": "widget-static",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "public", "-l", "4500"],
+      "cwd": "C:\\Users\\wende\\Documents\\WEETHUB\\NuvemPro - Cashback\\frontend",
+      "port": 4500
     }
   ]
 }

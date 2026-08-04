@@ -24,6 +24,9 @@ describe('Auth Guards — App routes (JWT Nuvemshop)', () => {
     ['PUT',  '/api/cashback/tiers'],
     ['GET',  '/api/cashback/customers'],
     ['GET',  '/api/cashback/redemptions'],
+    ['GET',  '/api/cashback/stats/timeseries'],
+    ['GET',  '/api/cashback/stats/tier-distribution'],
+    ['POST', '/api/cashback/customer-page'],
   ];
 
   for (const [method, path] of routes) {

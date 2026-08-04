@@ -15,3 +15,4 @@ Thumbs.db
 # regenerado a partir de frontend/widget-src/*.js antes do build do Vite.
 frontend/public/widget.js
 frontend/public/fidelidade-page.js
+frontend/public/widget-session.js

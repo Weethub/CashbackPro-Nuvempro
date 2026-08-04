@@ -289,6 +289,11 @@
       "color": "Color",
       "iconTooLarge": "Imagen muy grande — elige un archivo de hasta 300KB."
     },
+    "appearance": {
+      "title": "Apariencia",
+      "hint": "Combiná con los colores de tu tienda — se usa en la página \"Mi Fidelidad\" y en el ícono flotante de la tienda.",
+      "brandColor": "Color principal de la tienda"
+    },
     "widget": {
       "title": "Widget en la Tienda",
       "position": "Posición del ícono",

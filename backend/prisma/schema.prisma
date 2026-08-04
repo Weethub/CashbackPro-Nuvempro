@@ -286,6 +286,10 @@ model CashbackConfig {
   // página real na loja. Null = ainda não criada. Ícone flutuante navega pra ela
   // em vez de abrir modal.
   customerPageHandle String?
+  // Cor da marca da loja (hex), configurável pelo lojista pra combinar com o
+  // tema real da vitrine — usada na página "Minha Fidelidade" e no ícone
+  // flutuante em vez de uma cor fixa do CashbackPro.
+  brandColor         String?  @default("#111827")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

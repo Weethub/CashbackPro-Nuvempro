@@ -49,6 +49,25 @@
     return t.content.firstChild;
   }
 
+  // Escolhe texto branco ou escuro sobre a cor da marca, conforme a
+  // luminância — a cor vem do lojista (Configurações > Aparência) e pode ser
+  // clara ou escura, então não dá pra fixar branco.
+  function pickTextColor(hex) {
+    hex = String(hex || '#111827').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+    var r = parseInt(hex.substr(0, 2), 16) || 0;
+    var g = parseInt(hex.substr(2, 2), 16) || 0;
+    var b = parseInt(hex.substr(4, 2), 16) || 0;
+    var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#111827' : '#ffffff';
+  }
+
+  function applyBrandColor(color) {
+    var brand = color || '#111827';
+    document.documentElement.style.setProperty('--cbp-primary', brand);
+    document.documentElement.style.setProperty('--cbp-on-primary', pickTextColor(brand));
+  }
+
   var state = { screen: 'login', email: '', codeSent: false, me: null, history: null, loading: false };
 
   function render() {
@@ -59,6 +78,11 @@
   }
 
   function boot() {
+    fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
+      .then(function (res) { return res.json(); })
+      .then(function (cfg) { applyBrandColor(cfg.brandColor); })
+      .catch(function () {});
+
     var token = getToken();
     if (!token) { state.screen = 'login'; render(); return; }
     state.screen = 'me';
@@ -72,7 +96,7 @@
     var frag = document.createDocumentFragment();
 
     var banner = h(
-      '<div class="cbp-banner">' +
+      '<div class="cbp-banner"><div class="cbp-banner-inner">' +
         '<div class="cbp-brand">CashbackPro</div>' +
         '<p class="cbp-banner-title">' + (state.codeSent ? 'Confirme seu código' : 'Acesse sua conta') + '</p>' +
         '<p class="cbp-banner-subtitle">' +
@@ -80,7 +104,7 @@
             ? 'Enviamos um código de 6 dígitos para o seu e-mail'
             : 'Informe seu e-mail para ver seu saldo e resgatar cupons') +
         '</p>' +
-      '</div>'
+      '</div></div>'
     );
     frag.appendChild(banner);
 
@@ -139,10 +163,10 @@
   function renderLoggedIn() {
     var wrap = document.createElement('div');
     var banner = h(
-      '<div class="cbp-banner">' +
+      '<div class="cbp-banner"><div class="cbp-banner-inner">' +
         '<div class="cbp-brand">CashbackPro</div>' +
         '<p class="cbp-banner-title">Minha fidelidade</p>' +
-      '</div>'
+      '</div></div>'
     );
     wrap.appendChild(banner);
 

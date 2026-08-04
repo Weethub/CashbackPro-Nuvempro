@@ -23,6 +23,7 @@ async function updateConfig(storeId, data) {
     widgetIconPosition,
     widgetIconSize,
     customerPageHandle,
+    brandColor,
   } = data;
 
   const fields = {
@@ -33,6 +34,7 @@ async function updateConfig(storeId, data) {
     ...(widgetIconPosition !== undefined && { widgetIconPosition }),
     ...(widgetIconSize !== undefined && { widgetIconSize }),
     ...(customerPageHandle !== undefined && { customerPageHandle: customerPageHandle || null }),
+    ...(brandColor !== undefined && { brandColor: brandColor || '#111827' }),
   };
 
   return prisma.cashbackConfig.upsert({

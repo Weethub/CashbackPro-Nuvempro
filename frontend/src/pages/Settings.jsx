@@ -23,6 +23,7 @@ const DEFAULT_CONFIG = {
   redeemMessage: '',
   widgetIconPosition: 'bottom-right',
   widgetIconSize: 'md',
+  brandColor: '#111827',
 };
 
 let nextTempId = -1;
@@ -335,6 +336,33 @@ export default function Settings() {
                 {t('cashback.tiers.empty')}
               </Text>
             )}
+          </Box>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.appearance.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.appearance.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Box display="flex" flexDirection="column" gap="1" minWidth="160px">
+            <Text>{t('cashback.appearance.brandColor')}</Text>
+            <Box display="flex" gap="2" alignItems="center">
+              <input
+                type="color"
+                value={config.brandColor || '#111827'}
+                onChange={(e) => update('brandColor', e.target.value)}
+                style={{ width: 44, height: 36, padding: 0, border: '1px solid #D5D9D7', borderRadius: 6, cursor: 'pointer' }}
+              />
+              <Input
+                name="brandColorHex"
+                value={config.brandColor || '#111827'}
+                onChange={(e) => update('brandColor', e.target.value)}
+              />
+            </Box>
           </Box>
         </Card.Body>
       </Card>

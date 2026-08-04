@@ -44,6 +44,7 @@ router.get('/config', async (req, res, next) => {
       isActive: config.isActive,
       iconPosition: config.widgetIconPosition,
       iconSize: config.widgetIconSize,
+      brandColor: config.brandColor || '#111827',
       pageUrl: `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`,
     });
   } catch (err) {

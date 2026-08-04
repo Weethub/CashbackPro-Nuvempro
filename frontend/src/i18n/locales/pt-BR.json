@@ -292,6 +292,11 @@
       "color": "Cor",
       "iconTooLarge": "Imagem muito grande — escolha um arquivo de até 300KB."
     },
+    "appearance": {
+      "title": "Aparência",
+      "hint": "Combine com as cores da sua loja — usada na página \"Minha Fidelidade\" e no ícone flutuante da vitrine.",
+      "brandColor": "Cor principal da loja"
+    },
     "widget": {
       "title": "Widget na Vitrine",
       "position": "Posição do ícone",

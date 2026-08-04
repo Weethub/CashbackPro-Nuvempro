@@ -328,17 +328,17 @@ export default function BillingPage({ locked = false }) {
                 borderColor={isRecommended ? 'primary-interactive' : 'neutral-surfaceHighlight'}
                 borderStyle="solid"
                 borderWidth={isRecommended ? '2' : '1'}
-                borderRadius="2"
+                borderRadius="3"
                 overflow="hidden"
               >
                 {isRecommended && (
-                  <Box backgroundColor="primary-interactive" padding="2" display="flex" justifyContent="center">
+                  <Box backgroundColor="primary-interactive" padding="3" display="flex" justifyContent="center">
                     <Text color="primary-textHigh" fontWeight="bold" fontSize="caption">
                       {t('billing.recommended')}
                     </Text>
                   </Box>
                 )}
-                <Box display="flex" flexDirection="column" flexGrow="1" padding="4" gap="3">
+                <Box display="flex" flexDirection="column" flexGrow="1" padding="5" gap="4">
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Title as="h3">{planName}</Title>
                     {isCurrent && <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>}
@@ -366,7 +366,7 @@ export default function BillingPage({ locked = false }) {
                   )}
 
                   {/* flexGrow empurra o botão pra base — mesma posição nos 3 cards */}
-                  <Box display="flex" flexDirection="column" gap="2" flexGrow="1">
+                  <Box display="flex" flexDirection="column" gap="3" flexGrow="1">
                     {features.map((feat, idx) => (
                       <Box key={idx} display="flex" gap="2" alignItems="center">
                         <CheckIcon color="success-textLow" />

@@ -71,13 +71,13 @@ router.get('/stats/tier-distribution', async (req, res, next) => {
 });
 
 /**
- * POST /api/cashback/customer-page — cria a página "Minha Fidelidade" na loja
- * (Nuvemshop Pages API). Idempotente: se já existe, retorna o handle salvo.
+ * GET /api/cashback/pages — lista as páginas já existentes na loja, pro
+ * lojista escolher qual delas é a página de fidelidade (dropdown no painel).
  */
-router.post('/customer-page', async (req, res, next) => {
+router.get('/pages', async (req, res, next) => {
   try {
-    const result = await cashbackService.createCustomerPage(req.store);
-    res.json(result);
+    const pages = await cashbackService.listStorePages(req.store);
+    res.json({ pages });
   } catch (err) {
     next(err);
   }

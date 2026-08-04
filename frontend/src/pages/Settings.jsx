@@ -35,9 +35,8 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [pageResult, setPageResult] = useState(null);
-  const [creatingPage, setCreatingPage] = useState(false);
-  const [pageError, setPageError] = useState(null);
+  const [pages, setPages] = useState([]);
+  const [pagesError, setPagesError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,6 +53,13 @@ export default function Settings() {
     } finally {
       setLoading(false);
     }
+
+    try {
+      const pagesRes = await api.get('/api/cashback/pages');
+      setPages(pagesRes.data.pages || []);
+    } catch (err) {
+      setPagesError(err.response?.data?.error || err.message);
+    }
   }, []);
 
   useEffect(() => {
@@ -68,23 +74,28 @@ export default function Settings() {
   const addTier = () =>
     setTiers((prev) => [
       ...prev,
-      { id: nextTempId--, name: '', pointsRequired: 100, couponType: 'percent_off', couponValue: 10 },
+      {
+        id: nextTempId--,
+        name: '',
+        pointsRequired: 100,
+        couponType: 'percent_off',
+        couponValue: 10,
+        icon: null,
+        color: '#0F7A5C',
+      },
     ]);
 
   const removeTier = (index) => setTiers((prev) => prev.filter((_, i) => i !== index));
 
-  const handleCreatePage = async () => {
-    setCreatingPage(true);
-    setPageError(null);
-    try {
-      const res = await api.post('/api/cashback/customer-page');
-      setPageResult(res.data);
-      setConfig((prev) => ({ ...prev, customerPageHandle: res.data.handle }));
-    } catch (err) {
-      setPageError(err.response?.data?.error || err.message);
-    } finally {
-      setCreatingPage(false);
+  const handleTierIconUpload = (index, file) => {
+    if (!file) return;
+    if (file.size > 300 * 1024) {
+      setError(t('cashback.tiers.iconTooLarge'));
+      return;
     }
+    const reader = new FileReader();
+    reader.onload = () => updateTier(index, 'icon', reader.result);
+    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
@@ -205,6 +216,38 @@ export default function Settings() {
                     placeholder={t('cashback.tiers.namePlaceholder')}
                     value={tier.name}
                     onChange={(e) => updateTier(index, 'name', e.target.value)}
+                  />
+                </Box>
+                <Box display="flex" flexDirection="column" gap="1">
+                  <Text fontSize="caption">{t('cashback.tiers.icon')}</Text>
+                  <Box display="flex" alignItems="center" gap="2">
+                    {tier.icon && (
+                      <img
+                        src={tier.icon}
+                        alt=""
+                        style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', border: '1px solid #E4E7E6' }}
+                      />
+                    )}
+                    <label style={{ cursor: 'pointer' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => handleTierIconUpload(index, e.target.files?.[0])}
+                      />
+                      <Button appearance="neutral" as="span">
+                        {t('cashback.tiers.uploadIcon')}
+                      </Button>
+                    </label>
+                  </Box>
+                </Box>
+                <Box display="flex" flexDirection="column" gap="1" minWidth="70px">
+                  <Text fontSize="caption">{t('cashback.tiers.color')}</Text>
+                  <input
+                    type="color"
+                    value={tier.color || '#0F7A5C'}
+                    onChange={(e) => updateTier(index, 'color', e.target.value)}
+                    style={{ width: 44, height: 36, padding: 0, border: '1px solid #D5D9D7', borderRadius: 4, cursor: 'pointer' }}
                   />
                 </Box>
                 <Box display="flex" flexDirection="column" gap="1" minWidth="120px">
@@ -333,31 +376,28 @@ export default function Settings() {
         </Card.Header>
         <Card.Body>
           <Box display="flex" flexDirection="column" gap="3">
-            {pageError && (
+            {pagesError && (
               <Alert appearance="danger">
-                <Text>{pageError}</Text>
+                <Text>{pagesError}</Text>
               </Alert>
             )}
 
-            {(pageResult?.storeUrl || pageResult?.pageUrl) && (
-              <Alert appearance="success">
-                <Text>
-                  {t('cashback.widget.customerPage.alreadyCreated')}{' '}
-                  <a href={pageResult.storeUrl || pageResult.pageUrl} target="_blank" rel="noreferrer">
-                    {t('cashback.widget.customerPage.openLink')}
-                  </a>
-                </Text>
-              </Alert>
-            )}
-
-            <Box>
-              <Button appearance="primary" onClick={handleCreatePage} disabled={creatingPage}>
-                {creatingPage
-                  ? t('cashback.widget.customerPage.creating')
-                  : config.customerPageHandle
-                    ? t('cashback.widget.customerPage.openLink')
-                    : t('cashback.widget.customerPage.createButton')}
-              </Button>
+            <Box display="flex" flexDirection="column" gap="1" minWidth="240px">
+              <Select
+                name="customerPageHandle"
+                id="customerPageHandle"
+                value={config.customerPageHandle || ''}
+                onChange={(e) => update('customerPageHandle', e.target.value || null)}
+              >
+                <Select.Option value="" label={t('cashback.widget.customerPage.selectPlaceholder')}>
+                  {t('cashback.widget.customerPage.selectPlaceholder')}
+                </Select.Option>
+                {pages.map((page) => (
+                  <Select.Option key={page.handle} value={page.handle} label={page.name}>
+                    {page.name}
+                  </Select.Option>
+                ))}
+              </Select>
             </Box>
           </Box>
         </Card.Body>

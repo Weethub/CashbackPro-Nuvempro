@@ -303,6 +303,10 @@ model CashbackTier {
   couponType     String // percent_off | amount_off
   couponValue    Float
   sortOrder      Int      @default(0)
+  // Ícone (data URI base64, sem storage externo — arquivos pequenos) e cor
+  // (hex) do nível, usados no painel e futuramente no widget do cliente.
+  icon           String?
+  color          String?  @default("#0F7A5C")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

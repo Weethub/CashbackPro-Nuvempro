@@ -15,7 +15,15 @@ async function getOrCreateConfig(storeId) {
 }
 
 async function updateConfig(storeId, data) {
-  const { isActive, pointsPerCurrency, welcomeMessage, redeemMessage, widgetIconPosition, widgetIconSize } = data;
+  const {
+    isActive,
+    pointsPerCurrency,
+    welcomeMessage,
+    redeemMessage,
+    widgetIconPosition,
+    widgetIconSize,
+    customerPageHandle,
+  } = data;
 
   const fields = {
     ...(isActive !== undefined && { isActive: Boolean(isActive) }),
@@ -24,6 +32,7 @@ async function updateConfig(storeId, data) {
     ...(redeemMessage !== undefined && { redeemMessage }),
     ...(widgetIconPosition !== undefined && { widgetIconPosition }),
     ...(widgetIconSize !== undefined && { widgetIconSize }),
+    ...(customerPageHandle !== undefined && { customerPageHandle: customerPageHandle || null }),
   };
 
   return prisma.cashbackConfig.upsert({
@@ -61,6 +70,8 @@ async function setTiers(storeId, tiers) {
         couponType: t.couponType === 'amount_off' ? 'amount_off' : 'percent_off',
         couponValue: parseFloat(t.couponValue),
         sortOrder: i,
+        icon: t.icon || null,
+        color: t.color || '#0F7A5C',
       };
 
       if (t.id && existing.some((e) => e.id === t.id)) {
@@ -399,51 +410,21 @@ async function listRedemptions(storeId, { page, limit, skip }) {
 // ─── Página "Minha Fidelidade" ──────────────────────────────────────────────
 
 /**
- * Cria a página real "Minha Fidelidade" na loja via Nuvemshop Pages API.
- * A Nuvemshop remove tags <script> do conteúdo (sanitização de segurança),
- * então o conteúdo é só um link estilizado apontando pra experiência completa
- * hospedada no nosso domínio (FRONTEND_URL/fidelidade.html) — não dá pra
- * embutir a lógica direto na página da loja. Idempotente: se já existe
- * (customerPageHandle salvo), não cria de novo.
+ * Lista as páginas já existentes na loja (o lojista cria/edita a página no
+ * admin da própria Nuvemshop — nós só listamos pra ele escolher qual delas é
+ * a página de fidelidade em CashbackConfig.customerPageHandle). Exige o
+ * escopo read_content; loja instalada antes desse escopo existir precisa
+ * reinstalar o app pra conceder.
  */
-async function createCustomerPage(store) {
-  const config = await getOrCreateConfig(store.id);
-  const pageUrl = `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
-
-  if (config.customerPageHandle) {
-    return { created: false, handle: config.customerPageHandle, pageUrl };
-  }
-
-  const content =
-    '<div style="text-align:center;padding:32px 16px;">' +
-    '<h2>Minha Fidelidade</h2>' +
-    '<p>Acompanhe seus pontos, seu nível e resgate seus cupons de desconto.</p>' +
-    '<p><a href="' +
-    pageUrl +
-    '" style="display:inline-block;background:#0F7A5C;color:#ffffff;padding:14px 28px;border-radius:4px;text-decoration:none;font-weight:bold;">Acessar minha conta</a></p>' +
-    '</div>';
-
+async function listStorePages(store) {
   const client = createNuvemshopClient(store.nuvemshopId, store.accessToken);
   let data;
   try {
-    ({ data } = await client.post('/pages', {
-      page: {
-        publish: true,
-        i18n: {
-          pt: {
-            title: 'Minha Fidelidade',
-            content,
-            seo_handle: 'minha-fidelidade',
-            seo_title: 'Minha Fidelidade',
-            seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
-          },
-        },
-      },
-    }));
+    ({ data } = await client.get('/pages', { params: { per_page: 100 } }));
   } catch (err) {
     if (err.response?.status === 403) {
       throw new AppError(
-        'O app precisa da permissão de páginas (read_content/write_content) — desinstale e reinstale o app pra conceder o escopo novo.',
+        'O app precisa da permissão de páginas (read_content) — desinstale e reinstale o app pra conceder o escopo novo.',
         403,
         'MISSING_CONTENT_SCOPE'
       );
@@ -451,10 +432,10 @@ async function createCustomerPage(store) {
     throw err;
   }
 
-  const handle = data?.handle?.pt || data?.i18n?.pt?.seo_handle || 'minha-fidelidade';
-  await prisma.cashbackConfig.update({ where: { storeId: store.id }, data: { customerPageHandle: handle } });
-
-  return { created: true, handle, pageUrl, storeUrl: store.domain ? `https://${store.domain}/paginas/${handle}` : null };
+  return (Array.isArray(data) ? data : []).map((page) => ({
+    handle: page.handle?.pt || page.handle?.es || page.handle?.en || null,
+    name: page.name?.pt || page.name?.es || page.name?.en || '(sem título)',
+  })).filter((page) => page.handle);
 }
 
 // ─── Dashboard (painel do lojista) ─────────────────────────────────────────
@@ -556,5 +537,5 @@ module.exports = {
   getStats,
   getStatsTimeSeries,
   getTierDistribution,
-  createCustomerPage,
+  listStorePages,
 };

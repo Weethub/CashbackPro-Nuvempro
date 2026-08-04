@@ -269,7 +269,11 @@
       "pointsRequired": "Puntos necesarios",
       "add": "Agregar nivel",
       "remove": "Quitar nivel",
-      "empty": "Todavía no hay niveles configurados."
+      "empty": "Todavía no hay niveles configurados.",
+      "icon": "Ícono",
+      "uploadIcon": "Subir ícono",
+      "color": "Color",
+      "iconTooLarge": "Imagen muy grande — elige un archivo de hasta 300KB."
     },
     "widget": {
       "title": "Widget en la Tienda",
@@ -288,12 +292,8 @@
       },
       "customerPage": {
         "title": "Página \"Mi Fidelidad\"",
-        "hint": "Crea una página real en la tienda donde el cliente accede a saldo, nivel, historial y canje.",
-        "createButton": "Crear página",
-        "creating": "Creando...",
-        "alreadyCreated": "Página ya creada.",
-        "openLink": "Abrir página",
-        "createError": "No se pudo crear la página ahora. Intenta de nuevo."
+        "hint": "Creá la página en tu tienda (Nuvemshop > Páginas) y seleccioná aquí cuál es la página de fidelidad del cliente.",
+        "selectPlaceholder": "Selecciona una página"
       }
     }
   },

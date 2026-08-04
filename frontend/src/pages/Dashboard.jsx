@@ -27,12 +27,12 @@ const TIER_COLORS = [GREEN, GREEN_LIGHT, GREEN_LIGHTER, '#0B5641', '#B0E8D8'];
 function StatCard({ label, value }) {
   return (
     <Card>
-      <Card.Body>
+      <Card.Body padding="3">
         <Box display="flex" flexDirection="column" gap="1">
           <Text fontSize="caption" color="neutral-textLow">
             {label}
           </Text>
-          <Text fontSize="highlight" fontWeight="bold" color="primary-textLow">
+          <Text fontSize="highlight" fontWeight="bold" color="primary-textLow" lineHeight="none">
             {value}
           </Text>
         </Box>
@@ -101,8 +101,8 @@ export default function Dashboard() {
 
       <Box
         display="grid"
-        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
-        gap="4"
+        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}
+        gap="2"
       >
         <StatCard
           label={t('dashboard.stats.pointsIssued')}

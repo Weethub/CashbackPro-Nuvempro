@@ -421,7 +421,7 @@ async function listStorePages(store) {
   const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
   let data;
   try {
-    ({ data } = await client.get('/pages', { params: { per_page: 100 } }));
+    ({ data } = await client.get('/pages', { params: { per_page: 20 } }));
   } catch (err) {
     if (err.response?.status === 403) {
       throw new AppError(

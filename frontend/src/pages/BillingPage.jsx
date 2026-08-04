@@ -297,7 +297,7 @@ export default function BillingPage({ locked = false }) {
           <Spinner />
         </Box>
       ) : (
-        <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center" alignItems="stretch">
+        <Box display="flex" gap="4" flexWrap="wrap" alignItems="stretch">
           {plans.map((plan) => {
             const features = Array.isArray(plan.features)
               ? plan.features
@@ -320,7 +320,8 @@ export default function BillingPage({ locked = false }) {
             return (
               <Box
                 key={plan.key}
-                width="280px"
+                flex="1"
+                minWidth="240px"
                 display="flex"
                 flexDirection="column"
                 backgroundColor="neutral-background"

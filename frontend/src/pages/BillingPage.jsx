@@ -311,9 +311,6 @@ export default function BillingPage({ locked = false }) {
             const isPlanMatch = billingStatus?.plan?.toLowerCase() === plan.key.toLowerCase();
             const isCurrent = isPlanMatch && sub?.billingInterval === interval;
 
-            // Intervalo disponível = tem priceId configurado no Stripe (ou é free)
-            const intervalAvail = isFreeplan || (plan.intervals || []).includes(interval);
-
             const planName = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
             const isRecommended = plan.key === RECOMMENDED_PLAN_KEY;
 
@@ -384,7 +381,7 @@ export default function BillingPage({ locked = false }) {
                             </Text>
                           )}
                         </>
-                      ) : !isFreeplan && intervalAvail ? (
+                      ) : !isFreeplan ? (
                         <Button
                           appearance="primary"
                           onClick={() => handleCheckout(plan.key)}
@@ -392,10 +389,6 @@ export default function BillingPage({ locked = false }) {
                         >
                           {checkoutLoading === plan.key ? t('common.loading') : t('billing.checkout')}
                         </Button>
-                      ) : !isFreeplan ? (
-                        <Text fontSize="caption" color="neutral-textDisabled">
-                          {t('billing.notAvailableInterval')}
-                        </Text>
                       ) : null}
                     </Box>
                   </Card.Body>

@@ -27,12 +27,12 @@ const TIER_COLORS = [GREEN, GREEN_LIGHT, GREEN_LIGHTER, '#0B5641', '#B0E8D8'];
 function StatCard({ label, value }) {
   return (
     <Card>
-      <Card.Body padding="3">
+      <Card.Body padding="small">
         <Box display="flex" flexDirection="column" gap="1">
           <Text fontSize="caption" color="neutral-textLow">
             {label}
           </Text>
-          <Text fontSize="highlight" fontWeight="bold" color="primary-textLow" lineHeight="none">
+          <Text fontSize="highlight" fontWeight="bold" color="primary-textLow">
             {value}
           </Text>
         </Box>

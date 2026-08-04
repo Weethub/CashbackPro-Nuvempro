@@ -84,6 +84,19 @@ router.get('/pages', async (req, res, next) => {
 });
 
 /**
+ * POST /api/cashback/pages — cria a página "Minha Fidelidade" na loja
+ * automaticamente (idempotente: se já tem handle salvo, só retorna ele).
+ */
+router.post('/pages', async (req, res, next) => {
+  try {
+    const result = await cashbackService.createCustomerPage(req.store);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
  * GET /api/cashback/tiers — níveis de fidelidade configurados (ordenados).
  */
 router.get('/tiers', async (req, res, next) => {

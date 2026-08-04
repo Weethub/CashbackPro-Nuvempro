@@ -471,6 +471,66 @@ async function listStorePages(store) {
   })).filter((page) => page.handle);
 }
 
+/**
+ * Cria a página "Minha Fidelidade" na loja (Nuvemshop Pages API) com um
+ * simples link pra `fidelidade.html` — sem <script>, então não esbarra na
+ * sanitização de conteúdo de Pages. Idempotente: se já existe um handle
+ * salvo, retorna ele em vez de criar duplicada. Precisa da 2025-03 (o /v1
+ * legado não tem o recurso /pages).
+ */
+async function createCustomerPage(store) {
+  const config = await getOrCreateConfig(store.id);
+  const pageUrl = `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
+
+  if (config.customerPageHandle) {
+    return { created: false, handle: config.customerPageHandle, pageUrl };
+  }
+
+  const content =
+    '<div style="text-align:center;padding:32px 16px;">' +
+    '<h2>Minha Fidelidade</h2>' +
+    '<p>Acompanhe seus pontos, seu nível e resgate seus cupons de desconto.</p>' +
+    '<p><a href="' +
+    pageUrl +
+    '" style="display:inline-block;background:#0F7A5C;color:#ffffff;padding:14px 28px;border-radius:4px;text-decoration:none;font-weight:bold;">Acessar minha conta</a></p>' +
+    '</div>';
+
+  const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
+  let data;
+  try {
+    ({ data } = await client.post('/pages', {
+      page: {
+        publish: true,
+        i18n: {
+          pt: {
+            title: 'Minha Fidelidade',
+            content,
+            seo_handle: 'minha-fidelidade',
+            seo_title: 'Minha Fidelidade',
+            seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
+          },
+        },
+      },
+    }));
+  } catch (err) {
+    if (err.response?.status === 403) {
+      throw new AppError(
+        'O app precisa da permissão de páginas (read_content/write_content) — desinstale e reinstale o app pra conceder o escopo novo.',
+        403,
+        'MISSING_CONTENT_SCOPE'
+      );
+    }
+    throw err;
+  }
+
+  const handle = data?.handle?.pt || data?.handle?.es || data?.handle?.en || null;
+  if (handle) {
+    await prisma.cashbackConfig.update({ where: { id: config.id }, data: { customerPageHandle: handle } });
+  }
+
+  return { created: true, handle, pageUrl };
+}
+
 // ─── Dashboard (painel do lojista) ─────────────────────────────────────────
 
 async function getStats(store) {
@@ -583,4 +643,5 @@ module.exports = {
   getStatsTimeSeries,
   getTierDistribution,
   listStorePages,
+  createCustomerPage,
 };

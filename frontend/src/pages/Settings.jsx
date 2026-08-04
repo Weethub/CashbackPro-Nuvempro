@@ -37,6 +37,7 @@ export default function Settings() {
   const [success, setSuccess] = useState(false);
   const [pages, setPages] = useState([]);
   const [pagesError, setPagesError] = useState(null);
+  const [creatingPage, setCreatingPage] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +68,21 @@ export default function Settings() {
   }, [load]);
 
   const update = (field, value) => setConfig((prev) => ({ ...prev, [field]: value }));
+
+  const handleCreatePage = async () => {
+    setCreatingPage(true);
+    setPagesError(null);
+    try {
+      const res = await api.post('/api/cashback/pages');
+      const pagesRes = await api.get('/api/cashback/pages');
+      setPages(pagesRes.data.pages || []);
+      if (res.data?.handle) update('customerPageHandle', res.data.handle);
+    } catch (err) {
+      setPagesError(err.response?.data?.error || err.message);
+    } finally {
+      setCreatingPage(false);
+    }
+  };
 
   const updateTier = (index, field, value) =>
     setTiers((prev) => prev.map((tier, i) => (i === index ? { ...tier, [field]: value } : tier)));
@@ -382,22 +398,29 @@ export default function Settings() {
               </Alert>
             )}
 
-            <Box display="flex" flexDirection="column" gap="1" minWidth="240px">
-              <Select
-                name="customerPageHandle"
-                id="customerPageHandle"
-                value={config.customerPageHandle || ''}
-                onChange={(e) => update('customerPageHandle', e.target.value || null)}
-              >
-                <Select.Option value="" label={t('cashback.widget.customerPage.selectPlaceholder')}>
-                  {t('cashback.widget.customerPage.selectPlaceholder')}
-                </Select.Option>
-                {pages.map((page) => (
-                  <Select.Option key={page.handle} value={page.handle} label={page.name}>
-                    {page.name}
+            <Box display="flex" gap="3" alignItems="flex-end" flexWrap="wrap">
+              <Box display="flex" flexDirection="column" gap="1" minWidth="240px">
+                <Select
+                  name="customerPageHandle"
+                  id="customerPageHandle"
+                  value={config.customerPageHandle || ''}
+                  onChange={(e) => update('customerPageHandle', e.target.value || null)}
+                >
+                  <Select.Option value="" label={t('cashback.widget.customerPage.selectPlaceholder')}>
+                    {t('cashback.widget.customerPage.selectPlaceholder')}
                   </Select.Option>
-                ))}
-              </Select>
+                  {pages.map((page) => (
+                    <Select.Option key={page.handle} value={page.handle} label={page.name}>
+                      {page.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Box>
+              <Button appearance="neutral" onClick={handleCreatePage} disabled={creatingPage}>
+                {creatingPage
+                  ? t('cashback.widget.customerPage.creating')
+                  : t('cashback.widget.customerPage.createButton')}
+              </Button>
             </Box>
           </Box>
         </Card.Body>

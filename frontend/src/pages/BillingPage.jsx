@@ -333,7 +333,7 @@ export default function BillingPage({ locked = false }) {
               >
                 {isRecommended && (
                   <Box backgroundColor="primary-interactive" padding="3" display="flex" justifyContent="center">
-                    <Text color="primary-textHigh" fontWeight="bold" fontSize="caption">
+                    <Text color="neutral-background" fontWeight="bold" fontSize="caption">
                       {t('billing.recommended')}
                     </Text>
                   </Box>

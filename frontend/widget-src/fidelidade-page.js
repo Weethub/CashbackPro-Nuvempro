@@ -199,9 +199,15 @@
       tiersSection.appendChild(h('<p class="cbp-section-label">Níveis de fidelidade</p>'));
       me.tiers.forEach(function (tier) {
         var reached = me.currentTier && tier.pointsRequired <= me.balance;
+        var accentColor = tier.color || '#0F7A5C';
+        var iconHtml = tier.icon
+          ? '<img src="' + tier.icon + '" alt="" class="cbp-tier-icon" />'
+          : '<span class="cbp-tier-icon cbp-tier-icon-dot" style="background:' + accentColor + '"></span>';
         var row = h(
-          '<div class="cbp-tier-row' + (reached ? ' cbp-tier-active' : '') + '">' +
-            '<span class="cbp-tier-name">' + tier.name + '</span>' +
+          '<div class="cbp-tier-row' + (reached ? ' cbp-tier-active' : '') + '"' +
+            (reached ? ' style="border-left-color:' + accentColor + '"' : '') + '>' +
+            '<span class="cbp-tier-left">' + iconHtml +
+              '<span class="cbp-tier-name">' + tier.name + '</span></span>' +
             '<span class="cbp-tier-meta">' + tier.pointsRequired + ' pontos' + (reached ? ' · alcançado' : '') + '</span>' +
           '</div>'
         );

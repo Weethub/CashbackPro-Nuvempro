@@ -306,8 +306,10 @@
       },
       "customerPage": {
         "title": "Página \"Mi Fidelidad\"",
-        "hint": "Creá la página en tu tienda (Nuvemshop > Páginas) y seleccioná aquí cuál es la página de fidelidad del cliente.",
-        "selectPlaceholder": "Selecciona una página"
+        "hint": "Creá la página en tu tienda (Nuvemshop > Páginas) y seleccioná aquí cuál es la página de fidelidad del cliente, o dejá que la creemos automáticamente.",
+        "selectPlaceholder": "Selecciona una página",
+        "createButton": "Crear página automáticamente",
+        "creating": "Creando..."
       }
     }
   },

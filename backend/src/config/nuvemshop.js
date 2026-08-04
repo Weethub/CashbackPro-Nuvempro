@@ -2,6 +2,8 @@ const axios = require('axios');
 
 const NUVEMSHOP_AUTH_URL = 'https://www.tiendanube.com/apps/authorize/token';
 const NUVEMSHOP_API_BASE = 'https://api.tiendanube.com/v1';
+// Pages não existe no /v1 legado (404) — só na versão atual da API.
+const NUVEMSHOP_API_BASE_2025 = 'https://api.tiendanube.com/2025-03';
 
 /**
  * Exchange authorization code for access token via Nuvemshop OAuth.
@@ -34,9 +36,9 @@ async function exchangeCodeForToken(code) {
  * Create an authenticated Nuvemshop API client for a specific store.
  * Uses "Authentication" header as required by Nuvemshop API.
  */
-function createNuvemshopClient(storeNuvemshopId, accessToken) {
+function createNuvemshopClient(storeNuvemshopId, accessToken, apiBase = NUVEMSHOP_API_BASE) {
   const client = axios.create({
-    baseURL: `${NUVEMSHOP_API_BASE}/${storeNuvemshopId}`,
+    baseURL: `${apiBase}/${storeNuvemshopId}`,
     headers: {
       'Authentication': `bearer ${accessToken}`,
       'Content-Type': 'application/json',
@@ -97,4 +99,5 @@ module.exports = {
   registerWebhooks,
   NUVEMSHOP_AUTH_URL,
   NUVEMSHOP_API_BASE,
+  NUVEMSHOP_API_BASE_2025,
 };

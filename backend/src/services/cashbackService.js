@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
-const { createNuvemshopClient } = require('../config/nuvemshop');
+const { createNuvemshopClient, NUVEMSHOP_API_BASE_2025 } = require('../config/nuvemshop');
 const { sendEmail } = require('../lib/email');
 
 const CYCLE_MONTHS = 6;
@@ -417,7 +417,8 @@ async function listRedemptions(storeId, { page, limit, skip }) {
  * reinstalar o app pra conceder.
  */
 async function listStorePages(store) {
-  const client = createNuvemshopClient(store.nuvemshopId, store.accessToken);
+  // /pages nao existe no /v1 legado (404) — só na versao atual da API.
+  const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
   let data;
   try {
     ({ data } = await client.get('/pages', { params: { per_page: 100 } }));

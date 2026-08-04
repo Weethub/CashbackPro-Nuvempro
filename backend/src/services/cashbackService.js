@@ -424,20 +424,32 @@ async function createCustomerPage(store) {
     '</div>';
 
   const client = createNuvemshopClient(store.nuvemshopId, store.accessToken);
-  const { data } = await client.post('/pages', {
-    page: {
-      publish: true,
-      i18n: {
-        pt: {
-          title: 'Minha Fidelidade',
-          content,
-          seo_handle: 'minha-fidelidade',
-          seo_title: 'Minha Fidelidade',
-          seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
+  let data;
+  try {
+    ({ data } = await client.post('/pages', {
+      page: {
+        publish: true,
+        i18n: {
+          pt: {
+            title: 'Minha Fidelidade',
+            content,
+            seo_handle: 'minha-fidelidade',
+            seo_title: 'Minha Fidelidade',
+            seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
+          },
         },
       },
-    },
-  });
+    }));
+  } catch (err) {
+    if (err.response?.status === 403) {
+      throw new AppError(
+        'O app precisa da permissão de páginas (read_content/write_content) — desinstale e reinstale o app pra conceder o escopo novo.',
+        403,
+        'MISSING_CONTENT_SCOPE'
+      );
+    }
+    throw err;
+  }
 
   const handle = data?.handle?.pt || data?.i18n?.pt?.seo_handle || 'minha-fidelidade';
   await prisma.cashbackConfig.update({ where: { storeId: store.id }, data: { customerPageHandle: handle } });

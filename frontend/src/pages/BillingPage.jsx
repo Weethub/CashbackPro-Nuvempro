@@ -297,7 +297,7 @@ export default function BillingPage({ locked = false }) {
           <Spinner />
         </Box>
       ) : (
-        <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center" alignItems="flex-start">
+        <Box display="flex" gap="4" flexWrap="wrap" justifyContent="center" alignItems="stretch">
           {plans.map((plan) => {
             const features = Array.isArray(plan.features)
               ? plan.features
@@ -314,85 +314,89 @@ export default function BillingPage({ locked = false }) {
             const planName = plan.key.charAt(0).toUpperCase() + plan.key.slice(1);
             const isRecommended = plan.key === RECOMMENDED_PLAN_KEY;
 
+            // Box no lugar do Card: o Card do Nimbus não aceita height/flexGrow
+            // (ignora silenciosamente), e sem isso os 3 cards ficam com altura
+            // diferente conforme o número de features de cada plano.
             return (
               <Box
                 key={plan.key}
                 width="280px"
+                display="flex"
+                flexDirection="column"
+                backgroundColor="neutral-background"
                 borderColor={isRecommended ? 'primary-interactive' : 'neutral-surfaceHighlight'}
                 borderStyle="solid"
                 borderWidth={isRecommended ? '2' : '1'}
                 borderRadius="2"
                 overflow="hidden"
               >
-                <Card>
-                  {isRecommended && (
-                    <Box backgroundColor="primary-interactive" padding="2" display="flex" justifyContent="center">
-                      <Text color="primary-textHigh" fontWeight="bold" fontSize="caption">
-                        {t('billing.recommended')}
+                {isRecommended && (
+                  <Box backgroundColor="primary-interactive" padding="2" display="flex" justifyContent="center">
+                    <Text color="primary-textHigh" fontWeight="bold" fontSize="caption">
+                      {t('billing.recommended')}
+                    </Text>
+                  </Box>
+                )}
+                <Box display="flex" flexDirection="column" flexGrow="1" padding="4" gap="3">
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Title as="h3">{planName}</Title>
+                    {isCurrent && <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>}
+                  </Box>
+
+                  <Box display="flex" alignItems="baseline" gap="1">
+                    <Title as="h2">{priceDisplay}</Title>
+                    {!isFreeplan && (
+                      <Text fontSize="caption" color="neutral-textLow">
+                        {t('billing.perMonth')}
                       </Text>
-                    </Box>
+                    )}
+                  </Box>
+
+                  {/* Badge de trial: só em planos pagos e quando trial está configurado */}
+                  {!isFreeplan && trialMode === 'paid' && trialDays > 0 && (
+                    <Tag appearance="warning">
+                      {t('trial.paidBadge', { days: trialDays })}
+                    </Tag>
                   )}
-                  <Card.Header>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Title as="h3">{planName}</Title>
-                      {isCurrent && <Tag appearance="primary">{t('billing.status.currentPlan')}</Tag>}
-                    </Box>
-                  </Card.Header>
-                  <Card.Body>
-                    <Box display="flex" flexDirection="column" gap="3">
-                      <Box display="flex" alignItems="baseline" gap="1">
-                        <Title as="h2">{priceDisplay}</Title>
-                        {!isFreeplan && (
+                  {!isFreeplan && trialMode === 'free' && trialDays > 0 && (
+                    <Tag appearance="primary">
+                      {t('trial.freeBadge', { days: trialDays })}
+                    </Tag>
+                  )}
+
+                  {/* flexGrow empurra o botão pra base — mesma posição nos 3 cards */}
+                  <Box display="flex" flexDirection="column" gap="2" flexGrow="1">
+                    {features.map((feat, idx) => (
+                      <Box key={idx} display="flex" gap="2" alignItems="center">
+                        <CheckIcon color="success-textLow" />
+                        <Text>{feat}</Text>
+                      </Box>
+                    ))}
+                  </Box>
+
+                  <Box display="flex" flexDirection="column" gap="1">
+                    {isCurrent ? (
+                      <>
+                        <Button appearance="neutral" disabled>
+                          {t('billing.status.currentPlan')}
+                        </Button>
+                        {!isFreeplan && subStatus !== 'canceled' && (
                           <Text fontSize="caption" color="neutral-textLow">
-                            {t('billing.perMonth')}
+                            {t('billing.cancelHint')}
                           </Text>
                         )}
-                      </Box>
-
-                      {/* Badge de trial: só em planos pagos e quando trial está configurado */}
-                      {!isFreeplan && trialMode === 'paid' && trialDays > 0 && (
-                        <Tag appearance="warning">
-                          {t('trial.paidBadge', { days: trialDays })}
-                        </Tag>
-                      )}
-                      {!isFreeplan && trialMode === 'free' && trialDays > 0 && (
-                        <Tag appearance="primary">
-                          {t('trial.freeBadge', { days: trialDays })}
-                        </Tag>
-                      )}
-
-                      <Box display="flex" flexDirection="column" gap="2">
-                        {features.map((feat, idx) => (
-                          <Box key={idx} display="flex" gap="2" alignItems="center">
-                            <CheckIcon color="success-textLow" />
-                            <Text>{feat}</Text>
-                          </Box>
-                        ))}
-                      </Box>
-
-                      {isCurrent ? (
-                        <>
-                          <Button appearance="neutral" disabled>
-                            {t('billing.status.currentPlan')}
-                          </Button>
-                          {!isFreeplan && subStatus !== 'canceled' && (
-                            <Text fontSize="caption" color="neutral-textLow">
-                              {t('billing.cancelHint')}
-                            </Text>
-                          )}
-                        </>
-                      ) : !isFreeplan ? (
-                        <Button
-                          appearance="primary"
-                          onClick={() => handleCheckout(plan.key)}
-                          disabled={checkoutLoading === plan.key}
-                        >
-                          {checkoutLoading === plan.key ? t('common.loading') : t('billing.checkout')}
-                        </Button>
-                      ) : null}
-                    </Box>
-                  </Card.Body>
-                </Card>
+                      </>
+                    ) : !isFreeplan ? (
+                      <Button
+                        appearance="primary"
+                        onClick={() => handleCheckout(plan.key)}
+                        disabled={checkoutLoading === plan.key}
+                      >
+                        {checkoutLoading === plan.key ? t('common.loading') : t('billing.checkout')}
+                      </Button>
+                    ) : null}
+                  </Box>
+                </Box>
               </Box>
             );
           })}

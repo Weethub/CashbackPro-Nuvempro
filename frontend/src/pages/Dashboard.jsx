@@ -18,11 +18,10 @@ import {
 import { useNexo } from '../providers/NexoProvider.jsx';
 import api from '../services/api.js';
 
-const GREEN = '#0F7A5C';
-const GREEN_LIGHT = '#4FA98A';
-const GREEN_LIGHTER = '#8FCBB2';
+const CHART_ACCENT = '#2985E0';
+const CHART_ACCENT_LIGHT = '#9DC7F0';
 const GRAY = '#B7BDBA';
-const TIER_COLORS = [GREEN, GREEN_LIGHT, GREEN_LIGHTER, '#0B5641', '#B0E8D8'];
+const FALLBACK_TIER_COLORS = [CHART_ACCENT, '#5EA8ED', CHART_ACCENT_LIGHT, '#1C6BB8', '#C7E0F8'];
 
 function StatCard({ label, value }) {
   return (
@@ -77,8 +76,14 @@ export default function Dashboard() {
 
   const pieData = distribution
     ? [
-        ...distribution.tiers.map((tier) => ({ name: tier.name, value: tier.count })),
-        ...(distribution.noTier > 0 ? [{ name: t('dashboard.charts.noTier'), value: distribution.noTier }] : []),
+        ...distribution.tiers.map((tier, i) => ({
+          name: tier.name,
+          value: tier.count,
+          color: tier.color || FALLBACK_TIER_COLORS[i % FALLBACK_TIER_COLORS.length],
+        })),
+        ...(distribution.noTier > 0
+          ? [{ name: t('dashboard.charts.noTier'), value: distribution.noTier, color: GRAY }]
+          : []),
       ].filter((d) => d.value > 0)
     : [];
 
@@ -101,7 +106,7 @@ export default function Dashboard() {
 
       <Box
         display="grid"
-        style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))' }}
+        gridTemplateColumns="repeat(auto-fit, minmax(120px, 1fr))"
         gap="2"
       >
         <StatCard
@@ -122,7 +127,7 @@ export default function Dashboard() {
         />
       </Box>
 
-      <Box display="grid" style={{ gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)' }} gap="4">
+      <Box display="grid" gridTemplateColumns="minmax(0, 2fr) minmax(0, 1fr)" gap="4">
         <Card>
           <Card.Header>
             <Title as="h3">{t('dashboard.charts.activityTitle')}</Title>
@@ -133,7 +138,7 @@ export default function Dashboard() {
             ) : chartData.length === 0 ? (
               <Text color="neutral-textLow">{t('dashboard.charts.empty')}</Text>
             ) : (
-              <Box style={{ width: '100%', height: 260 }}>
+              <Box width="100%" height="260px">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#EDEEED" vertical={false} />
@@ -160,14 +165,14 @@ export default function Dashboard() {
                       yAxisId="points"
                       dataKey="pointsIssued"
                       name={t('dashboard.charts.pointsIssued')}
-                      fill={GREEN_LIGHTER}
+                      fill={CHART_ACCENT_LIGHT}
                       radius={[3, 3, 0, 0]}
                     />
                     <Line
                       yAxisId="redemptions"
                       dataKey="redemptions"
                       name={t('dashboard.charts.redemptions')}
-                      stroke={GREEN}
+                      stroke={CHART_ACCENT}
                       strokeWidth={2.5}
                       dot={false}
                     />
@@ -188,7 +193,7 @@ export default function Dashboard() {
             ) : pieData.length === 0 ? (
               <Text color="neutral-textLow">{t('dashboard.charts.empty')}</Text>
             ) : (
-              <Box style={{ width: '100%', height: 260 }}>
+              <Box width="100%" height="260px">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -199,11 +204,8 @@ export default function Dashboard() {
                       outerRadius={80}
                       paddingAngle={2}
                     >
-                      {pieData.map((entry, index) => (
-                        <Cell
-                          key={entry.name}
-                          fill={entry.name === t('dashboard.charts.noTier') ? GRAY : TIER_COLORS[index % TIER_COLORS.length]}
-                        />
+                      {pieData.map((entry) => (
+                        <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip />

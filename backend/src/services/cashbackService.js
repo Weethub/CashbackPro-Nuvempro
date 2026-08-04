@@ -507,7 +507,7 @@ async function getTierDistribution(storeId) {
     prisma.customerPoints.findMany({ where: { storeId }, select: { pointsBalance: true, cycleStartedAt: true } }),
   ]);
 
-  const counts = tiers.map((t) => ({ name: t.name, pointsRequired: t.pointsRequired, count: 0 }));
+  const counts = tiers.map((t) => ({ name: t.name, pointsRequired: t.pointsRequired, color: t.color, count: 0 }));
   let noTier = 0;
 
   for (const customer of customers) {

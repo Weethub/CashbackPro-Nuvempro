@@ -498,34 +498,61 @@ async function createCustomerPage(store) {
     '</div>';
 
   const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
-  let data;
+
+  // A chave de i18n do request precisa bater com um idioma real da loja (ex.:
+  // "pt", "pt_BR") — um código que a loja não tem faz a API responder 422.
+  // Descobrimos o idioma principal em vez de assumir "pt" fixo.
+  let lang = 'pt';
   try {
-    ({ data } = await client.post('/pages', {
-      page: {
-        publish: true,
-        i18n: {
-          pt: {
-            title: 'Minha Fidelidade',
-            content,
-            seo_handle: 'minha-fidelidade',
-            seo_title: 'Minha Fidelidade',
-            seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
-          },
+    const { data: info } = await client.get('/store');
+    var raw = info?.main_language
+      || (Array.isArray(info?.languages) ? info.languages[0] : null);
+    if (raw && typeof raw === 'object') raw = raw.code || raw.language || null;
+    if (raw) lang = raw;
+  } catch (err) {
+    console.warn('[createCustomerPage] não obteve idioma da loja, usando "pt":', err.response?.data || err.message);
+  }
+
+  const body = {
+    page: {
+      publish: true,
+      i18n: {
+        [lang]: {
+          title: 'Minha Fidelidade',
+          content,
+          seo_handle: 'minha-fidelidade',
+          seo_title: 'Minha Fidelidade',
+          seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
         },
       },
-    }));
+    },
+  };
+
+  let data;
+  try {
+    ({ data } = await client.post('/pages', body));
   } catch (err) {
-    if (err.response?.status === 403) {
+    const status = err.response?.status;
+    const apiErr = err.response?.data;
+    // Loga o motivo real (some no 500 genérico) pra diagnóstico no Railway.
+    console.error('[createCustomerPage] POST /pages falhou', status, JSON.stringify(apiErr) || err.message);
+    if (status === 401 || status === 403) {
       throw new AppError(
-        'O app precisa da permissão de páginas (read_content/write_content) — desinstale e reinstale o app pra conceder o escopo novo.',
+        'O app precisa da permissão de páginas (write_content). Reinstale o app concedendo esse escopo.',
         403,
         'MISSING_CONTENT_SCOPE'
       );
     }
-    throw err;
+    // Expõe a mensagem da Nuvemshop em vez de "Erro interno do servidor".
+    const detail = apiErr && (apiErr.message || apiErr.description || (typeof apiErr === 'string' ? apiErr : JSON.stringify(apiErr)));
+    throw new AppError(
+      'A Nuvemshop recusou a criação da página' + (detail ? ': ' + detail : '') + '.',
+      502,
+      'PAGE_CREATE_FAILED'
+    );
   }
 
-  const handle = data?.handle?.pt || data?.handle?.es || data?.handle?.en || null;
+  const handle = (data?.handle && (data.handle[lang] || data.handle.pt || data.handle.es || data.handle.en)) || null;
   if (handle) {
     await prisma.cashbackConfig.update({ where: { id: config.id }, data: { customerPageHandle: handle } });
   }

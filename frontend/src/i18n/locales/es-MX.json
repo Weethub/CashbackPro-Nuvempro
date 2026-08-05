@@ -304,6 +304,17 @@
       "pointsReferrer": "Puntos para quien recomienda",
       "pointsReferred": "Puntos para el amigo recomendado"
     },
+    "welcome": {
+      "title": "Bono de bienvenida",
+      "hint": "Puntos extra acreditados en la primera compra del cliente en el programa.",
+      "enable": "Activar bono de bienvenida",
+      "points": "Puntos en la primera compra"
+    },
+    "howItWorks": {
+      "title": "Texto \"Cómo funciona\"",
+      "hint": "Explicación mostrada al cliente en el botón \"Cómo funciona\". Deja en blanco para usar el texto por defecto.",
+      "placeholder": "Ej: En cada compra ganas puntos. Los puntos suben tu nivel y se convierten en descuento. Canjéalos cuando quieras."
+    },
     "widget": {
       "title": "Widget en la Tienda",
       "position": "Posición del ícono",

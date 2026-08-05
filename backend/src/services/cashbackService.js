@@ -27,6 +27,9 @@ async function updateConfig(storeId, data) {
     referralEnabled,
     referralPointsReferrer,
     referralPointsReferred,
+    welcomeBonusEnabled,
+    welcomeBonusPoints,
+    howItWorks,
   } = data;
 
   const fields = {
@@ -41,6 +44,9 @@ async function updateConfig(storeId, data) {
     ...(referralEnabled !== undefined && { referralEnabled: Boolean(referralEnabled) }),
     ...(referralPointsReferrer !== undefined && { referralPointsReferrer: Math.max(0, parseInt(referralPointsReferrer) || 0) }),
     ...(referralPointsReferred !== undefined && { referralPointsReferred: Math.max(0, parseInt(referralPointsReferred) || 0) }),
+    ...(welcomeBonusEnabled !== undefined && { welcomeBonusEnabled: Boolean(welcomeBonusEnabled) }),
+    ...(welcomeBonusPoints !== undefined && { welcomeBonusPoints: Math.max(0, parseInt(welcomeBonusPoints) || 0) }),
+    ...(howItWorks !== undefined && { howItWorks: howItWorks || null }),
   };
 
   return prisma.cashbackConfig.upsert({
@@ -198,6 +204,29 @@ async function rewardReferralIfDue(store, customerPointsId) {
   });
 }
 
+// Bônus de boas-vindas: credita uma única vez (guarda por transação 'welcome')
+// na primeira compra do cliente. Best-effort, chamado de creditPointsForOrder.
+async function rewardWelcomeBonusIfDue(store, customerPointsId) {
+  const config = await getOrCreateConfig(store.id);
+  if (!config.welcomeBonusEnabled || !config.welcomeBonusPoints) return;
+
+  const already = await prisma.pointsTransaction.findFirst({
+    where: { customerPointsId, type: 'welcome' },
+  });
+  if (already) return;
+
+  const cp = await prisma.customerPoints.findUnique({ where: { id: customerPointsId } });
+  if (!cp) return;
+
+  await prisma.$transaction(async (tx) => {
+    const fresh = await ensureCycleFresh(tx, cp);
+    await tx.pointsTransaction.create({
+      data: { customerPointsId: fresh.id, storeId: store.id, type: 'welcome', points: config.welcomeBonusPoints, note: 'Bônus de boas-vindas' },
+    });
+    await tx.customerPoints.update({ where: { id: fresh.id }, data: { pointsBalance: { increment: config.welcomeBonusPoints } } });
+  });
+}
+
 // Estatísticas de indicação de um cliente (pro card no dashboard).
 async function getReferralStats(storeId, customerPoints, config) {
   const count = await prisma.customerPoints.count({
@@ -348,6 +377,13 @@ async function creditPointsForOrder(store, order) {
         html: `<p>Parabéns! Você alcançou o nível <strong>${tierAfter.name}</strong> e já pode resgatar ${discountLabel} no seu próximo pedido. Saldo atual: ${updated.pointsBalance} pontos.</p>`,
       });
     }
+  }
+
+  // Bônus de boas-vindas (1ª compra) — best-effort.
+  try {
+    await rewardWelcomeBonusIfDue(store, updated.id);
+  } catch (err) {
+    console.error('[welcome] falha ao creditar bônus de boas-vindas (ignorado):', err.message);
   }
 
   // Indique e ganhe: se este cliente foi indicado, recompensa na 1ª compra

@@ -307,6 +307,17 @@
       "pointsReferrer": "Pontos para quem indica",
       "pointsReferred": "Pontos para o amigo indicado"
     },
+    "welcome": {
+      "title": "Bônus de boas-vindas",
+      "hint": "Pontos extras creditados na primeira compra do cliente no programa.",
+      "enable": "Ativar bônus de boas-vindas",
+      "points": "Pontos na primeira compra"
+    },
+    "howItWorks": {
+      "title": "Texto \"Como funciona\"",
+      "hint": "Explicação mostrada ao cliente no botão \"Como funciona\". Deixe em branco para usar o texto padrão.",
+      "placeholder": "Ex: A cada compra você ganha pontos. Os pontos sobem seu nível e viram desconto. Resgate quando quiser."
+    },
     "widget": {
       "title": "Widget na Vitrine",
       "position": "Posição do ícone",

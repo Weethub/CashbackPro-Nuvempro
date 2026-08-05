@@ -27,6 +27,9 @@ const DEFAULT_CONFIG = {
   referralEnabled: false,
   referralPointsReferrer: 0,
   referralPointsReferred: 0,
+  welcomeBonusEnabled: false,
+  welcomeBonusPoints: 0,
+  howItWorks: '',
 };
 
 let nextTempId = -1;
@@ -390,6 +393,56 @@ export default function Settings() {
               />
             </Box>
           </Box>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.welcome.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.welcome.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Box display="flex" flexDirection="column" gap="4">
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap="4">
+              <Text fontWeight="bold">{t('cashback.welcome.enable')}</Text>
+              <Toggle
+                active={config.welcomeBonusEnabled}
+                onChange={() => update('welcomeBonusEnabled', !config.welcomeBonusEnabled)}
+                name="welcomeBonusEnabled"
+              />
+            </Box>
+            <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
+              <Text>{t('cashback.welcome.points')}</Text>
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                name="welcomeBonusPoints"
+                value={config.welcomeBonusPoints ?? 0}
+                onChange={(e) => update('welcomeBonusPoints', e.target.value)}
+              />
+            </Box>
+          </Box>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.howItWorks.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.howItWorks.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Textarea
+            name="howItWorks"
+            lines={5}
+            placeholder={t('cashback.howItWorks.placeholder')}
+            value={config.howItWorks || ''}
+            onChange={(e) => update('howItWorks', e.target.value)}
+          />
         </Card.Body>
       </Card>
 

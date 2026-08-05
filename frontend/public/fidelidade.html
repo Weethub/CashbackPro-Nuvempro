@@ -195,6 +195,16 @@
   .offer button{margin-top:16px;background:var(--cbp-primary);color:#fff;border:none;border-radius:10px;padding:11px 18px;font-weight:700;font-size:13.5px;cursor:pointer}
 
   .footer{text-align:center;color:var(--text-3);font-size:12.5px;padding:24px 0 8px;display:flex;align-items:center;justify-content:center;gap:7px}
+
+  /* ── Modal "Como funciona" ──────────── */
+  .cbp-modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
+  .cbp-modal-backdrop{position:absolute;inset:0;background:rgba(17,20,28,.55)}
+  .cbp-modal-card{position:relative;background:var(--card);border-radius:16px;max-width:520px;width:100%;
+    max-height:82vh;overflow:auto;padding:30px 30px 32px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .cbp-modal-card h3{font-size:20px;font-weight:800;margin-bottom:14px}
+  .cbp-modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:26px;line-height:1;
+    color:var(--text-3);cursor:pointer;padding:4px}
+  .cbp-hiw-body{font-size:15px;color:var(--text);line-height:1.65;white-space:pre-wrap}
   .skeleton{height:120px;border-radius:var(--radius);background:#EFEDF3;animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{50%{opacity:.5}}
 
@@ -241,14 +251,13 @@
   <div class="shell">
     <aside class="sidebar">
       <nav class="nav">
-        <a class="active"><span class="ic">🏠</span>Início</a>
-        <a><span class="ic">🎖️</span>Meu Nível</a>
-        <a><span class="ic">🎟️</span>Cupons</a>
-        <a><span class="ic">🕐</span>Histórico</a>
-        <a><span class="ic">👥</span>Indique e Ganhe</a>
-        <a><span class="ic">⚙️</span>Configurações</a>
+        <a class="active" data-scroll="sec-inicio"><span class="ic">🏠</span>Início</a>
+        <a data-scroll="sec-nivel"><span class="ic">🎖️</span>Meu Nível</a>
+        <a data-scroll="sec-historico"><span class="ic">🕐</span>Histórico</a>
+        <a data-scroll="cbp-ref-card"><span class="ic">👥</span>Indique e Ganhe</a>
+        <a id="cbp-nav-hiw"><span class="ic">❓</span>Como funciona</a>
       </nav>
-      <div class="side-promo">
+      <div class="side-promo" id="cbp-side-indicar">
         <div class="gift">🎁</div>
         <p>Indique amigos e ganhe pontos!</p>
         <button>Indicar agora</button>
@@ -259,7 +268,7 @@
       <!-- CENTRO -->
       <div class="col">
 
-        <div class="level-hero">
+        <div class="level-hero" id="sec-inicio">
           <span class="spark" style="top:18px;left:40%">★</span>
           <span class="spark" style="top:60px;left:55%">✦</span>
           <span class="spark" style="bottom:20px;left:30%">✦</span>
@@ -289,14 +298,14 @@
         <div class="card">
           <div class="card-head"><h3>Ações rápidas</h3></div>
           <div class="qa-grid">
-            <div class="qa"><div class="qa-ic">⭐</div><div class="qa-lbl">Como funciona</div></div>
+            <div class="qa" id="cbp-qa-hiw"><div class="qa-ic">⭐</div><div class="qa-lbl">Como funciona</div></div>
             <div class="qa"><div class="qa-ic">🛍️</div><div class="qa-lbl">Fazer compras</div></div>
             <div class="qa"><div class="qa-ic">🎁</div><div class="qa-lbl">Meus cupons</div></div>
             <div class="qa"><div class="qa-ic">🕐</div><div class="qa-lbl">Ver histórico</div></div>
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="sec-historico">
           <div class="card-head"><h3>Últimas atividades</h3></div>
           <div id="cbp-activities"><div class="act-empty">Carregando...</div></div>
         </div>
@@ -306,7 +315,7 @@
       <!-- DIREITA -->
       <div class="col">
 
-        <div class="card">
+        <div class="card" id="sec-nivel">
           <div class="card-head"><h3>Próximo nível</h3></div>
           <div id="cbp-nextlevel"><div class="act-empty">Carregando...</div></div>
         </div>
@@ -329,6 +338,15 @@
   </div>
 
   <div class="footer">🛡️ Seus dados estão protegidos com segurança</div>
+</div>
+
+<div id="cbp-howitworks" class="cbp-modal" hidden>
+  <div class="cbp-modal-backdrop" id="cbp-hiw-backdrop"></div>
+  <div class="cbp-modal-card" role="dialog" aria-modal="true" aria-labelledby="cbp-hiw-title">
+    <button class="cbp-modal-close" id="cbp-hiw-close" aria-label="Fechar">×</button>
+    <h3 id="cbp-hiw-title">Como funciona</h3>
+    <div id="cbp-hiw-body" class="cbp-hiw-body"></div>
+  </div>
 </div>
 
 <div id="cbp-boot" class="app"><div class="skeleton"></div></div>

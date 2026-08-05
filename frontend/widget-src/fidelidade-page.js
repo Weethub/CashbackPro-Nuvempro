@@ -273,10 +273,18 @@
         var items = data.history || [];
         if (!items.length) { list.innerHTML = '<div class="act-empty">Você ainda não tem atividades registradas.</div>'; return; }
         list.innerHTML = items.map(function (h) {
-          return '<div class="act"><div class="a-ic" style="background:var(--cbp-surface);color:var(--cbp-primary)">🛒</div>' +
-            '<div class="a-body"><div class="a-title">Compra realizada</div>' +
-            '<div class="a-meta">' + fmtDate(h.createdAt) + (h.orderId ? ' · #' + h.orderId : '') + '</div></div>' +
-            '<div class="a-pts pos">+' + h.points + ' pts</div></div>';
+          var meta = {
+            earn: { ic: '🛒', title: 'Compra realizada' },
+            welcome: { ic: '⭐', title: 'Bônus de boas-vindas' },
+            referral: { ic: '👥', title: 'Bônus de indicação' },
+            redeem: { ic: '🎟️', title: 'Cupom resgatado' },
+          }[h.type] || { ic: '•', title: 'Atividade' };
+          var pos = h.points >= 0;
+          var sub = h.type === 'earn' && h.orderId ? ' · #' + h.orderId : (h.note ? ' · ' + esc(h.note) : '');
+          return '<div class="act"><div class="a-ic" style="background:var(--cbp-surface);color:var(--cbp-primary)">' + meta.ic + '</div>' +
+            '<div class="a-body"><div class="a-title">' + meta.title + '</div>' +
+            '<div class="a-meta">' + fmtDate(h.createdAt) + sub + '</div></div>' +
+            '<div class="a-pts ' + (pos ? 'pos' : 'neg') + '">' + (pos ? '+' : '') + h.points + ' pts</div></div>';
         }).join('');
       })
       .catch(function () { $('cbp-activities').innerHTML = '<div class="act-empty">Não foi possível carregar as atividades.</div>'; });
@@ -292,11 +300,48 @@
     renderLogin();
   }
 
+  // ─── Como funciona + navegação de página única ─────────────────────────────
+  var DEFAULT_HIW =
+    '1. A cada compra na loja, você ganha pontos automaticamente.\n' +
+    '2. Os pontos sobem o seu nível e valem desconto.\n' +
+    '3. Quando quiser, resgate seus pontos por um cupom e use na próxima compra.\n\n' +
+    'Seus pontos ficam salvos na sua conta — acompanhe tudo por aqui.';
+
+  function openHowItWorks() {
+    var modal = $('cbp-howitworks');
+    $('cbp-hiw-body').textContent = state.howItWorks || DEFAULT_HIW;
+    modal.hidden = false;
+  }
+  function closeHowItWorks() { $('cbp-howitworks').hidden = true; }
+
+  function scrollToId(id) {
+    var el = $(id);
+    if (el && !el.hidden) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function setupInteractions() {
+    // Menu vira navegação de página única (rola até a seção).
+    var navLinks = document.querySelectorAll('.nav a[data-scroll]');
+    navLinks.forEach(function (a) {
+      a.onclick = function () {
+        navLinks.forEach(function (x) { x.classList.remove('active'); });
+        document.querySelectorAll('.nav a').forEach(function (x) { x.classList.remove('active'); });
+        a.classList.add('active');
+        scrollToId(a.getAttribute('data-scroll'));
+      };
+    });
+    var hiwNav = $('cbp-nav-hiw'); if (hiwNav) hiwNav.onclick = openHowItWorks;
+    var hiwQa = $('cbp-qa-hiw'); if (hiwQa) hiwQa.onclick = openHowItWorks;
+    var side = $('cbp-side-indicar'); if (side) side.onclick = function () { scrollToId('cbp-ref-card'); };
+    var close = $('cbp-hiw-close'); if (close) close.onclick = closeHowItWorks;
+    var backdrop = $('cbp-hiw-backdrop'); if (backdrop) backdrop.onclick = closeHowItWorks;
+  }
+
   // ─── Boot ─────────────────────────────────────────────────────────────────
   function boot() {
     fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
       .then(function (r) { return r.json(); })
-      .then(function (cfg) { applyBrand(cfg.brandColor); })
+      .then(function (cfg) { applyBrand(cfg.brandColor); state.howItWorks = cfg.howItWorks || null; })
       .catch(function () {});
 
     var token = getToken();
@@ -304,6 +349,7 @@
 
     hide(elLogin); show(elDash); hide(elBoot);
     var lo = $('cbp-logout'); if (lo) lo.onclick = logout;
+    setupInteractions();
 
     Promise.all([loadMe(), Promise.resolve(loadHistory())])
       .catch(function () { clearToken(); renderLogin(); });

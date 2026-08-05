@@ -295,6 +295,11 @@ model CashbackConfig {
   referralEnabled        Boolean @default(false)
   referralPointsReferrer Int     @default(0)
   referralPointsReferred Int     @default(0)
+  // Bônus de boas-vindas: pontos creditados na 1ª compra do cliente.
+  welcomeBonusEnabled Boolean @default(false)
+  welcomeBonusPoints  Int     @default(0)
+  // Texto "Como funciona" mostrado ao cliente (editável pelo lojista).
+  howItWorks         String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

@@ -45,6 +45,7 @@ router.get('/config', async (req, res, next) => {
       iconPosition: config.widgetIconPosition,
       iconSize: config.widgetIconSize,
       brandColor: config.brandColor || '#7C3AED',
+      howItWorks: config.howItWorks || null,
       pageUrl: `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`,
     });
   } catch (err) {
@@ -214,18 +215,24 @@ router.get('/me', requireCustomerAuth, async (req, res, next) => {
 });
 
 /**
- * GET /api/widget/history — últimas 5 compras que geraram pontos (fixo, não
- * paginado — é um top-5, não uma listagem completa).
+ * GET /api/widget/history — últimas atividades (top-8): compras, bônus de
+ * boas-vindas, indicação e resgates. O reset de ciclo é interno, não aparece.
  */
 router.get('/history', requireCustomerAuth, async (req, res, next) => {
   try {
     const history = await prisma.pointsTransaction.findMany({
-      where: { customerPointsId: req.customerPoints.id, type: 'earn' },
+      where: { customerPointsId: req.customerPoints.id, type: { in: ['earn', 'welcome', 'referral', 'redeem'] } },
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: 8,
     });
     res.json({
-      history: history.map((h) => ({ points: h.points, createdAt: h.createdAt, orderId: h.nuvemshopOrderId })),
+      history: history.map((h) => ({
+        type: h.type,
+        points: h.points,
+        note: h.note || null,
+        createdAt: h.createdAt,
+        orderId: h.nuvemshopOrderId,
+      })),
     });
   } catch (err) {
     next(err);

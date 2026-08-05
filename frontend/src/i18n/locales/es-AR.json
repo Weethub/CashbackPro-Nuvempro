@@ -287,7 +287,10 @@
       "icon": "Ícono",
       "uploadIcon": "Subir ícono",
       "color": "Color",
-      "iconTooLarge": "Imagen muy grande — elige un archivo de hasta 300KB."
+      "iconTooLarge": "Imagen muy grande — elige un archivo de hasta 300KB.",
+      "multiplier": "Multiplicador de puntos",
+      "benefits": "Beneficios del nivel",
+      "benefitsPlaceholder": "Un beneficio por línea. Ej:\nCupón de 10% OFF\nAcceso anticipado a lanzamientos"
     },
     "appearance": {
       "title": "Apariencia",

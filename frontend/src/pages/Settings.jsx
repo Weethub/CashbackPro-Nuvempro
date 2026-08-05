@@ -99,6 +99,8 @@ export default function Settings() {
         couponValue: 10,
         icon: null,
         color: '#0F7A5C',
+        benefits: [],
+        pointsMultiplier: 1,
       },
     ]);
 
@@ -315,12 +317,33 @@ export default function Settings() {
                     onChange={(e) => updateTier(index, 'couponValue', e.target.value)}
                   />
                 </Box>
+                <Box display="flex" flexDirection="column" gap="1" minWidth="110px">
+                  <Text fontSize="caption">{t('cashback.tiers.multiplier')}</Text>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="0.1"
+                    name={`tier-mult-${index}`}
+                    value={tier.pointsMultiplier ?? 1}
+                    onChange={(e) => updateTier(index, 'pointsMultiplier', e.target.value)}
+                  />
+                </Box>
                 <IconButton
                   source={<TrashIcon />}
                   size="2rem"
                   onClick={() => removeTier(index)}
                   aria-label={t('cashback.tiers.remove')}
                 />
+                <Box display="flex" flexDirection="column" gap="1" width="100%">
+                  <Text fontSize="caption">{t('cashback.tiers.benefits')}</Text>
+                  <Textarea
+                    name={`tier-benefits-${index}`}
+                    lines={3}
+                    placeholder={t('cashback.tiers.benefitsPlaceholder')}
+                    value={(Array.isArray(tier.benefits) ? tier.benefits : []).join('\n')}
+                    onChange={(e) => updateTier(index, 'benefits', e.target.value.split('\n'))}
+                  />
+                </Box>
               </Box>
             ))}
 

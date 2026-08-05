@@ -84,6 +84,19 @@
     if (tier && tier.icon) return '<img src="' + tier.icon + '" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;vertical-align:middle" />';
     return fallback;
   }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  // Lista de benefícios (textos livres cadastrados no painel) de um nível.
+  function benefitsHtml(tier) {
+    var list = tier && Array.isArray(tier.benefits) ? tier.benefits.filter(Boolean) : [];
+    if (!list.length) return '';
+    return '<div class="benefit-list">' + list.map(function (b) {
+      return '<div class="benefit"><span class="b-ic">✓</span>' + esc(b) + '</div>';
+    }).join('') + '</div>';
+  }
 
   var state = { email: '', codeSent: false, loading: false, error: null, me: null };
 
@@ -175,7 +188,10 @@
     $('cbp-points').textContent = me.balance;
     var ppc = me.pointsPerCurrency || 1;
     var reais = ppc > 0 ? me.balance / ppc : 0;
-    $('cbp-points-conv').textContent = '≈ ' + fmtBRL(reais) + ' de desconto';
+    var mult = cur && cur.pointsMultiplier > 1
+      ? ' · ganhando ' + String(cur.pointsMultiplier).replace('.', ',') + '× pontos'
+      : '';
+    $('cbp-points-conv').textContent = '≈ ' + fmtBRL(reais) + ' de desconto' + mult;
 
     // Próximo nível (coluna direita)
     var nl = $('cbp-nextlevel');
@@ -183,14 +199,16 @@
       var nlpct = target > 0 ? Math.min(100, Math.round((me.balance / target) * 100)) : 0;
       nl.innerHTML =
         '<div class="nl-top"><div class="nl-medal">' + tierIcon(me.nextTier, 48, '🥈') + '</div>' +
-        '<div><div class="nl-name">' + me.nextTier.name + '</div>' +
+        '<div><div class="nl-name">' + esc(me.nextTier.name) + '</div>' +
         '<div class="nl-desc">Faltam ' + me.pointsToNext + ' pontos para alcançar o próximo nível.</div></div></div>' +
         '<div class="nl-progress-row"><span>' + me.balance + ' / ' + target + ' pontos</span><span>' + nlpct + '%</span></div>' +
-        '<div class="track-2"><div class="fill" style="width:' + nlpct + '%"></div></div>';
+        '<div class="track-2"><div class="fill" style="width:' + nlpct + '%"></div></div>' +
+        benefitsHtml(me.nextTier);
     } else {
       nl.innerHTML = '<div class="nl-top"><div class="nl-medal">' + tierIcon(cur, 48, '🏅') + '</div>' +
-        '<div><div class="nl-name">' + (cur ? cur.name : 'Topo') + '</div>' +
-        '<div class="nl-desc">Você já está no nível máximo. Continue aproveitando os benefícios!</div></div></div>';
+        '<div><div class="nl-name">' + esc(cur ? cur.name : 'Topo') + '</div>' +
+        '<div class="nl-desc">Você já está no nível máximo. Continue aproveitando os benefícios!</div></div></div>' +
+        benefitsHtml(cur);
     }
 
     // Redeem

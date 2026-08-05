@@ -311,6 +311,11 @@ model CashbackTier {
   // (hex) do nível, usados no painel e futuramente no widget do cliente.
   icon           String?
   color          String?  @default("#0F7A5C")
+  // Benefícios do nível (lista de textos livres, ex.: "Cupom de 10% OFF") e
+  // multiplicador de pontos aplicado no crédito enquanto o cliente está neste
+  // nível (ex.: 1.2 = ganha 20% a mais). Mostrados no card do cliente.
+  benefits         Json?
+  pointsMultiplier Float    @default(1)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

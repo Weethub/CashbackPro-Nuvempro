@@ -74,6 +74,11 @@ async function setTiers(storeId, tiers) {
         sortOrder: i,
         icon: t.icon || null,
         color: t.color || '#0F7A5C',
+        // Benefícios: lista de textos não-vazios. Multiplicador: >= 1.
+        benefits: Array.isArray(t.benefits)
+          ? t.benefits.map((b) => String(b).trim()).filter(Boolean)
+          : [],
+        pointsMultiplier: Math.max(1, parseFloat(t.pointsMultiplier) || 1),
       };
 
       if (t.id && existing.some((e) => e.id === t.id)) {
@@ -202,10 +207,13 @@ async function creditPointsForOrder(store, order) {
   });
   if (alreadyProcessed) return { skipped: 'already_processed' };
 
-  const pointsEarned = Math.floor(orderTotal * config.pointsPerCurrency);
-  if (pointsEarned <= 0) return { skipped: 'zero_points' };
-
+  // O multiplicador é o do nível ATUAL do cliente no momento da compra (ex.:
+  // Ouro com 1.2 ganha 20% a mais). Calculado antes de creditar.
   const { currentTier: tierBefore } = await getTierProgress(store.id, customerPoints);
+  const multiplier = tierBefore?.pointsMultiplier || 1;
+
+  const pointsEarned = Math.floor(orderTotal * config.pointsPerCurrency * multiplier);
+  if (pointsEarned <= 0) return { skipped: 'zero_points' };
 
   const updated = await prisma.$transaction(async (tx) => {
     const fresh = await ensureCycleFresh(tx, customerPoints);

@@ -34,7 +34,7 @@ async function updateConfig(storeId, data) {
     ...(widgetIconPosition !== undefined && { widgetIconPosition }),
     ...(widgetIconSize !== undefined && { widgetIconSize }),
     ...(customerPageHandle !== undefined && { customerPageHandle: customerPageHandle || null }),
-    ...(brandColor !== undefined && { brandColor: brandColor || '#111827' }),
+    ...(brandColor !== undefined && { brandColor: brandColor || '#7C3AED' }),
   };
 
   return prisma.cashbackConfig.upsert({

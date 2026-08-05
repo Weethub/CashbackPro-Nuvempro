@@ -60,10 +60,23 @@
     var r = parseInt(hex.substr(0, 2), 16) || 0, g = parseInt(hex.substr(2, 2), 16) || 0, b = parseInt(hex.substr(4, 2), 16) || 0;
     return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6 ? '#111827' : '#ffffff';
   }
+  // Clareia (pct>0) ou escurece (pct<0) um hex — pra derivar os tons do tema a
+  // partir da única cor que o lojista escolhe, em vez de deixar tons roxos fixos.
+  function shade(hex, pct) {
+    hex = String(hex || '').replace('#', '');
+    if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
+    var r = parseInt(hex.substr(0, 2), 16) || 0, g = parseInt(hex.substr(2, 2), 16) || 0, b = parseInt(hex.substr(4, 2), 16) || 0;
+    var t = pct < 0 ? 0 : 255, p = Math.abs(pct) / 100;
+    var mix = function (c) { return Math.round((t - c) * p + c).toString(16).padStart(2, '0'); };
+    return '#' + mix(r) + mix(g) + mix(b);
+  }
   function applyBrand(color) {
     if (!color) return;
     var root = document.documentElement.style;
     root.setProperty('--cbp-primary', color);
+    root.setProperty('--cbp-primary-dark', shade(color, -18));
+    root.setProperty('--cbp-primary-2', shade(color, 14));
+    root.setProperty('--cbp-surface', shade(color, 90));
     root.setProperty('--cbp-on-primary', pickTextColor(color));
   }
   // <img> do ícone do nível (base64 subido no painel) ou emoji de fallback.

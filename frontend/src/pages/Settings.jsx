@@ -23,7 +23,7 @@ const DEFAULT_CONFIG = {
   redeemMessage: '',
   widgetIconPosition: 'bottom-right',
   widgetIconSize: 'md',
-  brandColor: '#111827',
+  brandColor: '#7C3AED',
 };
 
 let nextTempId = -1;
@@ -353,13 +353,13 @@ export default function Settings() {
             <Box display="flex" gap="2" alignItems="center">
               <input
                 type="color"
-                value={config.brandColor || '#111827'}
+                value={config.brandColor || '#7C3AED'}
                 onChange={(e) => update('brandColor', e.target.value)}
                 style={{ width: 44, height: 36, padding: 0, border: '1px solid #D5D9D7', borderRadius: 6, cursor: 'pointer' }}
               />
               <Input
                 name="brandColorHex"
-                value={config.brandColor || '#111827'}
+                value={config.brandColor || '#7C3AED'}
                 onChange={(e) => update('brandColor', e.target.value)}
               />
             </Box>

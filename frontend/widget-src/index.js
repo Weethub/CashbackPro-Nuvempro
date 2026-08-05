@@ -40,7 +40,7 @@
   };
 
   function pickTextColor(hex) {
-    hex = String(hex || '#111827').replace('#', '');
+    hex = String(hex || '#7C3AED').replace('#', '');
     if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
     var r = parseInt(hex.substr(0, 2), 16) || 0;
     var g = parseInt(hex.substr(2, 2), 16) || 0;
@@ -89,7 +89,7 @@
     .icon-wrap { width: var(--icon-size, 60px); height: var(--icon-size, 60px); }
     .icon {
       width: var(--icon-size, 60px); height: var(--icon-size, 60px); border-radius: 50%;
-      background: var(--icon-bg, #111827); color: var(--icon-fg, #fff); display: flex;
+      background: var(--icon-bg, #7C3AED); color: var(--icon-fg, #fff); display: flex;
       align-items: center; justify-content: center; background-size: cover; background-position: center;
       font-size: calc(var(--icon-size, 60px) * 0.4); font-weight: 700; cursor: grab; border: none;
       box-shadow: 0 2px 10px rgba(0,0,0,0.25); user-select: none; touch-action: none;
@@ -197,7 +197,7 @@
       if (!config.isActive) return;
       var sizePx = ICON_SIZES[config.iconSize] || 60;
       var position = getSavedPosition() || config.iconPosition;
-      var brandColor = config.brandColor || '#111827';
+      var brandColor = config.brandColor || '#7C3AED';
       styleHost(position, sizePx);
       container.style.setProperty('--icon-size', sizePx + 'px');
       container.style.setProperty('--icon-bg', brandColor);

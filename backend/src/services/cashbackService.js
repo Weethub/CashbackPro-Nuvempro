@@ -499,29 +499,37 @@ async function createCustomerPage(store) {
 
   const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
 
-  // A chave de i18n do request precisa bater com um idioma real da loja (ex.:
-  // "pt", "pt_BR") — um código que a loja não tem faz a API responder 422.
-  // Descobrimos o idioma principal em vez de assumir "pt" fixo.
-  let lang = 'pt';
+  // Idioma da loja: a resposta usa código curto ("pt"), mas o REQUEST de
+  // criação exige o locale completo na chave de i18n ("pt_BR") — testado
+  // contra a API real: chave "pt" faz o título entrar vazio -> 400. Mapeamos
+  // o main_language (curto) pro locale de request.
+  const LOCALE_MAP = { pt: 'pt_BR', es: 'es_AR', en: 'en_US' };
+  let short = 'pt';
   try {
     const { data: info } = await client.get('/store');
-    var raw = info?.main_language
-      || (Array.isArray(info?.languages) ? info.languages[0] : null);
+    let raw = info?.main_language;
     if (raw && typeof raw === 'object') raw = raw.code || raw.language || null;
-    if (raw) lang = raw;
+    if (raw) short = raw;
   } catch (err) {
     console.warn('[createCustomerPage] não obteve idioma da loja, usando "pt":', err.response?.data || err.message);
   }
+  const locale = LOCALE_MAP[short] || short;
 
-  // Formato "flat" da API 2025-03: campos i18n no topo (name/content/handle),
-  // igual ao shape que a leitura de páginas devolve. O wrapper antigo
-  // { page: { i18n: {...} } } (v1) causava 400 Bad Request nessa versão.
-  // Mandamos o mínimo (name + content) e deixamos a Nuvemshop gerar o handle,
-  // que lemos de volta da resposta.
+  // Formato correto da API 2025-03 (confirmado contra a API real): wrapper
+  // { page: { publish, i18n: { <locale>: { title, content, seo_* } } } }.
   const body = {
-    name: { [lang]: 'Minha Fidelidade' },
-    content: { [lang]: content },
-    published: true,
+    page: {
+      publish: true,
+      i18n: {
+        [locale]: {
+          title: 'Minha Fidelidade',
+          content,
+          seo_handle: 'minha-fidelidade',
+          seo_title: 'Minha Fidelidade',
+          seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
+        },
+      },
+    },
   };
 
   let data;
@@ -539,8 +547,8 @@ async function createCustomerPage(store) {
         'MISSING_CONTENT_SCOPE'
       );
     }
-    // Expõe a mensagem da Nuvemshop em vez de "Erro interno do servidor".
-    const detail = apiErr && (apiErr.message || apiErr.description || (typeof apiErr === 'string' ? apiErr : JSON.stringify(apiErr)));
+    // description traz o detalhe útil da Nuvemshop (message é só "Bad Request").
+    const detail = apiErr && (apiErr.description || apiErr.message || (typeof apiErr === 'string' ? apiErr : JSON.stringify(apiErr)));
     throw new AppError(
       'A Nuvemshop recusou a criação da página' + (detail ? ': ' + detail : '') + '.',
       502,
@@ -548,7 +556,8 @@ async function createCustomerPage(store) {
     );
   }
 
-  const handle = (data?.handle && (data.handle[lang] || data.handle.pt || data.handle.es || data.handle.en)) || null;
+  // A resposta usa código curto na chave (handle.pt), não o locale do request.
+  const handle = (data?.handle && (data.handle[short] || data.handle.pt || data.handle.es || data.handle.en)) || null;
   if (handle) {
     await prisma.cashbackConfig.update({ where: { id: config.id }, data: { customerPageHandle: handle } });
   }

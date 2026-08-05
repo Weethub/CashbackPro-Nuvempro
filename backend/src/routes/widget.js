@@ -176,12 +176,17 @@ router.post('/auth/verify-code', widgetOtpLimiter, async (req, res, next) => {
  */
 router.get('/me', requireCustomerAuth, async (req, res, next) => {
   try {
-    const [progress, tiers] = await Promise.all([
+    const [progress, tiers, config] = await Promise.all([
       cashbackService.getTierProgress(req.storeId, req.customerPoints),
       cashbackService.getTiers(req.storeId),
+      cashbackService.getOrCreateConfig(req.storeId),
     ]);
     res.json({
       email: req.customerPoints.email,
+      // Ano de "cliente desde" e taxa de pontos->R$ pra a página do cliente:
+      // R$ = saldo / pointsPerCurrency (pointsPerCurrency = pontos por R$1).
+      memberSince: req.customerPoints.createdAt,
+      pointsPerCurrency: config.pointsPerCurrency,
       tiers,
       ...progress,
     });

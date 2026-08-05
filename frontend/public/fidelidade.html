@@ -1,115 +1,377 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Minha Fidelidade — CashbackPro</title>
-  <style>
-    :root { --cbp-primary: #111827; --cbp-on-primary: #ffffff; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { min-height: 100vh; }
-    body {
-      font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      background: #fff;
-      color: #16211D;
-    }
-    #cashbackpro-root { min-height: 100vh; }
-    .cbp-card { min-height: 100vh; display: flex; flex-direction: column; }
-    .cbp-banner {
-      background: var(--cbp-primary); color: var(--cbp-on-primary);
-      padding: 40px 24px 34px; box-shadow: 0 2px 0 rgba(0,0,0,0.08);
-    }
-    .cbp-banner-inner { max-width: 640px; margin: 0 auto; width: 100%; }
-    .cbp-brand { font-size: 13px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; opacity: 0.85; }
-    .cbp-banner-title { font-size: 28px; font-weight: 700; margin: 8px 0 4px; }
-    .cbp-banner-subtitle { font-size: 14.5px; opacity: 0.85; margin: 0; }
-    .cbp-body { flex: 1; width: 100%; max-width: 640px; margin: 0 auto; padding: 36px 24px 48px; }
-    .cbp-label { font-size: 13px; font-weight: 600; color: #5C6D67; display: block; margin-bottom: 6px; }
-    .cbp-input {
-      width: 100%; padding: 13px 14px; border: 1px solid #D5D9D7; border-radius: 4px;
-      font-size: 16px; margin-bottom: 18px; color: #16211D;
-      transition: border-color 0.15s ease;
-    }
-    .cbp-input:focus { outline: none; border-color: var(--cbp-primary); }
-    .cbp-btn-primary {
-      width: 100%; padding: 14px; border-radius: 4px; border: none;
-      background: var(--cbp-primary); color: var(--cbp-on-primary); font-size: 15px; font-weight: 600; cursor: pointer;
-      transition: filter 0.15s ease;
-    }
-    .cbp-btn-primary:hover:not(:disabled) { filter: brightness(0.88); }
-    .cbp-btn-primary:disabled { opacity: 0.5; cursor: default; }
-    .cbp-btn-secondary {
-      width: 100%; padding: 12px; border-radius: 4px; border: 1px solid #D5D9D7;
-      background: #fff; color: #16211D; font-size: 14px; font-weight: 600; cursor: pointer;
-      margin-top: 12px;
-    }
-    .cbp-btn-secondary:hover { border-color: var(--cbp-primary); color: var(--cbp-primary); }
-    .cbp-link {
-      background: none; border: none; color: #5C6D67; font-size: 13px; cursor: pointer; padding: 4px;
-      text-decoration: underline;
-    }
-    .cbp-link:hover { color: var(--cbp-primary); }
-    .cbp-error {
-      background: #FDECEA; color: #A82F1F; font-size: 13.5px; padding: 12px 14px;
-      border-radius: 4px; margin-bottom: 18px; border-left: 3px solid #C0392B;
-    }
-    .cbp-success {
-      background: #F3F4F6; color: var(--cbp-primary); font-size: 14.5px; padding: 16px 18px;
-      border-radius: 4px; font-weight: 600; border-left: 3px solid var(--cbp-primary);
-    }
-    .cbp-header-row {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 24px; padding-bottom: 18px; border-bottom: 1px solid #EDEEED;
-    }
-    .cbp-avatar-name { display: flex; align-items: center; gap: 12px; }
-    .cbp-avatar {
-      width: 40px; height: 40px; border-radius: 6px; background: #F3F4F6; color: var(--cbp-primary);
-      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px;
-    }
-    .cbp-email { font-size: 14px; font-weight: 600; color: #16211D; }
-    .cbp-logout { font-size: 12px; color: #999; cursor: pointer; text-decoration: underline; margin-top: 2px; }
-    .cbp-balance-card {
-      background: #F5F6F5; border-radius: 6px; padding: 26px; margin-bottom: 26px;
-      border: 1px solid #EDEEED;
-    }
-    .cbp-balance-row { display: flex; align-items: baseline; gap: 10px; }
-    .cbp-balance-number { font-size: 40px; font-weight: 700; color: var(--cbp-primary); line-height: 1; }
-    .cbp-balance-label { font-size: 13px; color: #5C6D67; }
-    .cbp-progress-track { height: 8px; background: #E4E7E6; border-radius: 4px; margin-top: 18px; overflow: hidden; }
-    .cbp-progress-fill { height: 100%; background: var(--cbp-primary); border-radius: 4px; transition: width 0.4s ease; }
-    .cbp-progress-hint { font-size: 13px; margin-top: 10px; color: #5C6D67; }
-    .cbp-section-label {
-      font-size: 13px; font-weight: 700; color: #16211D; text-transform: uppercase;
-      letter-spacing: 0.4px; margin: 0 0 14px;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .cbp-tiers-section { margin-bottom: 26px; }
-    .cbp-tier-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 14px; border-radius: 4px; margin-bottom: 8px; background: #F8F9F8;
-      border-left: 3px solid transparent;
-    }
-    .cbp-tier-active { background: #F3F4F6; }
-    .cbp-tier-left { display: flex; align-items: center; gap: 10px; }
-    .cbp-tier-icon { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-    .cbp-tier-name { font-size: 14px; font-weight: 600; color: #16211D; }
-    .cbp-tier-meta { font-size: 12.5px; color: #5C6D67; }
-    .cbp-tier-active .cbp-tier-meta { color: var(--cbp-primary); }
-    .cbp-history-list { display: flex; flex-direction: column; margin-bottom: 26px; }
-    .cbp-history-item {
-      display: flex; justify-content: space-between; align-items: center; font-size: 14px;
-      padding: 12px 0; border-bottom: 1px solid #EDEEED;
-    }
-    .cbp-history-item:last-child { border-bottom: none; }
-    .cbp-history-date { color: #5C6D67; }
-    .cbp-history-points { color: var(--cbp-primary); font-weight: 700; }
-    .cbp-empty-hint { font-size: 13.5px; color: #999; padding: 8px 0; }
-    .cbp-disclaimer { font-size: 12.5px; color: #999; margin-top: 14px; line-height: 1.4; }
-    .cbp-skeleton { height: 110px; border-radius: 6px; background: #F0F1F0; margin-bottom: 26px; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Minha Fidelidade — CashbackPro</title>
+<style>
+  :root{
+    --cbp-primary:#7C3AED;
+    --cbp-primary-dark:#6D28D9;
+    --cbp-primary-2:#9333EA;
+    --cbp-on-primary:#ffffff;
+    --cbp-surface:#F3EEFF;
+    --bg:#F5F3F7;
+    --card:#ffffff;
+    --border:#ECE9F1;
+    --border-2:#E5E7EB;
+    --text:#1F2937;
+    --text-2:#6B7280;
+    --text-3:#9CA3AF;
+    --green:#16A34A;
+    --green-bg:#DCFCE7;
+    --red:#DC2626;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.4}
+  .app{max-width:1180px;margin:0 auto;padding:20px}
+  img,svg{max-width:100%}
+  a{text-decoration:none;color:inherit}
+  [hidden]{display:none !important}
+
+  /* ── Login ──────────────────────────── */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .login-card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+  .login-banner{background:linear-gradient(135deg,var(--cbp-primary),var(--cbp-primary-dark));color:#fff;padding:34px 30px 28px}
+  .login-banner .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;opacity:.95}
+  .login-banner .brand .logo{width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center}
+  .login-banner h2{font-size:22px;margin-top:14px}
+  .login-banner p{font-size:13.5px;opacity:.9;margin-top:5px}
+  .login-body{padding:28px 30px 32px}
+  .login-label{font-size:13px;font-weight:600;color:var(--text-2);display:block;margin-bottom:7px}
+  .login-input{width:100%;padding:13px 14px;border:1px solid var(--border-2);border-radius:10px;font-size:16px;margin-bottom:16px;color:var(--text)}
+  .login-input:focus{outline:none;border-color:var(--cbp-primary)}
+  .btn-primary{width:100%;background:var(--cbp-primary);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px}
+  .btn-primary:hover:not(:disabled){background:var(--cbp-primary-dark)}
+  .btn-primary:disabled{opacity:.55;cursor:default}
+  .btn-ghost{width:100%;background:none;border:none;color:var(--text-2);font-size:13px;cursor:pointer;padding:12px;text-decoration:underline;margin-top:6px}
+  .login-error{background:#FDECEA;color:#A82F1F;font-size:13px;padding:11px 13px;border-radius:9px;margin-bottom:14px;border-left:3px solid #C0392B}
+
+  /* ── Header ─────────────────────────── */
+  .header{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 22px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:800}
+  .brand .logo{width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,var(--cbp-primary),var(--cbp-primary-dark));display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px}
+  .brand b{color:var(--text)} .brand b span{color:var(--cbp-primary)}
+  .header-right{display:flex;align-items:center;gap:20px}
+  .bell{position:relative;width:42px;height:42px;border-radius:11px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:19px;cursor:pointer}
+  .bell .badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;font-size:11px;font-weight:700;min-width:19px;height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid var(--card)}
+  .user{display:flex;align-items:center;gap:11px;cursor:pointer}
+  .user .avatar{width:44px;height:44px;border-radius:50%;background:var(--cbp-surface);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--cbp-primary);font-weight:800}
+  .user .u-name{font-weight:700;font-size:14px}
+  .user .u-sub{font-size:12px;color:var(--text-3)}
+  .user .chev{color:var(--text-3);font-size:12px}
+
+  .shell{display:grid;grid-template-columns:210px 1fr;gap:18px;align-items:start}
+
+  /* ── Sidebar ────────────────────────── */
+  .sidebar{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;position:sticky;top:20px}
+  .nav a{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:11px;color:var(--text-2);font-weight:600;font-size:14px;margin-bottom:3px;cursor:pointer}
+  .nav a .ic{width:22px;text-align:center;font-size:17px;opacity:.85}
+  .nav a:hover{background:var(--bg)}
+  .nav a.active{background:var(--cbp-surface);color:var(--cbp-primary);position:relative}
+  .nav a.active::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--cbp-primary)}
+  .side-promo{margin-top:16px;background:var(--cbp-surface);border-radius:14px;padding:18px 14px;text-align:center}
+  .side-promo .gift{font-size:30px}
+  .side-promo p{font-size:12.5px;color:var(--text-2);margin:8px 0 12px;font-weight:600}
+  .side-promo button{width:100%;background:var(--cbp-primary);color:#fff;border:none;border-radius:10px;padding:9px;font-weight:700;font-size:13px;cursor:pointer}
+
+  /* ── Content grid ───────────────────── */
+  .content{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .card-head h3{font-size:16px;font-weight:800}
+  .see-all{color:var(--cbp-primary);font-weight:700;font-size:13px;cursor:pointer}
+  .soon{font-size:10.5px;font-weight:700;color:var(--text-3);background:var(--bg);border-radius:20px;padding:3px 9px}
+
+  /* ── Level hero ─────────────────────── */
+  .level-hero{background:linear-gradient(135deg,var(--cbp-primary) 0%,var(--cbp-primary-dark) 60%,#5B21B6 100%);color:#fff;border-radius:var(--radius);padding:26px;position:relative;overflow:hidden}
+  .level-hero .spark{position:absolute;opacity:.18;font-size:22px}
+  .level-hero .eyebrow{font-size:13.5px;opacity:.85;font-weight:600}
+  .level-hero .lvl-name{font-size:34px;font-weight:800;display:flex;align-items:center;gap:10px;margin-top:2px}
+  .level-hero .lvl-cheer{font-size:14px;opacity:.9;margin-top:4px}
+  .pill{display:inline-block;background:rgba(255,255,255,.2);border-radius:20px;padding:5px 13px;font-size:12.5px;font-weight:700;margin-top:12px}
+  .lvl-progress-row{display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;margin-top:18px}
+  .track{height:9px;background:rgba(255,255,255,.25);border-radius:6px;overflow:hidden;margin-top:9px}
+  .track .fill{height:100%;background:#FBBF24;border-radius:6px;transition:width .5s ease}
+  .lvl-next{font-size:13.5px;opacity:.9;margin-top:12px}
+  .medal{position:absolute;right:26px;top:50%;transform:translateY(-50%);font-size:96px;filter:drop-shadow(0 6px 10px rgba(0,0,0,.25))}
+  .medal img{width:104px;height:104px;object-fit:contain}
+
+  /* ── Points ─────────────────────────── */
+  .points-top{display:flex;align-items:flex-start;justify-content:space-between}
+  .points-label{font-size:15px;font-weight:700;color:var(--text-2);display:flex;align-items:center;gap:6px}
+  .points-num{font-size:46px;font-weight:800;color:var(--cbp-primary);line-height:1;margin-top:8px}
+  .points-num small{font-size:20px;font-weight:700}
+  .points-conv{color:var(--text-2);font-size:14px;margin-top:6px}
+  .coins{width:78px;height:78px;border-radius:50%;background:var(--cbp-surface);display:flex;align-items:center;justify-content:center;font-size:36px}
+  .btn-redeem{width:100%;background:var(--cbp-primary);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-top:18px;display:flex;align-items:center;justify-content:center;gap:9px}
+  .btn-redeem:hover:not(:disabled){background:var(--cbp-primary-dark)}
+  .btn-redeem:disabled{opacity:.55;cursor:default}
+  .redeem-msg{font-size:13px;margin-top:12px;padding:11px 13px;border-radius:9px}
+  .redeem-msg.ok{background:var(--green-bg);color:#166534}
+  .redeem-msg.err{background:#FDECEA;color:#A82F1F}
+
+  /* ── Quick actions ──────────────────── */
+  .qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .qa{border:1px solid var(--border-2);border-radius:13px;padding:16px 8px;text-align:center;cursor:pointer;transition:.15s}
+  .qa:hover{border-color:var(--cbp-primary);background:var(--cbp-surface)}
+  .qa .qa-ic{width:44px;height:44px;margin:0 auto 9px;border-radius:12px;background:var(--cbp-surface);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--cbp-primary)}
+  .qa .qa-lbl{font-size:12.5px;font-weight:600}
+
+  /* ── Achievements ───────────────────── */
+  .ach-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;text-align:center}
+  .ach .hex{width:66px;height:72px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);position:relative}
+  .ach .hex .stars{position:absolute;bottom:11px;font-size:8px;letter-spacing:1px;opacity:.9}
+  .ach .a-name{font-size:12px;font-weight:800}
+  .ach .a-sub{font-size:10.5px;color:var(--text-3);margin-top:2px;line-height:1.25}
+
+  /* ── Activity ───────────────────────── */
+  .act{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--border)}
+  .act:last-of-type{border-bottom:none}
+  .act .a-ic{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .act .a-body{flex:1}
+  .act .a-title{font-weight:700;font-size:14px}
+  .act .a-meta{font-size:12px;color:var(--text-3);margin-top:2px}
+  .act .a-pts{font-weight:800;font-size:14px}
+  .a-pts.pos{color:var(--green)} .a-pts.neg{color:var(--red)}
+  .act-empty{color:var(--text-3);font-size:13.5px;padding:14px 0;text-align:center}
+  .act-footer{text-align:center;color:var(--cbp-primary);font-weight:700;font-size:14px;padding-top:16px;cursor:pointer}
+
+  /* ── Next level ─────────────────────── */
+  .nl-top{display:flex;align-items:center;gap:14px}
+  .nl-medal{font-size:44px}
+  .nl-medal img{width:48px;height:48px;object-fit:contain}
+  .nl-name{font-size:20px;font-weight:800}
+  .nl-desc{font-size:13px;color:var(--text-2);margin-top:2px}
+  .nl-progress-row{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:16px}
+  .track-2{height:9px;background:#EEF0F2;border-radius:6px;overflow:hidden;margin-top:8px}
+  .track-2 .fill{height:100%;background:linear-gradient(90deg,var(--cbp-primary),var(--cbp-primary-2));border-radius:6px;transition:width .5s ease}
+  .benefit{display:flex;align-items:center;gap:11px;padding:10px 0;font-size:13.5px;font-weight:600}
+  .benefit .b-ic{width:30px;height:30px;border-radius:9px;background:var(--cbp-surface);color:var(--cbp-primary);display:flex;align-items:center;justify-content:center;font-size:15px}
+  .benefit-list{margin-top:14px;border-top:1px solid var(--border);padding-top:6px}
+
+  /* ── Challenges ─────────────────────── */
+  .chal{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .chal:last-of-type{border-bottom:none}
+  .chal .c-ic{width:38px;height:38px;border-radius:11px;background:var(--green-bg);color:var(--green);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .chal .c-body{flex:1}
+  .chal .c-row{display:flex;justify-content:space-between;align-items:baseline}
+  .chal .c-title{font-weight:700;font-size:13.5px}
+  .chal .c-reward{color:var(--green);font-weight:800;font-size:12.5px}
+  .chal .c-prog{font-size:12px;color:var(--text-3);margin:4px 0 6px}
+  .track-3{height:6px;background:#EEF0F2;border-radius:4px;overflow:hidden}
+  .track-3 .fill{height:100%;background:var(--cbp-primary);border-radius:4px}
+
+  /* ── Streak ─────────────────────────── */
+  .streak-num{text-align:center;font-size:40px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px}
+  .streak-sub{text-align:center;color:var(--text-2);font-size:13.5px;margin-top:-2px;margin-bottom:16px}
+  .days{display:flex;justify-content:space-between;gap:5px}
+  .day{flex:1;text-align:center}
+  .day .dot{width:34px;height:34px;border-radius:50%;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;font-size:15px;background:#EEF0F2;color:var(--text-3)}
+  .day.on .dot{background:var(--cbp-primary);color:#fff}
+  .day .dl{font-size:11px;color:var(--text-3);font-weight:600}
+  .streak-bonus{margin-top:16px;background:var(--cbp-surface);border-radius:11px;padding:11px;text-align:center;font-size:13px;font-weight:700;color:var(--cbp-primary)}
+
+  /* ── Referral ───────────────────────── */
+  .ref-desc{font-size:13.5px;color:var(--text-2);margin-bottom:14px}
+  .ref-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:var(--bg);border-radius:12px;padding:14px;margin-bottom:14px}
+  .ref-stats .rs-lbl{font-size:12px;color:var(--text-3)}
+  .ref-stats .rs-val{font-size:22px;font-weight:800;margin-top:2px}
+  .ref-stats .rs-val.pts{color:var(--cbp-primary)}
+  .ref-btn{width:100%;background:var(--cbp-primary);color:#fff;border:none;border-radius:12px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+
+  /* ── Offer ──────────────────────────── */
+  .offer{background:linear-gradient(135deg,#1F2430,#11141C);color:#fff;border-radius:var(--radius);padding:22px;position:relative;overflow:hidden}
+  .offer .exclusive{display:inline-block;background:#FBBF24;color:#1F2430;font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;letter-spacing:.5px}
+  .offer .o-off{font-size:34px;font-weight:800;color:#FBBF24;margin-top:12px}
+  .offer .o-desc{font-size:14px;opacity:.9;margin-top:2px}
+  .offer .o-valid{font-size:12px;opacity:.6;margin-top:8px}
+  .offer .o-gift{position:absolute;right:16px;bottom:14px;font-size:60px;opacity:.9}
+  .offer button{margin-top:16px;background:var(--cbp-primary);color:#fff;border:none;border-radius:10px;padding:11px 18px;font-weight:700;font-size:13.5px;cursor:pointer}
+
+  .footer{text-align:center;color:var(--text-3);font-size:12.5px;padding:24px 0 8px;display:flex;align-items:center;justify-content:center;gap:7px}
+  .skeleton{height:120px;border-radius:var(--radius);background:#EFEDF3;animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.5}}
+
+  @media(max-width:980px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{display:none}
+    .content{grid-template-columns:1fr}
+  }
+  @media(max-width:560px){
+    .qa-grid{grid-template-columns:repeat(2,1fr)}
+    .ach-grid{grid-template-columns:repeat(3,1fr)}
+    .medal{display:none}
+  }
+</style>
 </head>
 <body>
-  <div id="cashbackpro-root"></div>
-  <script src="fidelidade-page.js"></script>
+
+<!-- ══ LOGIN ══════════════════════════════ -->
+<div id="cbp-login" class="login-wrap" hidden>
+  <div class="login-card">
+    <div class="login-banner">
+      <div class="brand"><span class="logo">★</span>CashbackPro</div>
+      <h2 id="cbp-login-title">Acesse sua conta</h2>
+      <p id="cbp-login-sub">Informe seu e-mail para ver seu saldo e resgatar cupons</p>
+    </div>
+    <div class="login-body" id="cbp-login-body"><!-- preenchido por JS --></div>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD ══════════════════════════ -->
+<div id="cbp-dashboard" class="app" hidden>
+
+  <div class="header">
+    <div class="brand"><span class="logo">★</span><b>Cashback<span>Pro</span></b></div>
+    <div class="header-right">
+      <div class="bell">🔔<span class="badge">2</span></div>
+      <div class="user" id="cbp-logout">
+        <div class="avatar" id="cbp-avatar">?</div>
+        <div><div class="u-name" id="cbp-greeting">Olá!</div><div class="u-sub" id="cbp-since">Sair</div></div>
+        <span class="chev">▾</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <nav class="nav">
+        <a class="active"><span class="ic">🏠</span>Início</a>
+        <a><span class="ic">🎖️</span>Meu Nível</a>
+        <a><span class="ic">🏆</span>Conquistas</a>
+        <a><span class="ic">🎟️</span>Cupons</a>
+        <a><span class="ic">🕐</span>Histórico</a>
+        <a><span class="ic">👥</span>Indique e Ganhe</a>
+        <a><span class="ic">⚙️</span>Configurações</a>
+      </nav>
+      <div class="side-promo">
+        <div class="gift">🎁</div>
+        <p>Indique amigos e ganhe pontos!</p>
+        <button>Indicar agora</button>
+      </div>
+    </aside>
+
+    <div class="content">
+      <!-- CENTRO -->
+      <div class="col">
+
+        <div class="level-hero">
+          <span class="spark" style="top:18px;left:40%">★</span>
+          <span class="spark" style="top:60px;left:55%">✦</span>
+          <span class="spark" style="bottom:20px;left:30%">✦</span>
+          <div class="eyebrow">Seu nível atual</div>
+          <div class="lvl-name"><span id="cbp-level-name">—</span> <span id="cbp-level-emoji">🛡️</span></div>
+          <div class="lvl-cheer">Você está indo muito bem!</div>
+          <span class="pill" id="cbp-level-badge">Nível 1</span>
+          <div class="lvl-progress-row"><span id="cbp-level-current">0 / 0 pontos</span><span id="cbp-level-remaining"></span></div>
+          <div class="track"><div class="fill" id="cbp-level-fill" style="width:0%"></div></div>
+          <div class="lvl-next" id="cbp-level-next"></div>
+          <div class="medal" id="cbp-level-medal">🏅</div>
+        </div>
+
+        <div class="card">
+          <div class="points-top">
+            <div>
+              <div class="points-label">Seus pontos <span style="color:var(--text-3)">ⓘ</span></div>
+              <div class="points-num"><span id="cbp-points">0</span> <small>pts</small></div>
+              <div class="points-conv" id="cbp-points-conv"></div>
+            </div>
+            <div class="coins">🪙</div>
+          </div>
+          <button class="btn-redeem" id="cbp-redeem">🎟️ Resgatar cupom</button>
+          <div class="redeem-msg" id="cbp-redeem-msg" hidden></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Ações rápidas</h3></div>
+          <div class="qa-grid">
+            <div class="qa"><div class="qa-ic">⭐</div><div class="qa-lbl">Como funciona</div></div>
+            <div class="qa"><div class="qa-ic">🛍️</div><div class="qa-lbl">Fazer compras</div></div>
+            <div class="qa"><div class="qa-ic">🎁</div><div class="qa-lbl">Meus cupons</div></div>
+            <div class="qa"><div class="qa-ic">🕐</div><div class="qa-lbl">Ver histórico</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Conquistas</h3><span class="soon">em breve</span></div>
+          <div class="ach-grid">
+            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#A855F7,#7C3AED)">🔥<span class="stars">★★★</span></div><div class="a-name">Fogo!</div><div class="a-sub">30 dias seguidos</div></div>
+            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#F87171,#DC2626)">🗺️<span class="stars">★★★</span></div><div class="a-name">Explorador</div><div class="a-sub">Completou 10 ações</div></div>
+            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#34D399,#059669)">💌<span class="stars">★★★</span></div><div class="a-name">Amigo Leal</div><div class="a-sub">Indicou 1 amigo</div></div>
+            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#60A5FA,#2563EB)">⏳<span class="stars">★★★</span></div><div class="a-name">Persistente</div><div class="a-sub">Acumulou 500 pontos</div></div>
+            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#FBBF24,#D97706)">🏅<span class="stars">★★★</span></div><div class="a-name">Primeiros Passos</div><div class="a-sub">Primeiro resgate</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Últimas atividades</h3></div>
+          <div id="cbp-activities"><div class="act-empty">Carregando...</div></div>
+        </div>
+
+      </div>
+
+      <!-- DIREITA -->
+      <div class="col">
+
+        <div class="card">
+          <div class="card-head"><h3>Próximo nível</h3></div>
+          <div id="cbp-nextlevel"><div class="act-empty">Carregando...</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Desafios</h3><span class="soon">em breve</span></div>
+          <div class="chal"><div class="c-ic">🛍️</div><div class="c-body"><div class="c-row"><span class="c-title">Faça 3 compras</span><span class="c-reward">+100 pts</span></div><div class="c-prog">2 / 3</div><div class="track-3"><div class="fill" style="width:66%"></div></div></div></div>
+          <div class="chal"><div class="c-ic">⭐</div><div class="c-body"><div class="c-row"><span class="c-title">Acumule 500 pontos</span><span class="c-reward">+150 pts</span></div><div class="c-prog">230 / 500</div><div class="track-3"><div class="fill" style="width:46%"></div></div></div></div>
+          <div class="chal"><div class="c-ic">📅</div><div class="c-body"><div class="c-row"><span class="c-title">Mantenha 7 dias seguidos</span><span class="c-reward">+50 pts</span></div><div class="c-prog">5 / 7</div><div class="track-3"><div class="fill" style="width:71%"></div></div></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Sequência atual</h3><span class="soon">em breve</span></div>
+          <div class="streak-num">5 <span>🔥</span></div>
+          <div class="streak-sub">dias seguidos</div>
+          <div class="days">
+            <div class="day on"><div class="dot">✓</div><div class="dl">Seg</div></div>
+            <div class="day on"><div class="dot">✓</div><div class="dl">Ter</div></div>
+            <div class="day on"><div class="dot">✓</div><div class="dl">Qua</div></div>
+            <div class="day on"><div class="dot">✓</div><div class="dl">Qui</div></div>
+            <div class="day on"><div class="dot">✓</div><div class="dl">Sex</div></div>
+            <div class="day"><div class="dot"></div><div class="dl">Sáb</div></div>
+            <div class="day"><div class="dot"></div><div class="dl">Dom</div></div>
+          </div>
+          <div class="streak-bonus">Bônus: +10 pontos por dia!</div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Indique e ganhe</h3><span class="soon">em breve</span></div>
+          <div class="ref-desc">Convide amigos e ganhe pontos quando eles fizerem compras!</div>
+          <div class="ref-stats">
+            <div><div class="rs-lbl">Seus convites</div><div class="rs-val">0</div></div>
+            <div><div class="rs-lbl">Pontos ganhos</div><div class="rs-val pts">0 pts</div></div>
+          </div>
+          <button class="ref-btn">🔗 Convidar amigos</button>
+        </div>
+
+        <div class="offer">
+          <span class="exclusive">EXCLUSIVO</span>
+          <div class="o-off">15% OFF</div>
+          <div class="o-desc">em sua próxima compra</div>
+          <div class="o-valid">em breve</div>
+          <button>Usar cupom</button>
+          <div class="o-gift">🎁</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">🛡️ Seus dados estão protegidos com segurança</div>
+</div>
+
+<div id="cbp-boot" class="app"><div class="skeleton"></div></div>
+
+<script src="fidelidade-page.js"></script>
 </body>
 </html>

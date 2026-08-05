@@ -24,6 +24,9 @@ async function updateConfig(storeId, data) {
     widgetIconSize,
     customerPageHandle,
     brandColor,
+    referralEnabled,
+    referralPointsReferrer,
+    referralPointsReferred,
   } = data;
 
   const fields = {
@@ -35,6 +38,9 @@ async function updateConfig(storeId, data) {
     ...(widgetIconSize !== undefined && { widgetIconSize }),
     ...(customerPageHandle !== undefined && { customerPageHandle: customerPageHandle || null }),
     ...(brandColor !== undefined && { brandColor: brandColor || '#7C3AED' }),
+    ...(referralEnabled !== undefined && { referralEnabled: Boolean(referralEnabled) }),
+    ...(referralPointsReferrer !== undefined && { referralPointsReferrer: Math.max(0, parseInt(referralPointsReferrer) || 0) }),
+    ...(referralPointsReferred !== undefined && { referralPointsReferred: Math.max(0, parseInt(referralPointsReferred) || 0) }),
   };
 
   return prisma.cashbackConfig.upsert({
@@ -115,6 +121,94 @@ async function getOrCreateCustomerPoints(storeId, nuvemshopCustomerId, email) {
   return prisma.customerPoints.create({
     data: { storeId, nuvemshopCustomerId: id, email: email || null },
   });
+}
+
+// ─── Indique e ganhe (referral) ─────────────────────────────────────────────
+
+function generateReferralCode() {
+  return crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 chars, ex: A1B2C3D4
+}
+
+// Garante que o cliente tem um código de indicação próprio (gera na 1ª vez).
+async function ensureReferralCode(customerPoints) {
+  if (customerPoints.referralCode) return customerPoints;
+  for (let i = 0; i < 5; i++) {
+    try {
+      return await prisma.customerPoints.update({
+        where: { id: customerPoints.id },
+        data: { referralCode: generateReferralCode() },
+      });
+    } catch (err) {
+      if (err.code === 'P2002') continue; // colisão de código único — tenta outro
+      throw err;
+    }
+  }
+  return customerPoints;
+}
+
+// Vincula quem indicou (chamado no login com ?ref=CODE). Idempotente e com
+// travas anti-fraude: não sobrescreve, não deixa auto-indicação, exige que o
+// código pertença a OUTRO cliente da mesma loja.
+async function bindReferral(storeId, customerPoints, code) {
+  if (!code || customerPoints.referredByCode) return customerPoints;
+  if (customerPoints.referralCode === code) return customerPoints;
+  const referrer = await prisma.customerPoints.findFirst({ where: { storeId, referralCode: code } });
+  if (!referrer || referrer.id === customerPoints.id) return customerPoints;
+  return prisma.customerPoints.update({
+    where: { id: customerPoints.id },
+    data: { referredByCode: code },
+  });
+}
+
+// Recompensa a indicação quando o indicado faz a 1ª compra paga. Só uma vez
+// (referralRewardedAt trava). Credita pontos pro indicado e pro indicador.
+async function rewardReferralIfDue(store, customerPointsId) {
+  const config = await getOrCreateConfig(store.id);
+  if (!config.referralEnabled) return;
+
+  const cp = await prisma.customerPoints.findUnique({ where: { id: customerPointsId } });
+  if (!cp || !cp.referredByCode || cp.referralRewardedAt) return;
+
+  const referrer = await prisma.customerPoints.findFirst({
+    where: { storeId: store.id, referralCode: cp.referredByCode },
+  });
+  if (!referrer || referrer.id === cp.id) return;
+
+  const toReferred = config.referralPointsReferred || 0;
+  const toReferrer = config.referralPointsReferrer || 0;
+
+  await prisma.$transaction(async (tx) => {
+    // Marca primeiro pra garantir idempotência mesmo com webhooks repetidos.
+    await tx.customerPoints.update({ where: { id: cp.id }, data: { referralRewardedAt: new Date() } });
+
+    if (toReferred > 0) {
+      const fresh = await ensureCycleFresh(tx, cp);
+      await tx.pointsTransaction.create({
+        data: { customerPointsId: fresh.id, storeId: store.id, type: 'referral', points: toReferred, note: 'Bônus de boas-vindas por indicação' },
+      });
+      await tx.customerPoints.update({ where: { id: fresh.id }, data: { pointsBalance: { increment: toReferred } } });
+    }
+    if (toReferrer > 0) {
+      const freshRef = await ensureCycleFresh(tx, referrer);
+      await tx.pointsTransaction.create({
+        data: { customerPointsId: freshRef.id, storeId: store.id, type: 'referral', points: toReferrer, note: 'Seu amigo indicado fez a primeira compra' },
+      });
+      await tx.customerPoints.update({ where: { id: freshRef.id }, data: { pointsBalance: { increment: toReferrer } } });
+    }
+  });
+}
+
+// Estatísticas de indicação de um cliente (pro card no dashboard).
+async function getReferralStats(storeId, customerPoints, config) {
+  const count = await prisma.customerPoints.count({
+    where: { storeId, referredByCode: customerPoints.referralCode || '__none__', referralRewardedAt: { not: null } },
+  });
+  return {
+    enabled: !!config.referralEnabled,
+    code: customerPoints.referralCode || null,
+    count,
+    pointsEarned: count * (config.referralPointsReferrer || 0),
+  };
 }
 
 function cycleExpired(cycleStartedAt) {
@@ -254,6 +348,14 @@ async function creditPointsForOrder(store, order) {
         html: `<p>Parabéns! Você alcançou o nível <strong>${tierAfter.name}</strong> e já pode resgatar ${discountLabel} no seu próximo pedido. Saldo atual: ${updated.pointsBalance} pontos.</p>`,
       });
     }
+  }
+
+  // Indique e ganhe: se este cliente foi indicado, recompensa na 1ª compra
+  // (best-effort — nunca derruba o crédito da compra).
+  try {
+    await rewardReferralIfDue(store, updated.id);
+  } catch (err) {
+    console.error('[referral] falha ao recompensar indicação (ignorado):', err.message);
   }
 
   return { pointsEarned, balance: updated.pointsBalance };
@@ -686,4 +788,7 @@ module.exports = {
   getTierDistribution,
   listStorePages,
   createCustomerPage,
+  ensureReferralCode,
+  bindReferral,
+  getReferralStats,
 };

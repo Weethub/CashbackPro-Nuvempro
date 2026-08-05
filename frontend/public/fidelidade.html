@@ -181,6 +181,9 @@
   .ref-stats .rs-val{font-size:22px;font-weight:800;margin-top:2px}
   .ref-stats .rs-val.pts{color:var(--cbp-primary)}
   .ref-btn{width:100%;background:var(--cbp-primary);color:#fff;border:none;border-radius:12px;padding:13px;font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .ref-link{display:flex;gap:8px}
+  .ref-link-input{flex:1;min-width:0;padding:11px 12px;border:1px solid var(--border-2);border-radius:10px;font-size:12.5px;color:var(--text-2);background:var(--bg);font-family:monospace}
+  .ref-link .ref-btn{width:auto;white-space:nowrap;padding:11px 15px;font-size:13px;border-radius:10px}
 
   /* ── Offer ──────────────────────────── */
   .offer{background:linear-gradient(135deg,#1F2430,#11141C);color:#fff;border-radius:var(--radius);padding:22px;position:relative;overflow:hidden}
@@ -227,7 +230,6 @@
   <div class="header">
     <div class="brand"><span class="logo">★</span><b>Cashback<span>Pro</span></b></div>
     <div class="header-right">
-      <div class="bell">🔔<span class="badge">2</span></div>
       <div class="user" id="cbp-logout">
         <div class="avatar" id="cbp-avatar">?</div>
         <div><div class="u-name" id="cbp-greeting">Olá!</div><div class="u-sub" id="cbp-since">Sair</div></div>
@@ -241,7 +243,6 @@
       <nav class="nav">
         <a class="active"><span class="ic">🏠</span>Início</a>
         <a><span class="ic">🎖️</span>Meu Nível</a>
-        <a><span class="ic">🏆</span>Conquistas</a>
         <a><span class="ic">🎟️</span>Cupons</a>
         <a><span class="ic">🕐</span>Histórico</a>
         <a><span class="ic">👥</span>Indique e Ganhe</a>
@@ -296,17 +297,6 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><h3>Conquistas</h3><span class="soon">em breve</span></div>
-          <div class="ach-grid">
-            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#A855F7,#7C3AED)">🔥<span class="stars">★★★</span></div><div class="a-name">Fogo!</div><div class="a-sub">30 dias seguidos</div></div>
-            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#F87171,#DC2626)">🗺️<span class="stars">★★★</span></div><div class="a-name">Explorador</div><div class="a-sub">Completou 10 ações</div></div>
-            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#34D399,#059669)">💌<span class="stars">★★★</span></div><div class="a-name">Amigo Leal</div><div class="a-sub">Indicou 1 amigo</div></div>
-            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#60A5FA,#2563EB)">⏳<span class="stars">★★★</span></div><div class="a-name">Persistente</div><div class="a-sub">Acumulou 500 pontos</div></div>
-            <div class="ach"><div class="hex" style="background:linear-gradient(135deg,#FBBF24,#D97706)">🏅<span class="stars">★★★</span></div><div class="a-name">Primeiros Passos</div><div class="a-sub">Primeiro resgate</div></div>
-          </div>
-        </div>
-
-        <div class="card">
           <div class="card-head"><h3>Últimas atividades</h3></div>
           <div id="cbp-activities"><div class="act-empty">Carregando...</div></div>
         </div>
@@ -321,46 +311,17 @@
           <div id="cbp-nextlevel"><div class="act-empty">Carregando...</div></div>
         </div>
 
-        <div class="card">
-          <div class="card-head"><h3>Desafios</h3><span class="soon">em breve</span></div>
-          <div class="chal"><div class="c-ic">🛍️</div><div class="c-body"><div class="c-row"><span class="c-title">Faça 3 compras</span><span class="c-reward">+100 pts</span></div><div class="c-prog">2 / 3</div><div class="track-3"><div class="fill" style="width:66%"></div></div></div></div>
-          <div class="chal"><div class="c-ic">⭐</div><div class="c-body"><div class="c-row"><span class="c-title">Acumule 500 pontos</span><span class="c-reward">+150 pts</span></div><div class="c-prog">230 / 500</div><div class="track-3"><div class="fill" style="width:46%"></div></div></div></div>
-          <div class="chal"><div class="c-ic">📅</div><div class="c-body"><div class="c-row"><span class="c-title">Mantenha 7 dias seguidos</span><span class="c-reward">+50 pts</span></div><div class="c-prog">5 / 7</div><div class="track-3"><div class="fill" style="width:71%"></div></div></div></div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><h3>Sequência atual</h3><span class="soon">em breve</span></div>
-          <div class="streak-num">5 <span>🔥</span></div>
-          <div class="streak-sub">dias seguidos</div>
-          <div class="days">
-            <div class="day on"><div class="dot">✓</div><div class="dl">Seg</div></div>
-            <div class="day on"><div class="dot">✓</div><div class="dl">Ter</div></div>
-            <div class="day on"><div class="dot">✓</div><div class="dl">Qua</div></div>
-            <div class="day on"><div class="dot">✓</div><div class="dl">Qui</div></div>
-            <div class="day on"><div class="dot">✓</div><div class="dl">Sex</div></div>
-            <div class="day"><div class="dot"></div><div class="dl">Sáb</div></div>
-            <div class="day"><div class="dot"></div><div class="dl">Dom</div></div>
-          </div>
-          <div class="streak-bonus">Bônus: +10 pontos por dia!</div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><h3>Indique e ganhe</h3><span class="soon">em breve</span></div>
-          <div class="ref-desc">Convide amigos e ganhe pontos quando eles fizerem compras!</div>
+        <div class="card" id="cbp-ref-card" hidden>
+          <div class="card-head"><h3>Indique e ganhe</h3></div>
+          <div class="ref-desc" id="cbp-ref-desc">Convide amigos e ganhe pontos quando eles fizerem compras!</div>
           <div class="ref-stats">
-            <div><div class="rs-lbl">Seus convites</div><div class="rs-val">0</div></div>
-            <div><div class="rs-lbl">Pontos ganhos</div><div class="rs-val pts">0 pts</div></div>
+            <div><div class="rs-lbl">Amigos que compraram</div><div class="rs-val" id="cbp-ref-count">0</div></div>
+            <div><div class="rs-lbl">Pontos ganhos</div><div class="rs-val pts" id="cbp-ref-points">0 pts</div></div>
           </div>
-          <button class="ref-btn">🔗 Convidar amigos</button>
-        </div>
-
-        <div class="offer">
-          <span class="exclusive">EXCLUSIVO</span>
-          <div class="o-off">15% OFF</div>
-          <div class="o-desc">em sua próxima compra</div>
-          <div class="o-valid">em breve</div>
-          <button>Usar cupom</button>
-          <div class="o-gift">🎁</div>
+          <div class="ref-link" id="cbp-ref-linkwrap">
+            <input id="cbp-ref-link" class="ref-link-input" readonly />
+            <button class="ref-btn" id="cbp-ref-btn">Copiar link</button>
+          </div>
         </div>
 
       </div>

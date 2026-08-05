@@ -290,6 +290,11 @@ model CashbackConfig {
   // tema real da vitrine — usada na página "Minha Fidelidade" e no ícone
   // flutuante em vez de uma cor fixa do CashbackPro.
   brandColor         String?  @default("#7C3AED")
+  // Indique e ganhe: liga/desliga e quantos pontos pro indicador e pro indicado
+  // (creditados quando o indicado faz a primeira compra paga).
+  referralEnabled        Boolean @default(false)
+  referralPointsReferrer Int     @default(0)
+  referralPointsReferred Int     @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -334,6 +339,11 @@ model CustomerPoints {
   // Início do ciclo atual de acúmulo — reseta a cada 6 meses (checagem lazy,
   // feita em ensureCycleFresh() no momento de creditar/resgatar, sem cron job).
   cycleStartedAt      DateTime @default(now())
+  // Indique e ganhe: código próprio do cliente (gerado na 1ª visita), o código
+  // de quem o indicou, e quando a indicação foi recompensada (só uma vez).
+  referralCode        String?  @unique
+  referredByCode      String?
+  referralRewardedAt  DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -342,6 +352,7 @@ model CustomerPoints {
 
   @@unique([storeId, nuvemshopCustomerId])
   @@index([storeId])
+  @@index([storeId, referredByCode])
   @@map("customer_points")
 }
 

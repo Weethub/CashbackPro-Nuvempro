@@ -113,7 +113,7 @@ router.post('/auth/request-code', widgetOtpLimiter, async (req, res, next) => {
  */
 router.post('/auth/verify-code', widgetOtpLimiter, async (req, res, next) => {
   try {
-    const { storeNuvemshopId, email, code } = req.body || {};
+    const { storeNuvemshopId, email, code, ref } = req.body || {};
     if (!storeNuvemshopId || !email || !code) {
       throw new AppError('storeNuvemshopId, email e code sao obrigatorios.', 400, 'VALIDATION_ERROR');
     }
@@ -143,6 +143,16 @@ router.post('/auth/verify-code', widgetOtpLimiter, async (req, res, next) => {
       otp.nuvemshopCustomerId,
       email
     );
+
+    // Indique e ganhe: vincula quem indicou (best-effort — travas anti-fraude
+    // ficam no service; nunca derruba o login).
+    if (ref) {
+      try {
+        await cashbackService.bindReferral(store.id, customerPoints, String(ref).toUpperCase());
+      } catch (err) {
+        console.error('[referral] falha ao vincular indicação (ignorado):', err.message);
+      }
+    }
 
     // O JWT precisa do id da sessão (sid) no payload, que só existe após o create —
     // por isso o token é um placeholder único no create e sobrescrito com o JWT
@@ -176,18 +186,26 @@ router.post('/auth/verify-code', widgetOtpLimiter, async (req, res, next) => {
  */
 router.get('/me', requireCustomerAuth, async (req, res, next) => {
   try {
-    const [progress, tiers, config] = await Promise.all([
-      cashbackService.getTierProgress(req.storeId, req.customerPoints),
+    const config = await cashbackService.getOrCreateConfig(req.storeId);
+    // Garante o código de indicação do cliente quando o programa de indicação
+    // está ligado (pra o link já estar pronto no dashboard).
+    let customerPoints = req.customerPoints;
+    if (config.referralEnabled) {
+      customerPoints = await cashbackService.ensureReferralCode(customerPoints);
+    }
+    const [progress, tiers, referral] = await Promise.all([
+      cashbackService.getTierProgress(req.storeId, customerPoints),
       cashbackService.getTiers(req.storeId),
-      cashbackService.getOrCreateConfig(req.storeId),
+      cashbackService.getReferralStats(req.storeId, customerPoints, config),
     ]);
     res.json({
-      email: req.customerPoints.email,
+      email: customerPoints.email,
       // Ano de "cliente desde" e taxa de pontos->R$ pra a página do cliente:
       // R$ = saldo / pointsPerCurrency (pointsPerCurrency = pontos por R$1).
-      memberSince: req.customerPoints.createdAt,
+      memberSince: customerPoints.createdAt,
       pointsPerCurrency: config.pointsPerCurrency,
       tiers,
+      referral,
       ...progress,
     });
   } catch (err) {

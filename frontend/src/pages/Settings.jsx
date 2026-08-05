@@ -24,6 +24,9 @@ const DEFAULT_CONFIG = {
   widgetIconPosition: 'bottom-right',
   widgetIconSize: 'md',
   brandColor: '#7C3AED',
+  referralEnabled: false,
+  referralPointsReferrer: 0,
+  referralPointsReferred: 0,
 };
 
 let nextTempId = -1;
@@ -385,6 +388,51 @@ export default function Settings() {
                 value={config.brandColor || '#7C3AED'}
                 onChange={(e) => update('brandColor', e.target.value)}
               />
+            </Box>
+          </Box>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.referral.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.referral.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Box display="flex" flexDirection="column" gap="4">
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap="4">
+              <Text fontWeight="bold">{t('cashback.referral.enable')}</Text>
+              <Toggle
+                active={config.referralEnabled}
+                onChange={() => update('referralEnabled', !config.referralEnabled)}
+                name="referralEnabled"
+              />
+            </Box>
+            <Box display="flex" flexWrap="wrap" gap="4">
+              <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
+                <Text>{t('cashback.referral.pointsReferrer')}</Text>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="referralPointsReferrer"
+                  value={config.referralPointsReferrer ?? 0}
+                  onChange={(e) => update('referralPointsReferrer', e.target.value)}
+                />
+              </Box>
+              <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
+                <Text>{t('cashback.referral.pointsReferred')}</Text>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="referralPointsReferred"
+                  value={config.referralPointsReferred ?? 0}
+                  onChange={(e) => update('referralPointsReferred', e.target.value)}
+                />
+              </Box>
             </Box>
           </Box>
         </Card.Body>

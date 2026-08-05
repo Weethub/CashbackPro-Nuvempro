@@ -14,6 +14,15 @@
   var API_BASE = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:3001';
   var storeId = new URL(window.location.href).searchParams.get('store');
   var TOKEN_KEY = 'cashbackpro_token_' + storeId;
+  var REF_KEY = 'cashbackpro_ref_' + storeId;
+
+  // Captura ?ref=CODE do link de indicação e guarda até o cliente logar.
+  try {
+    var refParam = new URL(window.location.href).searchParams.get('ref');
+    if (refParam) localStorage.setItem(REF_KEY, refParam);
+  } catch (e) { /* localStorage indisponível */ }
+  function getRef() { try { return localStorage.getItem(REF_KEY); } catch (e) { return null; } }
+  function clearRef() { try { localStorage.removeItem(REF_KEY); } catch (e) {} }
 
   var $ = function (id) { return document.getElementById(id); };
   var elLogin = $('cbp-login'), elDash = $('cbp-dashboard'), elBoot = $('cbp-boot');
@@ -141,8 +150,8 @@
       verify.onclick = function () {
         if (!state.code) return;
         state.loading = true; state.error = null; renderLogin();
-        api('/api/widget/auth/verify-code', { method: 'POST', body: { storeNuvemshopId: storeId, email: state.email, code: state.code } })
-          .then(function (data) { setToken(data.token); state.loading = false; boot(); })
+        api('/api/widget/auth/verify-code', { method: 'POST', body: { storeNuvemshopId: storeId, email: state.email, code: state.code, ref: getRef() } })
+          .then(function (data) { setToken(data.token); clearRef(); state.loading = false; boot(); })
           .catch(function () { state.loading = false; state.error = 'Código inválido ou expirado.'; renderLogin(); });
       };
       body.appendChild(verify);
@@ -209,6 +218,29 @@
         '<div><div class="nl-name">' + esc(cur ? cur.name : 'Topo') + '</div>' +
         '<div class="nl-desc">Você já está no nível máximo. Continue aproveitando os benefícios!</div></div></div>' +
         benefitsHtml(cur);
+    }
+
+    // Indique e ganhe
+    var refCard = $('cbp-ref-card');
+    var ref = me.referral;
+    if (refCard && ref && ref.enabled && ref.code) {
+      refCard.hidden = false;
+      $('cbp-ref-count').textContent = ref.count || 0;
+      $('cbp-ref-points').textContent = (ref.pointsEarned || 0) + ' pts';
+      var base = window.location.origin + window.location.pathname;
+      var link = base + '?store=' + encodeURIComponent(storeId) + '&ref=' + encodeURIComponent(ref.code);
+      var linkInput = $('cbp-ref-link');
+      linkInput.value = link;
+      var btn = $('cbp-ref-btn');
+      btn.onclick = function () {
+        linkInput.select();
+        var done = function () { btn.textContent = 'Copiado!'; setTimeout(function () { btn.textContent = 'Copiar link'; }, 1800); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(done, function () { try { document.execCommand('copy'); done(); } catch (e) {} });
+        } else { try { document.execCommand('copy'); done(); } catch (e) {} }
+      };
+    } else if (refCard) {
+      refCard.hidden = true;
     }
 
     // Redeem

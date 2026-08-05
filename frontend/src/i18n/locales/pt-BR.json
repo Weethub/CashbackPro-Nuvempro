@@ -300,6 +300,13 @@
       "hint": "Combine com as cores da sua loja — usada na página \"Minha Fidelidade\" e no ícone flutuante da vitrine.",
       "brandColor": "Cor principal da loja"
     },
+    "referral": {
+      "title": "Indique e ganhe",
+      "hint": "Cada cliente recebe um link próprio. Quando um amigo compra pela primeira vez usando o link, os dois ganham pontos.",
+      "enable": "Ativar indicações",
+      "pointsReferrer": "Pontos para quem indica",
+      "pointsReferred": "Pontos para o amigo indicado"
+    },
     "widget": {
       "title": "Widget na Vitrine",
       "position": "Posição do ícone",

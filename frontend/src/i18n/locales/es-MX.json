@@ -297,6 +297,13 @@
       "hint": "Combina con los colores de tu tienda — se usa en la página \"Mi Fidelidad\" y en el ícono flotante de la tienda.",
       "brandColor": "Color principal de la tienda"
     },
+    "referral": {
+      "title": "Recomienda y gana",
+      "hint": "Cada cliente recibe un enlace propio. Cuando un amigo compra por primera vez usando el enlace, ambos ganan puntos.",
+      "enable": "Activar recomendaciones",
+      "pointsReferrer": "Puntos para quien recomienda",
+      "pointsReferred": "Puntos para el amigo recomendado"
+    },
     "widget": {
       "title": "Widget en la Tienda",
       "position": "Posición del ícono",

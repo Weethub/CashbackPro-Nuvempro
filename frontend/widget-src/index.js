@@ -8,19 +8,25 @@
  * hospedada no nosso domínio) em vez de abrir modal — a lógica de
  * login/saldo/nível/histórico/resgate mora em widget-src/fidelidade-page.js.
  *
- * Injetado via Script resource, chega como <script src=".../widget.js?store=1234">
- * — o "store" identifica a loja (não é credencial; toda ação sensível exige
- * o JWT emitido no login, feito só na página).
+ * Duas formas de chegar na loja:
+ *   1) Injetado direto pela Nuvemshop como <script src=".../widget.js?store=1234">
+ *      — lê o "store" da própria URL (document.currentScript.src).
+ *   2) Carregado dinamicamente pelo loader (nuvemshop-scripts/widget-loader.js),
+ *      que roda no Portal e injeta ESTE arquivo do nosso domínio. Nesse caso
+ *      document.currentScript é null (script async inserido via DOM), então o
+ *      loader deixa o id em window.CASHBACKPRO_STORE — é o fallback usado aqui.
+ * O "store" não é credencial; toda ação sensível exige o JWT do login (na página).
  */
 (function () {
   var API_BASE = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'https://localhost:3001';
 
-  var scriptEl = document.currentScript;
-  var storeId = null;
-  try {
-    storeId = new URL(scriptEl.src).searchParams.get('store');
-  } catch (e) {
-    /* sem store válido — ícone não renderiza */
+  var storeId = (typeof window !== 'undefined' && window.CASHBACKPRO_STORE) || null;
+  if (!storeId) {
+    try {
+      storeId = new URL(document.currentScript.src).searchParams.get('store');
+    } catch (e) {
+      /* sem store válido — ícone não renderiza */
+    }
   }
   if (!storeId) return;
 

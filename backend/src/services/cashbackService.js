@@ -513,19 +513,15 @@ async function createCustomerPage(store) {
     console.warn('[createCustomerPage] não obteve idioma da loja, usando "pt":', err.response?.data || err.message);
   }
 
+  // Formato "flat" da API 2025-03: campos i18n no topo (name/content/handle),
+  // igual ao shape que a leitura de páginas devolve. O wrapper antigo
+  // { page: { i18n: {...} } } (v1) causava 400 Bad Request nessa versão.
+  // Mandamos o mínimo (name + content) e deixamos a Nuvemshop gerar o handle,
+  // que lemos de volta da resposta.
   const body = {
-    page: {
-      publish: true,
-      i18n: {
-        [lang]: {
-          title: 'Minha Fidelidade',
-          content,
-          seo_handle: 'minha-fidelidade',
-          seo_title: 'Minha Fidelidade',
-          seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
-        },
-      },
-    },
+    name: { [lang]: 'Minha Fidelidade' },
+    content: { [lang]: content },
+    published: true,
   };
 
   let data;

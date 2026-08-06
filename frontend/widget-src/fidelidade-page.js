@@ -336,6 +336,19 @@
     var hiwClose = $('cbp-hiw-close'); if (hiwClose) hiwClose.onclick = closeHowItWorks;
     var hiwBackdrop = $('cbp-hiw-backdrop'); if (hiwBackdrop) hiwBackdrop.onclick = closeHowItWorks;
 
+    // Ações rápidas
+    var qaShop = $('cbp-qa-shop');
+    if (qaShop) qaShop.onclick = function () {
+      // Volta pra loja (o cliente chegou aqui pela vitrine). Fallback: histórico.
+      if (document.referrer) window.location.href = document.referrer;
+      else if (window.history.length > 1) window.history.back();
+    };
+    var qaHistory = $('cbp-qa-history');
+    if (qaHistory) qaHistory.onclick = function () {
+      var el = $('sec-historico');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
     var refNav = $('cbp-nav-indique'); if (refNav) refNav.onclick = openReferral;
     var refOpen = $('cbp-ref-open'); if (refOpen) refOpen.onclick = openReferral;
     var refSide = $('cbp-side-indicar'); if (refSide) refSide.onclick = openReferral;

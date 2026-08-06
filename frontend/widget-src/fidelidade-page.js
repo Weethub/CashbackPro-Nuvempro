@@ -362,6 +362,15 @@
     var refOpen = $('cbp-ref-open'); if (refOpen) refOpen.onclick = openReferral;
     var refClose = $('cbp-refm-close'); if (refClose) refClose.onclick = closeReferral;
     var refBackdrop = $('cbp-refm-backdrop'); if (refBackdrop) refBackdrop.onclick = closeReferral;
+
+    // Ícone "ⓘ" ao lado de "Seus pontos" — explica o ciclo de 6 meses.
+    var infoBtn = $('cbp-points-info'), infoPop = $('cbp-points-infopop');
+    if (infoBtn && infoPop) {
+      infoBtn.onclick = function (e) { e.stopPropagation(); infoPop.hidden = !infoPop.hidden; };
+      document.addEventListener('click', function (e) {
+        if (!infoPop.hidden && e.target !== infoBtn && !infoPop.contains(e.target)) infoPop.hidden = true;
+      });
+    }
   }
 
   // ─── Boot ─────────────────────────────────────────────────────────────────

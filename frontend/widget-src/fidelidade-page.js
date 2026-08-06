@@ -60,9 +60,6 @@
     var d = new Date(iso);
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
   }
-  function fmtBRL(v) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-  }
   function pickTextColor(hex) {
     hex = String(hex || '#7C3AED').replace('#', '');
     if (hex.length === 3) hex = hex.split('').map(function (c) { return c + c; }).join('');
@@ -222,19 +219,21 @@
       ? 'Próximo nível: <b>' + me.nextTier.name + ' ' + tierIcon(me.nextTier, 18, '🥈') + '</b>'
       : 'Você alcançou o nível máximo! 🎉';
 
-    // Pontos
+    // Pontos — sem conversão em R$: o desconto real é o cupom do nível
+    // (percentual ou valor fixo), não é proporcional ao saldo de pontos.
     $('cbp-points').textContent = me.balance;
-    var ppc = me.pointsPerCurrency || 1;
-    var reais = ppc > 0 ? me.balance / ppc : 0;
-    var mult = cur && cur.pointsMultiplier > 1
-      ? ' · ganhando ' + String(cur.pointsMultiplier).replace('.', ',') + '× pontos'
-      : '';
-    $('cbp-points-conv').textContent = '≈ ' + fmtBRL(reais) + ' de desconto' + mult;
+    var convEl = $('cbp-points-conv');
+    if (cur && cur.pointsMultiplier > 1) {
+      convEl.hidden = false;
+      convEl.textContent = 'Ganhando ' + String(cur.pointsMultiplier).replace('.', ',') + '× pontos por compra';
+    } else {
+      convEl.hidden = true;
+    }
 
     // Lista de todos os níveis (coluna direita)
     renderLevels(me);
 
-    // Indique e ganhe — card na sidebar mostra o placar; link/regras no modal.
+    // Indique e ganhe — o card mostra o placar; link/regras ficam no modal.
     var ref = me.referral;
     var refAvailable = !!(ref && ref.enabled && ref.code);
     var refCard = $('cbp-ref-card');
@@ -359,7 +358,7 @@
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    // Indique e ganhe — card na sidebar abre o modal.
+    // Indique e ganhe — card no fim da coluna direita abre o modal.
     var refOpen = $('cbp-ref-open'); if (refOpen) refOpen.onclick = openReferral;
     var refClose = $('cbp-refm-close'); if (refClose) refClose.onclick = closeReferral;
     var refBackdrop = $('cbp-refm-backdrop'); if (refBackdrop) refBackdrop.onclick = closeReferral;

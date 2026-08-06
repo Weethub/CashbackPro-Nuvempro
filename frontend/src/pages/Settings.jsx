@@ -31,6 +31,11 @@ const DEFAULT_CONFIG = {
   welcomeBonusEnabled: false,
   welcomeBonusPoints: 0,
   howItWorks: '',
+  winbackEnabled: false,
+  winbackDays: 60,
+  winbackPoints: 0,
+  pointsExpiryEnabled: false,
+  pointsExpiryWarningDays: 15,
 };
 
 let nextTempId = -1;
@@ -423,6 +428,83 @@ export default function Settings() {
                 name="welcomeBonusPoints"
                 value={config.welcomeBonusPoints ?? 0}
                 onChange={(e) => update('welcomeBonusPoints', e.target.value)}
+              />
+            </Box>
+          </Box>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.winback.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.winback.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Box display="flex" flexDirection="column" gap="4">
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap="4">
+              <Text fontWeight="bold">{t('cashback.winback.enable')}</Text>
+              <Toggle
+                active={config.winbackEnabled}
+                onChange={() => update('winbackEnabled', !config.winbackEnabled)}
+                name="winbackEnabled"
+              />
+            </Box>
+            <Box display="flex" flexWrap="wrap" gap="4">
+              <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
+                <Text>{t('cashback.winback.days')}</Text>
+                <Input
+                  type="number"
+                  min="1"
+                  step="1"
+                  name="winbackDays"
+                  value={config.winbackDays ?? 60}
+                  onChange={(e) => update('winbackDays', e.target.value)}
+                />
+              </Box>
+              <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
+                <Text>{t('cashback.winback.points')}</Text>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  name="winbackPoints"
+                  value={config.winbackPoints ?? 0}
+                  onChange={(e) => update('winbackPoints', e.target.value)}
+                />
+              </Box>
+            </Box>
+          </Box>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.pointsExpiry.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.pointsExpiry.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Box display="flex" flexDirection="column" gap="4">
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap="4">
+              <Text fontWeight="bold">{t('cashback.pointsExpiry.enable')}</Text>
+              <Toggle
+                active={config.pointsExpiryEnabled}
+                onChange={() => update('pointsExpiryEnabled', !config.pointsExpiryEnabled)}
+                name="pointsExpiryEnabled"
+              />
+            </Box>
+            <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
+              <Text>{t('cashback.pointsExpiry.days')}</Text>
+              <Input
+                type="number"
+                min="1"
+                step="1"
+                name="pointsExpiryWarningDays"
+                value={config.pointsExpiryWarningDays ?? 15}
+                onChange={(e) => update('pointsExpiryWarningDays', e.target.value)}
               />
             </Box>
           </Box>

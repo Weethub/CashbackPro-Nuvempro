@@ -31,6 +31,11 @@ async function updateConfig(storeId, data) {
     welcomeBonusEnabled,
     welcomeBonusPoints,
     howItWorks,
+    winbackEnabled,
+    winbackDays,
+    winbackPoints,
+    pointsExpiryEnabled,
+    pointsExpiryWarningDays,
   } = data;
 
   const fields = {
@@ -49,6 +54,11 @@ async function updateConfig(storeId, data) {
     ...(welcomeBonusEnabled !== undefined && { welcomeBonusEnabled: Boolean(welcomeBonusEnabled) }),
     ...(welcomeBonusPoints !== undefined && { welcomeBonusPoints: Math.max(0, parseInt(welcomeBonusPoints) || 0) }),
     ...(howItWorks !== undefined && { howItWorks: howItWorks || null }),
+    ...(winbackEnabled !== undefined && { winbackEnabled: Boolean(winbackEnabled) }),
+    ...(winbackDays !== undefined && { winbackDays: Math.max(1, parseInt(winbackDays) || 60) }),
+    ...(winbackPoints !== undefined && { winbackPoints: Math.max(0, parseInt(winbackPoints) || 0) }),
+    ...(pointsExpiryEnabled !== undefined && { pointsExpiryEnabled: Boolean(pointsExpiryEnabled) }),
+    ...(pointsExpiryWarningDays !== undefined && { pointsExpiryWarningDays: Math.max(1, parseInt(pointsExpiryWarningDays) || 15) }),
   };
 
   return prisma.cashbackConfig.upsert({
@@ -810,6 +820,105 @@ async function getTierDistribution(storeId) {
   return { noTier, tiers: counts };
 }
 
+// ─── Jobs diários (cron) ────────────────────────────────────────────────────
+// Rodados uma vez por dia pelo Railway Cron (POST /api/cron/daily). Cada tarefa
+// tem trava anti-reenvio própria pra não spammar o cliente todo dia.
+
+async function runWinbackForStore(store, config) {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - (config.winbackDays || 60));
+  let sent = 0;
+
+  const customers = await prisma.customerPoints.findMany({
+    where: { storeId: store.id, email: { not: null } },
+  });
+  for (const cp of customers) {
+    const lastEarn = await prisma.pointsTransaction.findFirst({
+      where: { customerPointsId: cp.id, type: 'earn' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!lastEarn) continue; // nunca comprou — reconquista é pra quem sumiu
+    if (lastEarn.createdAt >= cutoff) continue; // ainda ativo
+    // Já avisado neste período ocioso? (só reenvia depois de uma nova compra)
+    if (cp.winbackSentAt && cp.winbackSentAt >= lastEarn.createdAt) continue;
+
+    const bonus = config.winbackPoints || 0;
+    if (bonus > 0) {
+      await prisma.$transaction(async (tx) => {
+        const fresh = await ensureCycleFresh(tx, cp);
+        await tx.pointsTransaction.create({
+          data: { customerPointsId: fresh.id, storeId: store.id, type: 'bonus', points: bonus, note: 'Bônus de reconquista' },
+        });
+        await tx.customerPoints.update({ where: { id: fresh.id }, data: { pointsBalance: { increment: bonus } } });
+      });
+    }
+    await prisma.customerPoints.update({ where: { id: cp.id }, data: { winbackSentAt: new Date() } });
+
+    sendEmail({
+      to: cp.email,
+      subject: 'Sentimos sua falta!',
+      html:
+        `<p>Faz um tempinho que você não aparece por aqui.</p>` +
+        (bonus > 0 ? `<p>Como incentivo, você ganhou <strong>${bonus} pontos</strong> — aproveite na sua próxima compra!</p>` : `<p>Volte para aproveitar seus pontos e continuar subindo de nível.</p>`),
+    });
+    sent++;
+  }
+  return sent;
+}
+
+async function runPointsExpiryForStore(store, config) {
+  const warningDays = config.pointsExpiryWarningDays || 15;
+  const now = new Date();
+  let warned = 0;
+
+  const customers = await prisma.customerPoints.findMany({
+    where: { storeId: store.id, email: { not: null }, pointsBalance: { gt: 0 } },
+  });
+  for (const cp of customers) {
+    const cycleEnd = new Date(cp.cycleStartedAt);
+    cycleEnd.setMonth(cycleEnd.getMonth() + CYCLE_MONTHS);
+    const warnStart = new Date(cycleEnd);
+    warnStart.setDate(warnStart.getDate() - warningDays);
+    if (now < warnStart || now >= cycleEnd) continue; // fora da janela de aviso
+    // Já avisado neste ciclo? (warnedAt depois do início do ciclo atual)
+    if (cp.pointsExpiryWarnedAt && cp.pointsExpiryWarnedAt >= cp.cycleStartedAt) continue;
+
+    await prisma.customerPoints.update({ where: { id: cp.id }, data: { pointsExpiryWarnedAt: now } });
+
+    const daysLeft = Math.max(1, Math.ceil((cycleEnd - now) / (1000 * 60 * 60 * 24)));
+    sendEmail({
+      to: cp.email,
+      subject: 'Seus pontos vão expirar em breve',
+      html: `<p>Você tem <strong>${cp.pointsBalance} pontos</strong> que vencem em <strong>${daysLeft} dia(s)</strong>.</p><p>Resgate ou use antes que expirem!</p>`,
+    });
+    warned++;
+  }
+  return warned;
+}
+
+// Roda todas as tarefas diárias em todas as lojas ativas. Best-effort por loja:
+// erro numa loja não derruba as outras.
+async function runDailyJobs() {
+  const stores = await prisma.store.findMany({
+    where: { accessToken: { not: null } },
+    select: { id: true, name: true, nuvemshopId: true, accessToken: true },
+  });
+  const summary = { storesChecked: 0, winbackSent: 0, expiryWarned: 0, errors: [] };
+  for (const store of stores) {
+    try {
+      const config = await getOrCreateConfig(store.id);
+      if (!config.isActive) continue;
+      summary.storesChecked++;
+      if (config.winbackEnabled) summary.winbackSent += await runWinbackForStore(store, config);
+      if (config.pointsExpiryEnabled) summary.expiryWarned += await runPointsExpiryForStore(store, config);
+    } catch (err) {
+      console.error(`[cron] falha na loja ${store.id}:`, err.message);
+      summary.errors.push(String(store.id));
+    }
+  }
+  return summary;
+}
+
 module.exports = {
   getOrCreateConfig,
   updateConfig,
@@ -830,4 +939,5 @@ module.exports = {
   ensureReferralCode,
   bindReferral,
   getReferralStats,
+  runDailyJobs,
 };

@@ -83,6 +83,7 @@ const supportRouter = require('./routes/support');
 const cashbackRouter = require('./routes/cashback');
 const widgetRouter = require('./routes/widget');
 const nuvemshopWebhooksRouter = require('./routes/nuvemshopWebhooks');
+const cronRouter = require('./routes/cron');
 
 app.use('/auth', authRouter);
 app.use('/api/billing', billingRouter);
@@ -92,6 +93,7 @@ app.use('/api/support', supportRouter);
 app.use('/api/cashback', cashbackRouter);
 app.use('/api/widget', widgetRouter);
 app.use('/webhooks', nuvemshopWebhooksRouter);
+app.use('/api/cron', cronRouter);
 
 // ═══════════════════════════════════════════
 // ADMIN ROUTES

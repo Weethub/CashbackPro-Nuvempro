@@ -315,6 +315,19 @@
       "enable": "Ativar bônus de boas-vindas",
       "points": "Pontos na primeira compra"
     },
+    "winback": {
+      "title": "Reconquista",
+      "hint": "E-mail automático para clientes que não compram há um tempo. Opcionalmente com pontos de incentivo.",
+      "enable": "Ativar reconquista",
+      "days": "Dias sem comprar",
+      "points": "Pontos de incentivo (0 = só e-mail)"
+    },
+    "pointsExpiry": {
+      "title": "Aviso de pontos a expirar",
+      "hint": "Avisa o cliente por e-mail quando os pontos dele estão perto de vencer (ciclo de 6 meses).",
+      "enable": "Ativar aviso de expiração",
+      "days": "Avisar quantos dias antes"
+    },
     "howItWorks": {
       "title": "Texto \"Como funciona\"",
       "hint": "Explicação mostrada ao cliente no botão \"Como funciona\". Deixe em branco para usar o texto padrão.",

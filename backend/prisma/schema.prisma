@@ -303,6 +303,13 @@ model CashbackConfig {
   welcomeBonusPoints  Int     @default(0)
   // Texto "Como funciona" mostrado ao cliente (editável pelo lojista).
   howItWorks         String?
+  // Reconquista: e-mail (+pontos opcionais) pra quem não compra há N dias.
+  winbackEnabled     Boolean @default(false)
+  winbackDays        Int     @default(60)
+  winbackPoints      Int     @default(0)
+  // Aviso de pontos a expirar: avisa N dias antes do fim do ciclo de 6 meses.
+  pointsExpiryEnabled     Boolean @default(false)
+  pointsExpiryWarningDays Int     @default(15)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -352,6 +359,9 @@ model CustomerPoints {
   referralCode        String?  @unique
   referredByCode      String?
   referralRewardedAt  DateTime?
+  // Controle dos jobs diários (evita reenviar o mesmo aviso todo dia).
+  winbackSentAt       DateTime?
+  pointsExpiryWarnedAt DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

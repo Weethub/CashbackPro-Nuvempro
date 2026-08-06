@@ -220,27 +220,18 @@
         benefitsHtml(cur);
     }
 
-    // Indique e ganhe
-    var refCard = $('cbp-ref-card');
+    // Indique e ganhe — o card mostra o placar; link e regras ficam no modal.
     var ref = me.referral;
-    if (refCard && ref && ref.enabled && ref.code) {
-      refCard.hidden = false;
+    var refAvailable = !!(ref && ref.enabled && ref.code);
+    var refCard = $('cbp-ref-card');
+    var navIndique = $('cbp-nav-indique');
+    var sideIndicar = $('cbp-side-indicar');
+    if (refCard) refCard.hidden = !refAvailable;
+    if (navIndique) navIndique.hidden = !refAvailable;
+    if (sideIndicar) sideIndicar.hidden = !refAvailable;
+    if (refAvailable) {
       $('cbp-ref-count').textContent = ref.count || 0;
       $('cbp-ref-points').textContent = (ref.pointsEarned || 0) + ' pts';
-      var base = window.location.origin + window.location.pathname;
-      var link = base + '?store=' + encodeURIComponent(storeId) + '&ref=' + encodeURIComponent(ref.code);
-      var linkInput = $('cbp-ref-link');
-      linkInput.value = link;
-      var btn = $('cbp-ref-btn');
-      btn.onclick = function () {
-        linkInput.select();
-        var done = function () { btn.textContent = 'Copiado!'; setTimeout(function () { btn.textContent = 'Copiar link'; }, 1800); };
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(link).then(done, function () { try { document.execCommand('copy'); done(); } catch (e) {} });
-        } else { try { document.execCommand('copy'); done(); } catch (e) {} }
-      };
-    } else if (refCard) {
-      refCard.hidden = true;
     }
 
     // Redeem
@@ -307,34 +298,49 @@
     '3. Quando quiser, resgate seus pontos por um cupom e use na próxima compra.\n\n' +
     'Seus pontos ficam salvos na sua conta — acompanhe tudo por aqui.';
 
+  var DEFAULT_REF_RULES =
+    'Compartilhe o seu link com amigos.\n' +
+    'Quando um amigo faz a primeira compra usando o seu link, vocês dois ganham pontos.\n' +
+    'Acompanhe aqui quantos amigos já compraram e quantos pontos você ganhou.';
+
   function openHowItWorks() {
-    var modal = $('cbp-howitworks');
     $('cbp-hiw-body').textContent = state.howItWorks || DEFAULT_HIW;
-    modal.hidden = false;
+    $('cbp-howitworks').hidden = false;
   }
   function closeHowItWorks() { $('cbp-howitworks').hidden = true; }
 
-  function scrollToId(id) {
-    var el = $(id);
-    if (el && !el.hidden) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  function openReferral() {
+    var ref = state.me && state.me.referral;
+    if (!ref || !ref.enabled || !ref.code) return;
+    $('cbp-refm-rules').textContent = ref.rules || DEFAULT_REF_RULES;
+    var base = window.location.origin + window.location.pathname;
+    var link = base + '?store=' + encodeURIComponent(storeId) + '&ref=' + encodeURIComponent(ref.code);
+    var linkInput = $('cbp-ref-link');
+    linkInput.value = link;
+    var btn = $('cbp-ref-btn');
+    btn.textContent = 'Copiar';
+    btn.onclick = function () {
+      linkInput.select();
+      var done = function () { btn.textContent = 'Copiado!'; setTimeout(function () { btn.textContent = 'Copiar'; }, 1800); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(done, function () { try { document.execCommand('copy'); done(); } catch (e) {} });
+      } else { try { document.execCommand('copy'); done(); } catch (e) {} }
+    };
+    $('cbp-referral-modal').hidden = false;
   }
+  function closeReferral() { $('cbp-referral-modal').hidden = true; }
 
   function setupInteractions() {
-    // Menu vira navegação de página única (rola até a seção).
-    var navLinks = document.querySelectorAll('.nav a[data-scroll]');
-    navLinks.forEach(function (a) {
-      a.onclick = function () {
-        navLinks.forEach(function (x) { x.classList.remove('active'); });
-        document.querySelectorAll('.nav a').forEach(function (x) { x.classList.remove('active'); });
-        a.classList.add('active');
-        scrollToId(a.getAttribute('data-scroll'));
-      };
-    });
     var hiwNav = $('cbp-nav-hiw'); if (hiwNav) hiwNav.onclick = openHowItWorks;
     var hiwQa = $('cbp-qa-hiw'); if (hiwQa) hiwQa.onclick = openHowItWorks;
-    var side = $('cbp-side-indicar'); if (side) side.onclick = function () { scrollToId('cbp-ref-card'); };
-    var close = $('cbp-hiw-close'); if (close) close.onclick = closeHowItWorks;
-    var backdrop = $('cbp-hiw-backdrop'); if (backdrop) backdrop.onclick = closeHowItWorks;
+    var hiwClose = $('cbp-hiw-close'); if (hiwClose) hiwClose.onclick = closeHowItWorks;
+    var hiwBackdrop = $('cbp-hiw-backdrop'); if (hiwBackdrop) hiwBackdrop.onclick = closeHowItWorks;
+
+    var refNav = $('cbp-nav-indique'); if (refNav) refNav.onclick = openReferral;
+    var refOpen = $('cbp-ref-open'); if (refOpen) refOpen.onclick = openReferral;
+    var refSide = $('cbp-side-indicar'); if (refSide) refSide.onclick = openReferral;
+    var refClose = $('cbp-refm-close'); if (refClose) refClose.onclick = closeReferral;
+    var refBackdrop = $('cbp-refm-backdrop'); if (refBackdrop) refBackdrop.onclick = closeReferral;
   }
 
   // ─── Boot ─────────────────────────────────────────────────────────────────

@@ -305,7 +305,9 @@
       "hint": "Cada cliente recebe um link próprio. Quando um amigo compra pela primeira vez usando o link, os dois ganham pontos.",
       "enable": "Ativar indicações",
       "pointsReferrer": "Pontos para quem indica",
-      "pointsReferred": "Pontos para o amigo indicado"
+      "pointsReferred": "Pontos para o amigo indicado",
+      "rules": "Regras da indicação (mostradas ao cliente)",
+      "rulesPlaceholder": "Ex: Compartilhe seu link. Quando um amigo faz a primeira compra, vocês dois ganham pontos."
     },
     "welcome": {
       "title": "Bônus de boas-vindas",

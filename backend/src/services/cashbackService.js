@@ -27,6 +27,7 @@ async function updateConfig(storeId, data) {
     referralEnabled,
     referralPointsReferrer,
     referralPointsReferred,
+    referralRules,
     welcomeBonusEnabled,
     welcomeBonusPoints,
     howItWorks,
@@ -44,6 +45,7 @@ async function updateConfig(storeId, data) {
     ...(referralEnabled !== undefined && { referralEnabled: Boolean(referralEnabled) }),
     ...(referralPointsReferrer !== undefined && { referralPointsReferrer: Math.max(0, parseInt(referralPointsReferrer) || 0) }),
     ...(referralPointsReferred !== undefined && { referralPointsReferred: Math.max(0, parseInt(referralPointsReferred) || 0) }),
+    ...(referralRules !== undefined && { referralRules: referralRules || null }),
     ...(welcomeBonusEnabled !== undefined && { welcomeBonusEnabled: Boolean(welcomeBonusEnabled) }),
     ...(welcomeBonusPoints !== undefined && { welcomeBonusPoints: Math.max(0, parseInt(welcomeBonusPoints) || 0) }),
     ...(howItWorks !== undefined && { howItWorks: howItWorks || null }),
@@ -237,6 +239,7 @@ async function getReferralStats(storeId, customerPoints, config) {
     code: customerPoints.referralCode || null,
     count,
     pointsEarned: count * (config.referralPointsReferrer || 0),
+    rules: config.referralRules || null,
   };
 }
 

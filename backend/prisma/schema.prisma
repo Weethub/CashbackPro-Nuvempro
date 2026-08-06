@@ -295,6 +295,9 @@ model CashbackConfig {
   referralEnabled        Boolean @default(false)
   referralPointsReferrer Int     @default(0)
   referralPointsReferred Int     @default(0)
+  // Texto das regras do "Indique e ganhe" (editável pelo lojista, mostrado no
+  // modal do cliente). Vazio = usa um texto padrão no front.
+  referralRules          String?
   // Bônus de boas-vindas: pontos creditados na 1ª compra do cliente.
   welcomeBonusEnabled Boolean @default(false)
   welcomeBonusPoints  Int     @default(0)

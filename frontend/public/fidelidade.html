@@ -205,6 +205,8 @@
   .cbp-modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:26px;line-height:1;
     color:var(--text-3);cursor:pointer;padding:4px}
   .cbp-hiw-body{font-size:15px;color:var(--text);line-height:1.65;white-space:pre-wrap}
+  .ref-modal-link{margin-top:20px}
+  .ref-modal-label{display:block;font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:8px}
   .skeleton{height:120px;border-radius:var(--radius);background:#EFEDF3;animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{50%{opacity:.5}}
 
@@ -251,13 +253,10 @@
   <div class="shell">
     <aside class="sidebar">
       <nav class="nav">
-        <a class="active" data-scroll="sec-inicio"><span class="ic">🏠</span>Início</a>
-        <a data-scroll="sec-nivel"><span class="ic">🎖️</span>Meu Nível</a>
-        <a data-scroll="sec-historico"><span class="ic">🕐</span>Histórico</a>
-        <a data-scroll="cbp-ref-card"><span class="ic">👥</span>Indique e Ganhe</a>
+        <a id="cbp-nav-indique"><span class="ic">👥</span>Indique e ganhe</a>
         <a id="cbp-nav-hiw"><span class="ic">❓</span>Como funciona</a>
       </nav>
-      <div class="side-promo" id="cbp-side-indicar">
+      <div class="side-promo" id="cbp-side-indicar" hidden>
         <div class="gift">🎁</div>
         <p>Indique amigos e ganhe pontos!</p>
         <button>Indicar agora</button>
@@ -322,15 +321,12 @@
 
         <div class="card" id="cbp-ref-card" hidden>
           <div class="card-head"><h3>Indique e ganhe</h3></div>
-          <div class="ref-desc" id="cbp-ref-desc">Convide amigos e ganhe pontos quando eles fizerem compras!</div>
+          <div class="ref-desc">Convide amigos e ganhe pontos quando eles fizerem compras!</div>
           <div class="ref-stats">
             <div><div class="rs-lbl">Amigos que compraram</div><div class="rs-val" id="cbp-ref-count">0</div></div>
             <div><div class="rs-lbl">Pontos ganhos</div><div class="rs-val pts" id="cbp-ref-points">0 pts</div></div>
           </div>
-          <div class="ref-link" id="cbp-ref-linkwrap">
-            <input id="cbp-ref-link" class="ref-link-input" readonly />
-            <button class="ref-btn" id="cbp-ref-btn">Copiar link</button>
-          </div>
+          <button class="ref-btn" id="cbp-ref-open">Ver meu link e regras</button>
         </div>
 
       </div>
@@ -346,6 +342,22 @@
     <button class="cbp-modal-close" id="cbp-hiw-close" aria-label="Fechar">×</button>
     <h3 id="cbp-hiw-title">Como funciona</h3>
     <div id="cbp-hiw-body" class="cbp-hiw-body"></div>
+  </div>
+</div>
+
+<div id="cbp-referral-modal" class="cbp-modal" hidden>
+  <div class="cbp-modal-backdrop" id="cbp-refm-backdrop"></div>
+  <div class="cbp-modal-card" role="dialog" aria-modal="true" aria-labelledby="cbp-refm-title">
+    <button class="cbp-modal-close" id="cbp-refm-close" aria-label="Fechar">×</button>
+    <h3 id="cbp-refm-title">Indique e ganhe</h3>
+    <div id="cbp-refm-rules" class="cbp-hiw-body"></div>
+    <div class="ref-modal-link">
+      <label class="ref-modal-label">Seu link de indicação</label>
+      <div class="ref-link">
+        <input id="cbp-ref-link" class="ref-link-input" readonly />
+        <button class="ref-btn" id="cbp-ref-btn">Copiar</button>
+      </div>
+    </div>
   </div>
 </div>
 

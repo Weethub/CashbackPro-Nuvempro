@@ -27,6 +27,7 @@ const DEFAULT_CONFIG = {
   referralEnabled: false,
   referralPointsReferrer: 0,
   referralPointsReferred: 0,
+  referralRules: '',
   welcomeBonusEnabled: false,
   welcomeBonusPoints: 0,
   howItWorks: '',
@@ -486,6 +487,16 @@ export default function Settings() {
                   onChange={(e) => update('referralPointsReferred', e.target.value)}
                 />
               </Box>
+            </Box>
+            <Box display="flex" flexDirection="column" gap="1">
+              <Text>{t('cashback.referral.rules')}</Text>
+              <Textarea
+                name="referralRules"
+                lines={4}
+                placeholder={t('cashback.referral.rulesPlaceholder')}
+                value={config.referralRules || ''}
+                onChange={(e) => update('referralRules', e.target.value)}
+              />
             </Box>
           </Box>
         </Card.Body>

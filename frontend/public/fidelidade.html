@@ -152,6 +152,25 @@
   .benefit .b-ic{width:30px;height:30px;border-radius:9px;background:var(--cbp-surface);color:var(--cbp-primary);display:flex;align-items:center;justify-content:center;font-size:15px}
   .benefit-list{margin-top:14px;border-top:1px solid var(--border);padding-top:6px}
 
+  /* ── Lista de níveis (coluna direita) ─── */
+  .lvl-item{display:flex;gap:12px;padding:15px 0;border-bottom:1px solid var(--border)}
+  .lvl-item:last-child{border-bottom:none}
+  .lvl-item-medal{font-size:30px;flex-shrink:0;width:42px;text-align:center;line-height:1}
+  .lvl-item-medal img{width:42px;height:42px;object-fit:contain}
+  .lvl-item-body{flex:1;min-width:0}
+  .lvl-item-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .lvl-item-name{font-weight:800;font-size:15px}
+  .lvl-item-req{font-size:12.5px;color:var(--text-3);margin-top:1px}
+  .lvl-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .lvl-badge-cur{background:var(--cbp-primary);color:var(--cbp-on-primary)}
+  .lvl-badge-reached{background:var(--green-bg);color:#166534}
+  .lvl-badge-next{background:var(--cbp-surface);color:var(--cbp-primary)}
+  .lvl-badge-locked{background:#EEF0F2;color:var(--text-3)}
+  .lvl-item.lvl-locked{opacity:.55}
+  .lvl-item .benefit-list{margin-top:8px;border-top:none;padding-top:0}
+  .lvl-item .benefit{padding:4px 0;font-size:12.5px}
+  .lvl-item .benefit .b-ic{width:24px;height:24px;font-size:13px}
+
   /* ── Challenges ─────────────────────── */
   .chal{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
   .chal:last-of-type{border-bottom:none}
@@ -211,9 +230,9 @@
   @keyframes pulse{50%{opacity:.5}}
 
   @media(max-width:980px){
-    .shell{grid-template-columns:1fr}
-    .sidebar{display:none}
-    .content{grid-template-columns:1fr}
+    .shell{display:flex;flex-direction:column}
+    .sidebar{position:static;order:2}
+    .content{order:1;grid-template-columns:1fr}
   }
   @media(max-width:560px){
     .qa-grid{grid-template-columns:repeat(2,1fr)}
@@ -253,14 +272,14 @@
 
   <div class="shell">
     <aside class="sidebar">
-      <nav class="nav">
-        <a id="cbp-nav-indique"><span class="ic">👥</span>Indique e ganhe</a>
-        <a id="cbp-nav-hiw"><span class="ic">❓</span>Como funciona</a>
-      </nav>
-      <div class="side-promo" id="cbp-side-indicar" hidden>
-        <div class="gift">🎁</div>
-        <p>Indique amigos e ganhe pontos!</p>
-        <button>Indicar agora</button>
+      <div class="card" id="cbp-ref-card" hidden>
+        <div class="card-head"><h3>Indique e ganhe</h3></div>
+        <div class="ref-desc">Convide amigos e ganhe pontos quando eles fizerem compras!</div>
+        <div class="ref-stats">
+          <div><div class="rs-lbl">Amigos que compraram</div><div class="rs-val" id="cbp-ref-count">0</div></div>
+          <div><div class="rs-lbl">Pontos ganhos</div><div class="rs-val pts" id="cbp-ref-points">0 pts</div></div>
+        </div>
+        <button class="ref-btn" id="cbp-ref-open">Ver meu link e regras</button>
       </div>
     </aside>
 
@@ -315,18 +334,8 @@
       <div class="col">
 
         <div class="card" id="sec-nivel">
-          <div class="card-head"><h3>Próximo nível</h3></div>
-          <div id="cbp-nextlevel"><div class="act-empty">Carregando...</div></div>
-        </div>
-
-        <div class="card" id="cbp-ref-card" hidden>
-          <div class="card-head"><h3>Indique e ganhe</h3></div>
-          <div class="ref-desc">Convide amigos e ganhe pontos quando eles fizerem compras!</div>
-          <div class="ref-stats">
-            <div><div class="rs-lbl">Amigos que compraram</div><div class="rs-val" id="cbp-ref-count">0</div></div>
-            <div><div class="rs-lbl">Pontos ganhos</div><div class="rs-val pts" id="cbp-ref-points">0 pts</div></div>
-          </div>
-          <button class="ref-btn" id="cbp-ref-open">Ver meu link e regras</button>
+          <div class="card-head"><h3>Seus níveis</h3></div>
+          <div id="cbp-levels"><div class="act-empty">Carregando...</div></div>
         </div>
 
       </div>

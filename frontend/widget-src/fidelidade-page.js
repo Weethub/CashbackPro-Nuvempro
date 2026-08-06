@@ -107,6 +107,35 @@
     }).join('') + '</div>';
   }
 
+  // Renderiza TODOS os níveis, um abaixo do outro, com status de cada um.
+  function renderLevels(me) {
+    var container = $('cbp-levels');
+    if (!container) return;
+    var tiers = (me.tiers || []).slice().sort(function (a, b) { return a.pointsRequired - b.pointsRequired; });
+    if (!tiers.length) { container.innerHTML = '<div class="act-empty">Nenhum nível configurado ainda.</div>'; return; }
+    var cur = me.currentTier;
+    container.innerHTML = tiers.map(function (t) {
+      var reached = me.balance >= t.pointsRequired;
+      var isCurrent = cur && t.id === cur.id;
+      var isNext = me.nextTier && t.id === me.nextTier.id;
+      var label, cls;
+      if (isCurrent) { label = 'Nível atual'; cls = 'cur'; }
+      else if (reached) { label = 'Alcançado'; cls = 'reached'; }
+      else if (isNext) { label = 'Faltam ' + me.pointsToNext + ' pts'; cls = 'next'; }
+      else { label = 'Bloqueado'; cls = 'locked'; }
+      var locked = !reached && !isNext && !isCurrent;
+      return '<div class="lvl-item' + (locked ? ' lvl-locked' : '') + '">' +
+        '<div class="lvl-item-medal">' + tierIcon(t, 42, '🏅') + '</div>' +
+        '<div class="lvl-item-body">' +
+          '<div class="lvl-item-top"><span class="lvl-item-name">' + esc(t.name) + '</span>' +
+            '<span class="lvl-badge lvl-badge-' + cls + '">' + label + '</span></div>' +
+          '<div class="lvl-item-req">' + t.pointsRequired + ' pontos</div>' +
+          benefitsHtml(t) +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
   var state = { email: '', codeSent: false, loading: false, error: null, me: null };
 
   // ─── Login ────────────────────────────────────────────────────────────────
@@ -202,33 +231,14 @@
       : '';
     $('cbp-points-conv').textContent = '≈ ' + fmtBRL(reais) + ' de desconto' + mult;
 
-    // Próximo nível (coluna direita)
-    var nl = $('cbp-nextlevel');
-    if (me.nextTier) {
-      var nlpct = target > 0 ? Math.min(100, Math.round((me.balance / target) * 100)) : 0;
-      nl.innerHTML =
-        '<div class="nl-top"><div class="nl-medal">' + tierIcon(me.nextTier, 48, '🥈') + '</div>' +
-        '<div><div class="nl-name">' + esc(me.nextTier.name) + '</div>' +
-        '<div class="nl-desc">Faltam ' + me.pointsToNext + ' pontos para alcançar o próximo nível.</div></div></div>' +
-        '<div class="nl-progress-row"><span>' + me.balance + ' / ' + target + ' pontos</span><span>' + nlpct + '%</span></div>' +
-        '<div class="track-2"><div class="fill" style="width:' + nlpct + '%"></div></div>' +
-        benefitsHtml(me.nextTier);
-    } else {
-      nl.innerHTML = '<div class="nl-top"><div class="nl-medal">' + tierIcon(cur, 48, '🏅') + '</div>' +
-        '<div><div class="nl-name">' + esc(cur ? cur.name : 'Topo') + '</div>' +
-        '<div class="nl-desc">Você já está no nível máximo. Continue aproveitando os benefícios!</div></div></div>' +
-        benefitsHtml(cur);
-    }
+    // Lista de todos os níveis (coluna direita)
+    renderLevels(me);
 
-    // Indique e ganhe — o card mostra o placar; link e regras ficam no modal.
+    // Indique e ganhe — card na sidebar mostra o placar; link/regras no modal.
     var ref = me.referral;
     var refAvailable = !!(ref && ref.enabled && ref.code);
     var refCard = $('cbp-ref-card');
-    var navIndique = $('cbp-nav-indique');
-    var sideIndicar = $('cbp-side-indicar');
     if (refCard) refCard.hidden = !refAvailable;
-    if (navIndique) navIndique.hidden = !refAvailable;
-    if (sideIndicar) sideIndicar.hidden = !refAvailable;
     if (refAvailable) {
       $('cbp-ref-count').textContent = ref.count || 0;
       $('cbp-ref-points').textContent = (ref.pointsEarned || 0) + ' pts';
@@ -331,7 +341,7 @@
   function closeReferral() { $('cbp-referral-modal').hidden = true; }
 
   function setupInteractions() {
-    var hiwNav = $('cbp-nav-hiw'); if (hiwNav) hiwNav.onclick = openHowItWorks;
+    // "Como funciona" — só nas ações rápidas agora (saiu do menu lateral).
     var hiwQa = $('cbp-qa-hiw'); if (hiwQa) hiwQa.onclick = openHowItWorks;
     var hiwClose = $('cbp-hiw-close'); if (hiwClose) hiwClose.onclick = closeHowItWorks;
     var hiwBackdrop = $('cbp-hiw-backdrop'); if (hiwBackdrop) hiwBackdrop.onclick = closeHowItWorks;
@@ -349,9 +359,8 @@
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    var refNav = $('cbp-nav-indique'); if (refNav) refNav.onclick = openReferral;
+    // Indique e ganhe — card na sidebar abre o modal.
     var refOpen = $('cbp-ref-open'); if (refOpen) refOpen.onclick = openReferral;
-    var refSide = $('cbp-side-indicar'); if (refSide) refSide.onclick = openReferral;
     var refClose = $('cbp-refm-close'); if (refClose) refClose.onclick = closeReferral;
     var refBackdrop = $('cbp-refm-backdrop'); if (refBackdrop) refBackdrop.onclick = closeReferral;
   }

@@ -103,7 +103,10 @@ async function setTiers(storeId, tiers) {
         couponType: t.couponType === 'amount_off' ? 'amount_off' : 'percent_off',
         couponValue: parseFloat(t.couponValue),
         sortOrder: i,
-        icon: t.icon || null,
+        // Só aceita data URI de imagem — esse campo vai pro <img src> na
+        // página do cliente sem processamento adicional; qualquer outro
+        // formato é descartado (defesa contra injeção via valor malformado).
+        icon: typeof t.icon === 'string' && /^data:image\//.test(t.icon) ? t.icon : null,
         color: t.color || '#0F7A5C',
         // Benefícios: lista de textos não-vazios. Multiplicador: >= 1.
         benefits: Array.isArray(t.benefits)

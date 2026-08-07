@@ -85,15 +85,18 @@
     root.setProperty('--cbp-surface', shade(color, 90));
     root.setProperty('--cbp-on-primary', pickTextColor(color));
   }
-  // <img> do ícone do nível (base64 subido no painel) ou emoji de fallback.
-  function tierIcon(tier, size, fallback) {
-    if (tier && tier.icon) return '<img src="' + tier.icon + '" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;vertical-align:middle" />';
-    return fallback;
-  }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
+  }
+  // <img> do ícone do nível (base64 subido no painel) ou emoji de fallback.
+  // O valor é escapado antes de entrar no atributo — tier.icon é salvo pelo
+  // lojista sem validação de formato no backend, então nunca deve ser
+  // concatenado cru dentro de HTML (evita quebrar o atributo com aspas).
+  function tierIcon(tier, size, fallback) {
+    if (tier && tier.icon) return '<img src="' + esc(tier.icon) + '" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;vertical-align:middle" />';
+    return fallback;
   }
   // Lista de benefícios (textos livres cadastrados no painel) de um nível.
   function benefitsHtml(tier) {

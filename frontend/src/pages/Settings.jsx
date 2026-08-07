@@ -36,6 +36,9 @@ const DEFAULT_CONFIG = {
   winbackPoints: 0,
   pointsExpiryEnabled: false,
   pointsExpiryWarningDays: 15,
+  supportMessage: '',
+  supportWhatsapp: '',
+  supportEmail: '',
 };
 
 let nextTempId = -1;
@@ -526,6 +529,50 @@ export default function Settings() {
             value={config.howItWorks || ''}
             onChange={(e) => update('howItWorks', e.target.value)}
           />
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header>
+          <Title as="h3">{t('cashback.support.title')}</Title>
+          <Text fontSize="caption" color="neutral-textLow">
+            {t('cashback.support.hint')}
+          </Text>
+        </Card.Header>
+        <Card.Body>
+          <Box display="flex" flexDirection="column" gap="4">
+            <Box display="flex" flexDirection="column" gap="1">
+              <Text>{t('cashback.support.message')}</Text>
+              <Textarea
+                name="supportMessage"
+                lines={3}
+                placeholder={t('cashback.support.messagePlaceholder')}
+                value={config.supportMessage || ''}
+                onChange={(e) => update('supportMessage', e.target.value)}
+              />
+            </Box>
+            <Box display="flex" flexWrap="wrap" gap="4">
+              <Box display="flex" flexDirection="column" gap="1" minWidth="220px">
+                <Text>{t('cashback.support.whatsapp')}</Text>
+                <Input
+                  name="supportWhatsapp"
+                  placeholder="5511999999999"
+                  value={config.supportWhatsapp || ''}
+                  onChange={(e) => update('supportWhatsapp', e.target.value)}
+                />
+              </Box>
+              <Box display="flex" flexDirection="column" gap="1" minWidth="220px">
+                <Text>{t('cashback.support.email')}</Text>
+                <Input
+                  type="email"
+                  name="supportEmail"
+                  placeholder="contato@sualoja.com"
+                  value={config.supportEmail || ''}
+                  onChange={(e) => update('supportEmail', e.target.value)}
+                />
+              </Box>
+            </Box>
+          </Box>
         </Card.Body>
       </Card>
 

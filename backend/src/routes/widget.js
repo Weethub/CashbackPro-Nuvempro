@@ -46,6 +46,11 @@ router.get('/config', async (req, res, next) => {
       iconSize: config.widgetIconSize,
       brandColor: config.brandColor || '#7C3AED',
       howItWorks: config.howItWorks || null,
+      support: {
+        message: config.supportMessage || null,
+        whatsapp: config.supportWhatsapp || null,
+        email: config.supportEmail || null,
+      },
       pageUrl: `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`,
     });
   } catch (err) {

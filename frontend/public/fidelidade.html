@@ -107,7 +107,7 @@
   .redeem-msg.err{background:#FDECEA;color:#A82F1F}
 
   /* ── Quick actions ──────────────────── */
-  .qa-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .qa-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
   .qa{border:1px solid var(--border-2);border-radius:13px;padding:16px 8px;text-align:center;cursor:pointer;transition:.15s}
   .qa:hover{border-color:var(--cbp-primary);background:var(--cbp-surface)}
   .qa .qa-ic{width:44px;height:44px;margin:0 auto 9px;border-radius:12px;background:var(--cbp-surface);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--cbp-primary)}
@@ -219,6 +219,11 @@
   .cbp-hiw-body{font-size:15px;color:var(--text);line-height:1.65;white-space:pre-wrap}
   .ref-modal-link{margin-top:20px}
   .ref-modal-label{display:block;font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:8px}
+  .supp-actions{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+  .supp-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:13px;
+    border-radius:12px;font-weight:700;font-size:14px;text-decoration:none;border:none;cursor:pointer}
+  .supp-btn-whatsapp{background:#25D366;color:#fff}
+  .supp-btn-email{background:var(--cbp-surface);color:var(--cbp-primary)}
   .skeleton{height:120px;border-radius:var(--radius);background:#EFEDF3;animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{50%{opacity:.5}}
 
@@ -303,6 +308,7 @@
             <div class="qa" id="cbp-qa-hiw"><div class="qa-ic">⭐</div><div class="qa-lbl">Como funciona</div></div>
             <div class="qa" id="cbp-qa-shop"><div class="qa-ic">🛍️</div><div class="qa-lbl">Fazer compras</div></div>
             <div class="qa" id="cbp-qa-history"><div class="qa-ic">🕐</div><div class="qa-lbl">Ver histórico</div></div>
+            <div class="qa" id="cbp-qa-support"><div class="qa-ic">💬</div><div class="qa-lbl">Suporte</div></div>
           </div>
         </div>
 
@@ -359,6 +365,16 @@
         <button class="ref-btn" id="cbp-ref-btn">Copiar</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="cbp-support-modal" class="cbp-modal" hidden>
+  <div class="cbp-modal-backdrop" id="cbp-supp-backdrop"></div>
+  <div class="cbp-modal-card" role="dialog" aria-modal="true" aria-labelledby="cbp-supp-title">
+    <button class="cbp-modal-close" id="cbp-supp-close" aria-label="Fechar">×</button>
+    <h3 id="cbp-supp-title">Suporte</h3>
+    <div id="cbp-supp-body" class="cbp-hiw-body"></div>
+    <div class="supp-actions" id="cbp-supp-actions"></div>
   </div>
 </div>
 

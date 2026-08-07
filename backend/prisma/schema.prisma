@@ -310,6 +310,11 @@ model CashbackConfig {
   // Aviso de pontos a expirar: avisa N dias antes do fim do ciclo de 6 meses.
   pointsExpiryEnabled     Boolean @default(false)
   pointsExpiryWarningDays Int     @default(15)
+  // Suporte ao cliente final: mensagem + canais de contato mostrados no
+  // dashboard do cliente (não confundir com o suporte do lojista com a gente).
+  supportMessage  String?
+  supportWhatsapp String? // só dígitos, com DDI (ex: 5511999999999)
+  supportEmail    String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

@@ -339,6 +339,35 @@
   }
   function closeReferral() { $('cbp-referral-modal').hidden = true; }
 
+  var DEFAULT_SUPPORT_MSG = 'Precisa de ajuda com seus pontos, seu nível ou um cupom? Fale com a gente!';
+
+  // Suporte ao cliente: mensagem + WhatsApp/e-mail configurados pelo lojista.
+  // Sem nenhum canal configurado, o modal mostra só a mensagem (sem botões).
+  function openSupport() {
+    var support = state.support || {};
+    $('cbp-supp-body').textContent = support.message || DEFAULT_SUPPORT_MSG;
+
+    var actions = $('cbp-supp-actions');
+    actions.innerHTML = '';
+    if (support.whatsapp) {
+      var wa = document.createElement('a');
+      wa.className = 'supp-btn supp-btn-whatsapp';
+      wa.target = '_blank'; wa.rel = 'noopener noreferrer';
+      wa.href = 'https://wa.me/' + encodeURIComponent(support.whatsapp);
+      wa.textContent = '💬 Chamar no WhatsApp';
+      actions.appendChild(wa);
+    }
+    if (support.email) {
+      var em = document.createElement('a');
+      em.className = 'supp-btn supp-btn-email';
+      em.href = 'mailto:' + support.email;
+      em.textContent = '✉️ Enviar e-mail';
+      actions.appendChild(em);
+    }
+    $('cbp-support-modal').hidden = false;
+  }
+  function closeSupport() { $('cbp-support-modal').hidden = true; }
+
   function setupInteractions() {
     // "Como funciona" — só nas ações rápidas agora (saiu do menu lateral).
     var hiwQa = $('cbp-qa-hiw'); if (hiwQa) hiwQa.onclick = openHowItWorks;
@@ -357,6 +386,9 @@
       var el = $('sec-historico');
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
+    var qaSupport = $('cbp-qa-support'); if (qaSupport) qaSupport.onclick = openSupport;
+    var suppClose = $('cbp-supp-close'); if (suppClose) suppClose.onclick = closeSupport;
+    var suppBackdrop = $('cbp-supp-backdrop'); if (suppBackdrop) suppBackdrop.onclick = closeSupport;
 
     // Indique e ganhe — card no fim da coluna direita abre o modal.
     var refOpen = $('cbp-ref-open'); if (refOpen) refOpen.onclick = openReferral;
@@ -377,7 +409,7 @@
   function boot() {
     fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
       .then(function (r) { return r.json(); })
-      .then(function (cfg) { applyBrand(cfg.brandColor); state.howItWorks = cfg.howItWorks || null; })
+      .then(function (cfg) { applyBrand(cfg.brandColor); state.howItWorks = cfg.howItWorks || null; state.support = cfg.support || null; })
       .catch(function () {});
 
     var token = getToken();

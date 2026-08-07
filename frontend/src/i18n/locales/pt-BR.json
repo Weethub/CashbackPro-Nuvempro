@@ -333,6 +333,14 @@
       "hint": "Explicação mostrada ao cliente no botão \"Como funciona\". Deixe em branco para usar o texto padrão.",
       "placeholder": "Ex: A cada compra você ganha pontos. Os pontos sobem seu nível e viram desconto. Resgate quando quiser."
     },
+    "support": {
+      "title": "Suporte ao cliente",
+      "hint": "Mensagem e canais de contato mostrados na página \"Minha Fidelidade\", pro cliente falar com a sua loja se tiver dúvida ou problema.",
+      "message": "Mensagem",
+      "messagePlaceholder": "Ex: Precisa de ajuda com seus pontos ou cupom? Fale com a gente!",
+      "whatsapp": "WhatsApp (com DDI, só números)",
+      "email": "E-mail de contato"
+    },
     "widget": {
       "title": "Widget na Vitrine",
       "position": "Posição do ícone",

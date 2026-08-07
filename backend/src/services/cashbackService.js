@@ -36,6 +36,9 @@ async function updateConfig(storeId, data) {
     winbackPoints,
     pointsExpiryEnabled,
     pointsExpiryWarningDays,
+    supportMessage,
+    supportWhatsapp,
+    supportEmail,
   } = data;
 
   const fields = {
@@ -59,6 +62,10 @@ async function updateConfig(storeId, data) {
     ...(winbackPoints !== undefined && { winbackPoints: Math.max(0, parseInt(winbackPoints) || 0) }),
     ...(pointsExpiryEnabled !== undefined && { pointsExpiryEnabled: Boolean(pointsExpiryEnabled) }),
     ...(pointsExpiryWarningDays !== undefined && { pointsExpiryWarningDays: Math.max(1, parseInt(pointsExpiryWarningDays) || 15) }),
+    ...(supportMessage !== undefined && { supportMessage: supportMessage || null }),
+    // Só dígitos (com DDI) — formato exigido pelo link wa.me.
+    ...(supportWhatsapp !== undefined && { supportWhatsapp: supportWhatsapp ? String(supportWhatsapp).replace(/\D/g, '') || null : null }),
+    ...(supportEmail !== undefined && { supportEmail: supportEmail || null }),
   };
 
   return prisma.cashbackConfig.upsert({

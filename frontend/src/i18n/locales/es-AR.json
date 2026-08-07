@@ -330,6 +330,14 @@
       "hint": "Explicación mostrada al cliente en el botón \"Cómo funciona\". Dejá en blanco para usar el texto por defecto.",
       "placeholder": "Ej: En cada compra ganás puntos. Los puntos suben tu nivel y se convierten en descuento. Canjealos cuando quieras."
     },
+    "support": {
+      "title": "Soporte al cliente",
+      "hint": "Mensaje y canales de contacto mostrados en la página \"Mi Fidelidad\", para que el cliente hable con tu tienda si tiene una duda o problema.",
+      "message": "Mensaje",
+      "messagePlaceholder": "Ej: ¿Necesitás ayuda con tus puntos o cupón? ¡Hablá con nosotros!",
+      "whatsapp": "WhatsApp (con código de país, solo números)",
+      "email": "Email de contacto"
+    },
     "widget": {
       "title": "Widget en la Tienda",
       "position": "Posición del ícono",

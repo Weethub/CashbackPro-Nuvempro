@@ -25,7 +25,7 @@
   function clearRef() { try { localStorage.removeItem(REF_KEY); } catch (e) {} }
 
   var $ = function (id) { return document.getElementById(id); };
-  var elLogin = $('cbp-login'), elDash = $('cbp-dashboard'), elBoot = $('cbp-boot');
+  var elLogin = $('cbp-login'), elDash = $('cbp-dashboard'), elBoot = $('cbp-boot'), elPaused = $('cbp-paused');
 
   if (!storeId) { if (elBoot) elBoot.innerHTML = '<p style="padding:40px;text-align:center;color:#999">Loja não identificada.</p>'; return; }
 
@@ -260,9 +260,12 @@
           loadMe();
         })
         .catch(function (err) {
+          if (err && err.code === 'PROGRAM_PAUSED') { showPaused(); return; }
           msg.hidden = false; msg.className = 'redeem-msg err';
           msg.textContent = err.code === 'NO_TIER_REACHED'
             ? 'Você ainda não atingiu nenhum nível de resgate.'
+            : err.code === 'REDEEM_CONFLICT'
+            ? 'Resgate já em andamento — aguarde um instante e tente de novo.'
             : 'Não foi possível resgatar agora. Tente novamente.';
           redeemBtn.disabled = false; redeemBtn.textContent = '🎟️ Resgatar cupom';
         });
@@ -409,12 +412,12 @@
   }
 
   // ─── Boot ─────────────────────────────────────────────────────────────────
-  function boot() {
-    fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
-      .then(function (r) { return r.json(); })
-      .then(function (cfg) { applyBrand(cfg.brandColor); state.howItWorks = cfg.howItWorks || null; state.support = cfg.support || null; })
-      .catch(function () {});
+  function showPaused() {
+    hide(elLogin); hide(elDash); hide(elBoot);
+    if (elPaused) elPaused.hidden = false;
+  }
 
+  function continueBoot() {
     var token = getToken();
     if (!token) { renderLogin(); return; }
 
@@ -423,7 +426,25 @@
     setupInteractions();
 
     Promise.all([loadMe(), Promise.resolve(loadHistory())])
-      .catch(function () { clearToken(); renderLogin(); });
+      .catch(function (err) {
+        // Programa foi pausado (com bloqueio total) enquanto a sessão já
+        // existia — mostra a tela de pausa, não desloga como se fosse erro.
+        if (err && err.code === 'PROGRAM_PAUSED') { showPaused(); return; }
+        clearToken(); renderLogin();
+      });
+  }
+
+  function boot() {
+    fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        applyBrand(cfg.brandColor);
+        state.howItWorks = cfg.howItWorks || null;
+        state.support = cfg.support || null;
+        if (cfg.blocked) { showPaused(); return; }
+        continueBoot();
+      })
+      .catch(function () { continueBoot(); }); // config indisponível — segue o fluxo normal (best-effort)
   }
 
   boot();

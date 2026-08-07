@@ -2,9 +2,13 @@ const crypto = require('crypto');
 const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
 const { createNuvemshopClient, NUVEMSHOP_API_BASE_2025 } = require('../config/nuvemshop');
-const { sendEmail } = require('../lib/email');
+const { sendEmail, renderEmail, escapeHtml } = require('../lib/email');
 
 const CYCLE_MONTHS = 6;
+
+function fidelityPageUrl(store) {
+  return `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
+}
 
 // ─── Config ───────────────────────────────────────────────────────────────
 
@@ -17,6 +21,7 @@ async function getOrCreateConfig(storeId) {
 async function updateConfig(storeId, data) {
   const {
     isActive,
+    blockAccessWhenPaused,
     pointsPerCurrency,
     welcomeMessage,
     redeemMessage,
@@ -43,6 +48,7 @@ async function updateConfig(storeId, data) {
 
   const fields = {
     ...(isActive !== undefined && { isActive: Boolean(isActive) }),
+    ...(blockAccessWhenPaused !== undefined && { blockAccessWhenPaused: Boolean(blockAccessWhenPaused) }),
     ...(pointsPerCurrency !== undefined && { pointsPerCurrency: parseFloat(pointsPerCurrency) }),
     ...(welcomeMessage !== undefined && { welcomeMessage }),
     ...(redeemMessage !== undefined && { redeemMessage }),
@@ -202,13 +208,20 @@ async function rewardReferralIfDue(store, customerPointsId) {
   });
   if (!referrer || referrer.id === cp.id) return;
 
+  // Reivindicação atômica: a condição "referralRewardedAt: null" no WHERE é
+  // checada e escrita pelo banco na mesma operação — se duas chamadas quase
+  // simultâneas (ex.: 2 pedidos do mesmo cliente processados juntos)
+  // caírem aqui, só uma consegue count=1; a outra sai sem creditar de novo.
+  const claim = await prisma.customerPoints.updateMany({
+    where: { id: cp.id, referralRewardedAt: null },
+    data: { referralRewardedAt: new Date() },
+  });
+  if (claim.count === 0) return;
+
   const toReferred = config.referralPointsReferred || 0;
   const toReferrer = config.referralPointsReferrer || 0;
 
   await prisma.$transaction(async (tx) => {
-    // Marca primeiro pra garantir idempotência mesmo com webhooks repetidos.
-    await tx.customerPoints.update({ where: { id: cp.id }, data: { referralRewardedAt: new Date() } });
-
     if (toReferred > 0) {
       const fresh = await ensureCycleFresh(tx, cp);
       await tx.pointsTransaction.create({
@@ -232,10 +245,14 @@ async function rewardWelcomeBonusIfDue(store, customerPointsId) {
   const config = await getOrCreateConfig(store.id);
   if (!config.welcomeBonusEnabled || !config.welcomeBonusPoints) return;
 
-  const already = await prisma.pointsTransaction.findFirst({
-    where: { customerPointsId, type: 'welcome' },
+  // Mesmo padrão de reivindicação atômica do referral (ver acima) — troca a
+  // checagem "existe transação 'welcome'?" (lê-depois-escreve, com corrida)
+  // por um UPDATE condicional que o banco resolve de forma atômica.
+  const claim = await prisma.customerPoints.updateMany({
+    where: { id: customerPointsId, welcomeBonusGrantedAt: null },
+    data: { welcomeBonusGrantedAt: new Date() },
   });
-  if (already) return;
+  if (claim.count === 0) return;
 
   const cp = await prisma.customerPoints.findUnique({ where: { id: customerPointsId } });
   if (!cp) return;
@@ -379,12 +396,21 @@ async function creditPointsForOrder(store, order) {
   });
 
   if (order.customer?.email) {
+    const pageUrl = fidelityPageUrl(store);
     sendEmail({
       to: order.customer.email,
       subject: 'Você ganhou pontos!',
-      html:
-        config.welcomeMessage ||
-        `<p>Você ganhou <strong>${pointsEarned} pontos</strong> nesta compra. Saldo atual: ${updated.pointsBalance} pontos.</p>`,
+      html: renderEmail({
+        brandColor: config.brandColor,
+        eyebrow: 'Programa de fidelidade',
+        title: 'Você ganhou pontos! 🎉',
+        leadText: config.welcomeMessage,
+        highlightHtml:
+          `<div style="font-size:34px;font-weight:800;color:${config.brandColor || '#7C3AED'};">+${pointsEarned} pontos</div>` +
+          `<div style="font-size:13px;color:#6B7280;margin-top:4px;">Saldo atual: <strong>${updated.pointsBalance} pontos</strong></div>`,
+        ctaUrl: pageUrl,
+        ctaLabel: 'Ver meus pontos',
+      }),
     });
 
     const { currentTier: tierAfter } = await getTierProgress(store.id, updated);
@@ -397,7 +423,16 @@ async function creditPointsForOrder(store, order) {
       sendEmail({
         to: order.customer.email,
         subject: `Você subiu para o nível ${tierAfter.name}!`,
-        html: `<p>Parabéns! Você alcançou o nível <strong>${tierAfter.name}</strong> e já pode resgatar ${discountLabel} no seu próximo pedido. Saldo atual: ${updated.pointsBalance} pontos.</p>`,
+        html: renderEmail({
+          brandColor: config.brandColor,
+          eyebrow: 'Novo nível',
+          title: `Parabéns! Você alcançou o nível ${escapeHtml(tierAfter.name)} 🏅`,
+          highlightHtml:
+            `<div style="font-size:20px;font-weight:800;color:${config.brandColor || '#7C3AED'};">${escapeHtml(discountLabel)}</div>` +
+            `<div style="font-size:13px;color:#6B7280;margin-top:4px;">disponível no seu próximo resgate · Saldo atual: <strong>${updated.pointsBalance} pontos</strong></div>`,
+          ctaUrl: pageUrl,
+          ctaLabel: 'Ver meu nível',
+        }),
       });
     }
   }
@@ -464,7 +499,32 @@ async function redeemCurrentTier(store, customerPointsId) {
   const tier = tiers.find((t) => t.pointsRequired <= fresh.pointsBalance);
   if (!tier) throw new AppError('Nenhum nível alcançado ainda.', 400, 'NO_TIER_REACHED');
 
-  const { code } = await createRedemptionCoupon(store, tier);
+  // Reserva atômica dos pontos ANTES de chamar a API externa de cupom — o
+  // "gte" garante que só UMA requisição concorrente (ex.: duplo clique, ou
+  // duas abas) consiga descontar o saldo pra esse resgate. Sem isso, duas
+  // chamadas simultâneas liam o mesmo saldo e cada uma gerava um cupom real
+  // debitando os pontos só uma vez (cupom duplicado "de graça").
+  const reserved = await prisma.customerPoints.updateMany({
+    where: { id: fresh.id, pointsBalance: { gte: tier.pointsRequired } },
+    data: { pointsBalance: { decrement: tier.pointsRequired } },
+  });
+  if (reserved.count === 0) {
+    throw new AppError('Resgate já em andamento. Aguarde um instante e tente de novo.', 409, 'REDEEM_CONFLICT');
+  }
+
+  let code;
+  try {
+    ({ code } = await createRedemptionCoupon(store, tier));
+  } catch (err) {
+    // A API de cupom falhou depois de já termos reservado os pontos —
+    // devolve o saldo (compensação) pra não cobrar o cliente por um cupom
+    // que nunca foi gerado.
+    await prisma.customerPoints.update({
+      where: { id: fresh.id },
+      data: { pointsBalance: { increment: tier.pointsRequired } },
+    });
+    throw err;
+  }
 
   const updated = await prisma.$transaction(async (tx) => {
     await tx.pointsTransaction.create({
@@ -477,10 +537,7 @@ async function redeemCurrentTier(store, customerPointsId) {
         note: `Resgate nível ${tier.name}`,
       },
     });
-    return tx.customerPoints.update({
-      where: { id: fresh.id },
-      data: { pointsBalance: { decrement: tier.pointsRequired } },
-    });
+    return tx.customerPoints.findUnique({ where: { id: fresh.id } });
   });
 
   if (fresh.email) {
@@ -488,9 +545,17 @@ async function redeemCurrentTier(store, customerPointsId) {
     sendEmail({
       to: fresh.email,
       subject: 'Seu cupom de desconto está pronto!',
-      html:
-        config.redeemMessage ||
-        `<p>Você resgatou o nível <strong>${tier.name}</strong>! Use o cupom <strong>${code}</strong> na sua próxima compra (uso único).</p>`,
+      html: renderEmail({
+        brandColor: config.brandColor,
+        eyebrow: 'Cupom liberado',
+        title: `Seu cupom do nível ${escapeHtml(tier.name)} está pronto! 🎟️`,
+        leadText: config.redeemMessage,
+        highlightHtml:
+          `<div style="font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#6B7280;margin-bottom:6px;">Seu código</div>` +
+          `<div style="font-size:26px;font-weight:800;letter-spacing:1px;color:${config.brandColor || '#7C3AED'};font-family:ui-monospace,SFMono-Regular,Consolas,monospace;">${escapeHtml(code)}</div>` +
+          `<div style="font-size:12.5px;color:#6B7280;margin-top:8px;">Uso único · aplique na próxima compra</div>`,
+        footNote: 'Este código é pessoal e válido para um único uso.',
+      }),
     });
   }
 
@@ -830,6 +895,14 @@ async function getTierDistribution(storeId) {
   return { noTier, tiers: counts };
 }
 
+// Programa pausado (isActive=false) com bloqueio total ligado: nem login, nem
+// consulta de saldo, nem resgate — usado pelas rotas de /widget antes de agir.
+// No pausado "leve" (blockAccessWhenPaused=false, padrão), nada disto é
+// chamado: o cliente continua acessando o que já tem, só não ganha pontos novos.
+function isProgramBlocked(config) {
+  return !config.isActive && !!config.blockAccessWhenPaused;
+}
+
 // ─── Jobs diários (cron) ────────────────────────────────────────────────────
 // Rodados uma vez por dia pelo Railway Cron (POST /api/cron/daily). Cada tarefa
 // tem trava anti-reenvio própria pra não spammar o cliente todo dia.
@@ -849,8 +922,14 @@ async function runWinbackForStore(store, config) {
     });
     if (!lastEarn) continue; // nunca comprou — reconquista é pra quem sumiu
     if (lastEarn.createdAt >= cutoff) continue; // ainda ativo
-    // Já avisado neste período ocioso? (só reenvia depois de uma nova compra)
-    if (cp.winbackSentAt && cp.winbackSentAt >= lastEarn.createdAt) continue;
+
+    // Reivindicação atômica: substitui a checagem manual de winbackSentAt por
+    // um UPDATE condicional (protege contra o cron rodando 2x em paralelo).
+    const claim = await prisma.customerPoints.updateMany({
+      where: { id: cp.id, OR: [{ winbackSentAt: null }, { winbackSentAt: { lt: lastEarn.createdAt } }] },
+      data: { winbackSentAt: new Date() },
+    });
+    if (claim.count === 0) continue;
 
     const bonus = config.winbackPoints || 0;
     if (bonus > 0) {
@@ -862,14 +941,22 @@ async function runWinbackForStore(store, config) {
         await tx.customerPoints.update({ where: { id: fresh.id }, data: { pointsBalance: { increment: bonus } } });
       });
     }
-    await prisma.customerPoints.update({ where: { id: cp.id }, data: { winbackSentAt: new Date() } });
 
     sendEmail({
       to: cp.email,
       subject: 'Sentimos sua falta!',
-      html:
-        `<p>Faz um tempinho que você não aparece por aqui.</p>` +
-        (bonus > 0 ? `<p>Como incentivo, você ganhou <strong>${bonus} pontos</strong> — aproveite na sua próxima compra!</p>` : `<p>Volte para aproveitar seus pontos e continuar subindo de nível.</p>`),
+      html: renderEmail({
+        brandColor: config.brandColor,
+        eyebrow: 'Programa de fidelidade',
+        title: 'Sentimos sua falta! 💜',
+        leadText: 'Faz um tempinho que você não aparece por aqui.',
+        highlightHtml: bonus > 0
+          ? `<div style="font-size:28px;font-weight:800;color:${config.brandColor || '#7C3AED'};">+${bonus} pontos</div>` +
+            `<div style="font-size:13px;color:#6B7280;margin-top:4px;">de presente pra você voltar</div>`
+          : null,
+        ctaUrl: fidelityPageUrl(store),
+        ctaLabel: 'Ver meus pontos',
+      }),
     });
     sent++;
   }
@@ -890,16 +977,29 @@ async function runPointsExpiryForStore(store, config) {
     const warnStart = new Date(cycleEnd);
     warnStart.setDate(warnStart.getDate() - warningDays);
     if (now < warnStart || now >= cycleEnd) continue; // fora da janela de aviso
-    // Já avisado neste ciclo? (warnedAt depois do início do ciclo atual)
-    if (cp.pointsExpiryWarnedAt && cp.pointsExpiryWarnedAt >= cp.cycleStartedAt) continue;
 
-    await prisma.customerPoints.update({ where: { id: cp.id }, data: { pointsExpiryWarnedAt: now } });
+    // Reivindicação atômica (mesmo padrão do winback acima).
+    const claim = await prisma.customerPoints.updateMany({
+      where: { id: cp.id, OR: [{ pointsExpiryWarnedAt: null }, { pointsExpiryWarnedAt: { lt: cp.cycleStartedAt } }] },
+      data: { pointsExpiryWarnedAt: now },
+    });
+    if (claim.count === 0) continue;
 
     const daysLeft = Math.max(1, Math.ceil((cycleEnd - now) / (1000 * 60 * 60 * 24)));
     sendEmail({
       to: cp.email,
       subject: 'Seus pontos vão expirar em breve',
-      html: `<p>Você tem <strong>${cp.pointsBalance} pontos</strong> que vencem em <strong>${daysLeft} dia(s)</strong>.</p><p>Resgate ou use antes que expirem!</p>`,
+      html: renderEmail({
+        brandColor: config.brandColor,
+        eyebrow: 'Atenção',
+        title: 'Seus pontos vão expirar em breve ⏳',
+        leadText: 'Resgate ou use seus pontos antes que expirem!',
+        highlightHtml:
+          `<div style="font-size:28px;font-weight:800;color:${config.brandColor || '#7C3AED'};">${cp.pointsBalance} pontos</div>` +
+          `<div style="font-size:13px;color:#6B7280;margin-top:4px;">vencem em <strong>${daysLeft} dia${daysLeft === 1 ? '' : 's'}</strong></div>`,
+        ctaUrl: fidelityPageUrl(store),
+        ctaLabel: 'Resgatar agora',
+      }),
     });
     warned++;
   }
@@ -950,4 +1050,5 @@ module.exports = {
   bindReferral,
   getReferralStats,
   runDailyJobs,
+  isProgramBlocked,
 };

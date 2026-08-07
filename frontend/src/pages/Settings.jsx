@@ -18,6 +18,7 @@ import api from '../services/api.js';
 
 const DEFAULT_CONFIG = {
   isActive: false,
+  blockAccessWhenPaused: false,
   pointsPerCurrency: 1,
   welcomeMessage: '',
   redeemMessage: '',
@@ -181,6 +182,30 @@ export default function Settings() {
               />
             </Box>
 
+            {!config.isActive && (
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                gap="4"
+                padding="3"
+                backgroundColor="neutral-surface"
+                borderRadius="2"
+              >
+                <Box display="flex" flexDirection="column" gap="1">
+                  <Text fontWeight="bold">{t('cashback.settings.blockAccess')}</Text>
+                  <Text fontSize="caption" color="neutral-textLow">
+                    {t('cashback.settings.blockAccessHint')}
+                  </Text>
+                </Box>
+                <Toggle
+                  active={config.blockAccessWhenPaused}
+                  onChange={() => update('blockAccessWhenPaused', !config.blockAccessWhenPaused)}
+                  name="blockAccessWhenPaused"
+                />
+              </Box>
+            )}
+
             <Box display="flex" flexDirection="column" gap="1">
               <Text>{t('cashback.settings.pointsPerCurrency')}</Text>
               <Input
@@ -205,6 +230,9 @@ export default function Settings() {
                 onChange={(e) => update('welcomeMessage', e.target.value)}
                 rows={2}
               />
+              <Text fontSize="caption" color="neutral-textLow">
+                {t('cashback.settings.welcomeMessageHint')}
+              </Text>
             </Box>
 
             <Box display="flex" flexDirection="column" gap="1">
@@ -216,6 +244,9 @@ export default function Settings() {
                 onChange={(e) => update('redeemMessage', e.target.value)}
                 rows={2}
               />
+              <Text fontSize="caption" color="neutral-textLow">
+                {t('cashback.settings.redeemMessageHint')}
+              </Text>
             </Box>
           </Box>
         </Card.Body>

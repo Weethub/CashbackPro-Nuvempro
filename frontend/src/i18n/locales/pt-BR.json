@@ -262,6 +262,8 @@
       "title": "Configurações do Cashback",
       "active": "Programa ativo",
       "activeHint": "Quando desativado, nenhum pedido gera pontos.",
+      "blockAccess": "Bloquear acesso dos clientes também",
+      "blockAccessHint": "Desligado (padrão): o cliente continua acessando e resgatando os pontos que já tem, só para de ganhar pontos novos. Ligado: some o widget e o cliente perde acesso ao próprio saldo até você reativar.",
       "pointsPerCurrency": "Pontos por R$ gasto",
       "pointsPerCurrencyHint": "Ex: 1 = o cliente ganha 1 ponto para cada R$1 gasto.",
       "redeemThreshold": "Pontos necessários para resgatar",
@@ -273,10 +275,12 @@
       },
       "couponValuePercent": "Percentual de desconto",
       "couponValueAmount": "Valor de desconto (R$)",
-      "welcomeMessage": "Mensagem de boas-vindas (e-mail ao ganhar pontos)",
-      "welcomeMessagePlaceholder": "Deixe em branco para usar a mensagem padrão",
-      "redeemMessage": "Mensagem de resgate (e-mail com o cupom)",
-      "redeemMessagePlaceholder": "Deixe em branco para usar a mensagem padrão"
+      "welcomeMessage": "Texto do e-mail de boas-vindas (ao ganhar pontos)",
+      "welcomeMessagePlaceholder": "Ex: Obrigado por comprar com a gente! (deixe em branco para usar o texto padrão)",
+      "welcomeMessageHint": "Esse texto aparece no início do e-mail — os pontos ganhos e o saldo sempre aparecem automaticamente, mesmo se você não escrever nada aqui.",
+      "redeemMessage": "Texto do e-mail de resgate (com o cupom)",
+      "redeemMessagePlaceholder": "Ex: Aproveite seu desconto na próxima compra! (deixe em branco para usar o texto padrão)",
+      "redeemMessageHint": "Esse texto aparece no início do e-mail — o código do cupom sempre aparece automaticamente, mesmo se você não escrever nada aqui."
     },
     "tiers": {
       "title": "Níveis de Fidelidade",

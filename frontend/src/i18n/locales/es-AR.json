@@ -259,6 +259,8 @@
       "title": "Configuración del Cashback",
       "active": "Programa activo",
       "activeHint": "Si está desactivado, ningún pedido genera puntos.",
+      "blockAccess": "Bloquear también el acceso de los clientes",
+      "blockAccessHint": "Apagado (por defecto): el cliente sigue accediendo y canjeando los puntos que ya tiene, solo deja de ganar puntos nuevos. Encendido: el widget desaparece y el cliente pierde acceso a su saldo hasta que reactives.",
       "pointsPerCurrency": "Puntos por $ gastado",
       "pointsPerCurrencyHint": "Ej: 1 = el cliente gana 1 punto por cada $1 gastado.",
       "redeemThreshold": "Puntos necesarios para canjear",
@@ -270,10 +272,12 @@
       },
       "couponValuePercent": "Porcentaje de descuento",
       "couponValueAmount": "Monto de descuento ($)",
-      "welcomeMessage": "Mensaje de bienvenida (e-mail al ganar puntos)",
-      "welcomeMessagePlaceholder": "Dejá en blanco para usar el mensaje predeterminado",
-      "redeemMessage": "Mensaje de canje (e-mail con el cupón)",
-      "redeemMessagePlaceholder": "Dejá en blanco para usar el mensaje predeterminado"
+      "welcomeMessage": "Texto del email de bienvenida (al ganar puntos)",
+      "welcomeMessagePlaceholder": "Ej: ¡Gracias por tu compra! (dejá en blanco para usar el texto predeterminado)",
+      "welcomeMessageHint": "Este texto aparece al inicio del email — los puntos ganados y el saldo siempre aparecen automáticamente, aunque no escribas nada acá.",
+      "redeemMessage": "Texto del email de canje (con el cupón)",
+      "redeemMessagePlaceholder": "Ej: ¡Disfrutá tu descuento en la próxima compra! (dejá en blanco para usar el texto predeterminado)",
+      "redeemMessageHint": "Este texto aparece al inicio del email — el código del cupón siempre aparece automáticamente, aunque no escribas nada acá."
     },
     "tiers": {
       "title": "Niveles de Fidelidad",

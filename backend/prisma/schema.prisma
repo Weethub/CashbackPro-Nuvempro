@@ -270,6 +270,11 @@ model CashbackConfig {
   storeId            Int      @unique
   store              Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   isActive           Boolean  @default(false)
+  // Quando isActive=false (programa pausado): por padrão (false) o cliente
+  // continua acessando e resgatando os pontos que já tem — só para de
+  // creditar pontos novos. Se true, bloqueia tudo: some o widget e o cliente
+  // perde acesso ao próprio saldo até o lojista reativar.
+  blockAccessWhenPaused Boolean @default(false)
   pointsPerCurrency  Float    @default(1) // pontos ganhos por unidade de moeda gasta (ex: 1 ponto por R$1)
   // Legado — substituído por CashbackTier (múltiplos níveis). Mantido só para a
   // migração one-off (migrate-tiers.js); o motor de pontos não lê mais estes campos.
@@ -364,9 +369,12 @@ model CustomerPoints {
   referralCode        String?  @unique
   referredByCode      String?
   referralRewardedAt  DateTime?
-  // Controle dos jobs diários (evita reenviar o mesmo aviso todo dia).
+  // Controle dos jobs diários (evita reenviar o mesmo aviso todo dia) e do
+  // bônus de boas-vindas (reivindicado de forma atômica — ver rewardWelcome
+  // BonusIfDue — pra não creditar 2x numa corrida de requisições).
   winbackSentAt       DateTime?
   pointsExpiryWarnedAt DateTime?
+  welcomeBonusGrantedAt DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

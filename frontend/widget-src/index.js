@@ -194,7 +194,10 @@
   fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
     .then(function (res) { return res.json(); })
     .then(function (config) {
-      if (!config.isActive) return;
+      // "blocked" = lojista pausou o programa E ligou o bloqueio total (o
+      // widget some). Na pausa "leve" (isActive=false, blocked=false) o
+      // widget continua — só não credita pontos novos nas compras.
+      if (config.blocked) return;
       var sizePx = ICON_SIZES[config.iconSize] || 60;
       var position = getSavedPosition() || config.iconPosition;
       var brandColor = config.brandColor || '#7C3AED';

@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 const { AppError } = require('../lib/errors');
 const { createNuvemshopClient } = require('../config/nuvemshop');
-const { sendEmail } = require('../lib/email');
+const { sendEmail, renderEmail } = require('../lib/email');
 const { requireCustomerAuth } = require('../middleware/customerAuth');
 const { widgetOtpLimiter, widgetRedeemLimiter } = require('../middleware/rateLimiter');
 const cashbackService = require('../services/cashbackService');
@@ -39,9 +39,15 @@ router.get('/config', async (req, res, next) => {
     if (!store) return res.json({ isActive: false });
 
     const config = await cashbackService.getOrCreateConfig(store.id);
+    const blocked = cashbackService.isProgramBlocked(config);
     res.set('Cache-Control', 'public, max-age=60');
     res.json({
       isActive: config.isActive,
+      // Bloqueado: nem o widget aparece nem o cliente acessa o próprio saldo
+      // (lojista pausou o programa com "bloquear acesso" ligado). Pausa
+      // "leve" (isActive=false, blocked=false) mantém o widget e o acesso —
+      // só para de creditar pontos novos.
+      blocked,
       iconPosition: config.widgetIconPosition,
       iconSize: config.widgetIconSize,
       brandColor: config.brandColor || '#7C3AED',
@@ -76,6 +82,11 @@ router.post('/auth/request-code', widgetOtpLimiter, async (req, res, next) => {
       return res.json({ ok: true });
     }
 
+    const config = await cashbackService.getOrCreateConfig(store.id);
+    if (cashbackService.isProgramBlocked(config)) {
+      throw new AppError('Programa de fidelidade temporariamente indisponível.', 403, 'PROGRAM_PAUSED');
+    }
+
     const client = createNuvemshopClient(store.nuvemshopId, store.accessToken);
     let customer;
     try {
@@ -105,7 +116,15 @@ router.post('/auth/request-code', widgetOtpLimiter, async (req, res, next) => {
     sendEmail({
       to: email,
       subject: 'Seu código de acesso',
-      html: `<p>Seu código de acesso é <strong>${code}</strong>. Válido por 10 minutos.</p>`,
+      html: renderEmail({
+        brandColor: config.brandColor,
+        eyebrow: 'Minha Fidelidade',
+        title: 'Seu código de acesso',
+        highlightHtml:
+          `<div style="font-size:34px;font-weight:800;letter-spacing:4px;color:${config.brandColor || '#7C3AED'};font-family:ui-monospace,SFMono-Regular,Consolas,monospace;">${code}</div>` +
+          `<div style="font-size:12.5px;color:#6B7280;margin-top:8px;">Válido por 10 minutos</div>`,
+        footNote: 'Se você não pediu este código, pode ignorar este e-mail.',
+      }),
     });
 
     res.json({ ok: true });
@@ -126,6 +145,11 @@ router.post('/auth/verify-code', widgetOtpLimiter, async (req, res, next) => {
 
     const store = await findStore(storeNuvemshopId);
     if (!store) throw new AppError('Codigo invalido ou expirado.', 400, 'INVALID_CODE');
+
+    const config = await cashbackService.getOrCreateConfig(store.id);
+    if (cashbackService.isProgramBlocked(config)) {
+      throw new AppError('Programa de fidelidade temporariamente indisponível.', 403, 'PROGRAM_PAUSED');
+    }
 
     const otp = await prisma.customerOtp.findFirst({
       where: { storeId: store.id, email, consumedAt: null, expiresAt: { gt: new Date() } },
@@ -193,6 +217,9 @@ router.post('/auth/verify-code', widgetOtpLimiter, async (req, res, next) => {
 router.get('/me', requireCustomerAuth, async (req, res, next) => {
   try {
     const config = await cashbackService.getOrCreateConfig(req.storeId);
+    if (cashbackService.isProgramBlocked(config)) {
+      throw new AppError('Programa de fidelidade temporariamente indisponível.', 403, 'PROGRAM_PAUSED');
+    }
     // Garante o código de indicação do cliente quando o programa de indicação
     // está ligado (pra o link já estar pronto no dashboard).
     let customerPoints = req.customerPoints;
@@ -251,6 +278,10 @@ router.get('/history', requireCustomerAuth, async (req, res, next) => {
 router.post('/redeem', requireCustomerAuth, widgetRedeemLimiter, async (req, res, next) => {
   try {
     const store = await prisma.store.findUnique({ where: { id: req.storeId } });
+    const config = await cashbackService.getOrCreateConfig(req.storeId);
+    if (cashbackService.isProgramBlocked(config)) {
+      throw new AppError('Programa de fidelidade temporariamente indisponível.', 403, 'PROGRAM_PAUSED');
+    }
     const result = await cashbackService.redeemCurrentTier(store, req.customerPoints.id);
     res.json({ redeemed: true, tierName: result.tierName });
   } catch (err) {

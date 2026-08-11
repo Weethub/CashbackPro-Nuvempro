@@ -252,13 +252,35 @@
     });
   }
 
+  // ─── Página "Minha Fidelidade" embutida ────────────────────────────────────
+  // A Nuvemshop sanitiza o conteúdo de Pages e remove o atributo `src` de
+  // qualquer <iframe> ali dentro — então o backend deixa só um container
+  // vazio com esse id, e é este script (rodando direto no DOM da loja, fora
+  // do alcance do sanitizador) que injeta o iframe de verdade, ocupando a
+  // página inteira. Roda em toda página da loja, mas só faz algo nas que têm
+  // o container — ou seja, só na própria página "Minha Fidelidade".
+  function hydratePageEmbed(pageUrl) {
+    var embedEl = document.getElementById('cashbackpro-page-embed');
+    if (!embedEl) return;
+    var iframe = document.createElement('iframe');
+    iframe.src = pageUrl;
+    iframe.title = 'Minha Fidelidade';
+    iframe.style.cssText = 'width:100%;min-height:100vh;border:0;display:block;';
+    embedEl.innerHTML = '';
+    embedEl.appendChild(iframe);
+  }
+
   // ─── Boot ───────────────────────────────────────────────────────────────
   fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
     .then(function (res) { return res.json(); })
     .then(function (config) {
+      // Independe do "blocked" do ícone: o cliente navegou direto pra essa
+      // página, então mostra o app (que já trata sozinho o estado de pausa).
+      hydratePageEmbed(config.pageUrl);
+
       // "blocked" = lojista pausou o programa E ligou o bloqueio total (o
-      // widget some). Na pausa "leve" (isActive=false, blocked=false) o
-      // widget continua — só não credita pontos novos nas compras.
+      // ícone flutuante some). Na pausa "leve" (isActive=false, blocked=false)
+      // o ícone continua — só não credita pontos novos nas compras.
       if (config.blocked) return;
       var sizePx = ICON_SIZES[config.iconSize] || 60;
       var position = getSavedPosition() || config.iconPosition;

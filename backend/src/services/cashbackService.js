@@ -788,23 +788,23 @@ async function listStorePages(store) {
 }
 
 /**
- * Conteúdo da página "Minha Fidelidade": o dashboard embutido direto via
- * <iframe> (o app abre dentro da própria loja, sem sair pro domínio da
- * CashbackPro) + um link de segurança abaixo, caso o iframe seja bloqueado
- * por algum motivo. Sem <script> — não esbarra na sanitização de Pages.
- * O CSP do front (frame-ancestors) já libera ser embutido pelos domínios
- * da Nuvemshop/Tiendanube.
+ * Conteúdo da página "Minha Fidelidade". IMPORTANTE: a Nuvemshop sanitiza o
+ * conteúdo de Pages e remove o atributo `src` de qualquer <iframe> (mesmo
+ * sem <script>, mesmo com CSP liberando o embed do nosso lado) — confirmado
+ * inspecionando o HTML real de uma loja. Por isso o container carrega vazio
+ * (só com id + um aviso), e é o script do widget (widget-src/index.js, já
+ * injetado na loja inteira) que encontra esse id pelo DOM e injeta o
+ * <iframe> de verdade via JS — sem passar pelo sanitizador de Pages.
  */
 function customerPageContent(pageUrl) {
   return (
-    '<div style="max-width:1100px;margin:0 auto;">' +
-    '<iframe src="' + pageUrl + '" title="Minha Fidelidade" loading="lazy" ' +
-    'style="width:100%;min-height:1000px;border:0;display:block;"></iframe>' +
+    '<div id="cashbackpro-page-embed" style="max-width:1100px;margin:0 auto;min-height:600px;">' +
+    '<p style="text-align:center;color:#9CA3AF;padding:80px 16px;">Carregando sua área de fidelidade...</p>' +
+    '</div>' +
     '<p style="text-align:center;margin-top:8px;">' +
     '<a href="' + pageUrl + '" target="_blank" rel="noopener" style="color:#6B7280;font-size:12px;">' +
-    'Problemas para ver sua conta acima? Abrir em uma nova aba' +
-    '</a></p>' +
-    '</div>'
+    'Não carregou? Abrir em uma nova aba' +
+    '</a></p>'
   );
 }
 

@@ -816,6 +816,19 @@ function customerPageContent(pageUrl) {
  * lojas que criaram a página antes dessa mudança. Precisa da 2025-03 (o
  * /v1 legado não tem o recurso /pages).
  */
+// Campos de i18n da página, iguais na criação e na sincronização — reenviar
+// título/seo junto do conteúdo evita que um PUT parcial apague esses campos
+// caso a API trate a chave de locale como substituição completa.
+function pageI18nFields(content) {
+  return {
+    title: 'Minha Fidelidade',
+    content,
+    seo_handle: 'minha-fidelidade',
+    seo_title: 'Minha Fidelidade',
+    seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
+  };
+}
+
 async function createCustomerPage(store) {
   const config = await getOrCreateConfig(store.id);
   const pageUrl = `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
@@ -823,21 +836,38 @@ async function createCustomerPage(store) {
   const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
 
   if (config.customerPageHandle) {
-    // Best-effort: se a sincronização falhar (ex.: página apagada na loja),
-    // não quebra o fluxo — o lojista ainda vê o handle salvo no painel.
+    // Sincroniza o conteúdo da página já existente (ex.: propagar a troca do
+    // link por iframe pra quem criou a página antes dessa mudança). Erros
+    // aqui SOBEM pro painel — silenciar tornaria impossível saber se a
+    // Nuvemshop aceitou o novo conteúdo ou descartou o <iframe> em silêncio.
+    let data;
     try {
-      const { data } = await client.get('/pages', { params: { per_page: 50 } });
-      const results = data?.pages?.results || [];
-      const existing = results.find((p) => Object.values(p.handle || {}).includes(config.customerPageHandle));
-      const shortLocale = existing && Object.keys(existing.handle || {}).find((k) => existing.handle[k] === config.customerPageHandle);
-      if (existing?.id && shortLocale) {
-        const locale = LOCALE_MAP[shortLocale] || shortLocale;
-        await client.put(`/pages/${existing.id}`, { page: { i18n: { [locale]: { content } } } });
-      }
+      ({ data } = await client.get('/pages', { params: { per_page: 50 } }));
     } catch (err) {
-      console.warn('[createCustomerPage] falha ao sincronizar conteúdo (ignorado):', err.response?.data || err.message);
+      console.error('[createCustomerPage] GET /pages falhou', err.response?.status, JSON.stringify(err.response?.data) || err.message);
+      throw new AppError('Não foi possível consultar as páginas da loja pra sincronizar.', 502, 'PAGE_SYNC_FAILED');
     }
-    return { created: false, handle: config.customerPageHandle, pageUrl };
+    const results = data?.pages?.results || [];
+    const existing = results.find((p) => Object.values(p.handle || {}).includes(config.customerPageHandle));
+    if (!existing?.id) {
+      throw new AppError(
+        'A página salva não foi encontrada na loja (pode ter sido apagada). Remova a seleção no painel e crie de novo.',
+        404,
+        'PAGE_NOT_FOUND'
+      );
+    }
+    const shortLocale = Object.keys(existing.handle || {}).find((k) => existing.handle[k] === config.customerPageHandle) || 'pt';
+    const locale = LOCALE_MAP[shortLocale] || shortLocale;
+    try {
+      await client.put(`/pages/${existing.id}`, { page: { i18n: { [locale]: pageI18nFields(content) } } });
+    } catch (err) {
+      const status = err.response?.status;
+      const apiErr = err.response?.data;
+      console.error('[createCustomerPage] PUT /pages falhou', status, JSON.stringify(apiErr) || err.message);
+      const detail = apiErr && (apiErr.description || apiErr.message || (typeof apiErr === 'string' ? apiErr : JSON.stringify(apiErr)));
+      throw new AppError('A Nuvemshop recusou a atualização da página' + (detail ? ': ' + detail : '') + '.', 502, 'PAGE_UPDATE_FAILED');
+    }
+    return { created: false, updated: true, handle: config.customerPageHandle, pageUrl };
   }
 
   // Idioma da loja pro locale de escrita (ver LOCALE_MAP acima).
@@ -857,15 +887,7 @@ async function createCustomerPage(store) {
   const body = {
     page: {
       publish: true,
-      i18n: {
-        [locale]: {
-          title: 'Minha Fidelidade',
-          content,
-          seo_handle: 'minha-fidelidade',
-          seo_title: 'Minha Fidelidade',
-          seo_description: 'Acompanhe seus pontos e resgate cupons de desconto.',
-        },
-      },
+      i18n: { [locale]: pageI18nFields(content) },
     },
   };
 

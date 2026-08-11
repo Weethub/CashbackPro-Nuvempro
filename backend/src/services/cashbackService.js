@@ -844,8 +844,22 @@ async function createCustomerPage(store) {
     try {
       ({ data } = await client.get('/pages', { params: { per_page: 50 } }));
     } catch (err) {
-      console.error('[createCustomerPage] GET /pages falhou', err.response?.status, JSON.stringify(err.response?.data) || err.message);
-      throw new AppError('Não foi possível consultar as páginas da loja pra sincronizar.', 502, 'PAGE_SYNC_FAILED');
+      const status = err.response?.status;
+      const apiErr = err.response?.data;
+      console.error('[createCustomerPage] GET /pages falhou', status, JSON.stringify(apiErr) || err.message);
+      if (status === 401 || status === 403) {
+        throw new AppError(
+          'O app precisa da permissão de páginas (read_content) — desinstale e reinstale o app pra conceder o escopo novo.',
+          403,
+          'MISSING_CONTENT_SCOPE'
+        );
+      }
+      const detail = apiErr && (apiErr.description || apiErr.message || (typeof apiErr === 'string' ? apiErr : JSON.stringify(apiErr)));
+      throw new AppError(
+        'Não foi possível consultar as páginas da loja pra sincronizar' + (detail ? ': ' + detail : ` (${err.message})`) + '.',
+        502,
+        'PAGE_SYNC_FAILED'
+      );
     }
     const results = data?.pages?.results || [];
     const existing = results.find((p) => Object.values(p.handle || {}).includes(config.customerPageHandle));

@@ -842,7 +842,7 @@ async function createCustomerPage(store) {
     // Nuvemshop aceitou o novo conteúdo ou descartou o <iframe> em silêncio.
     let data;
     try {
-      ({ data } = await client.get('/pages', { params: { per_page: 50 } }));
+      ({ data } = await client.get('/pages', { params: { per_page: 20 } }));
     } catch (err) {
       const status = err.response?.status;
       const apiErr = err.response?.data;

@@ -39,6 +39,7 @@ const DEFAULT_CONFIG = {
   pointsExpiryRollingMonths: 6,
   pointsExpiryAnnualMonth: null,
   pointsExpiryAnnualDay: null,
+  pointsExpiryTimesPerYear: 1,
   pointsExpiryEnabled: false,
   pointsExpiryWarningDays: 15,
   supportMessage: '',
@@ -585,6 +586,24 @@ export default function Settings() {
                     onChange={(e) => update('pointsExpiryAnnualDay', e.target.value || null)}
                   />
                 </Box>
+                <Box display="flex" flexDirection="column" gap="1" minWidth="220px">
+                  <Text>{t('cashback.pointsExpiry.timesPerYear')}</Text>
+                  <Select
+                    name="pointsExpiryTimesPerYear"
+                    id="pointsExpiryTimesPerYear"
+                    value={config.pointsExpiryTimesPerYear ?? 1}
+                    onChange={(e) => update('pointsExpiryTimesPerYear', e.target.value)}
+                  >
+                    {[1, 2, 3, 4, 6, 12].map((n) => (
+                      <Select.Option key={n} value={n} label={t(`cashback.pointsExpiry.timesPerYearOptions.${n}`)}>
+                        {t(`cashback.pointsExpiry.timesPerYearOptions.${n}`)}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                  <Text fontSize="caption" color="neutral-textLow">
+                    {t('cashback.pointsExpiry.timesPerYearHint')}
+                  </Text>
+                </Box>
               </Box>
             ) : (
               <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
@@ -821,7 +840,9 @@ export default function Settings() {
               <Button appearance="neutral" onClick={handleCreatePage} disabled={creatingPage}>
                 {creatingPage
                   ? t('cashback.widget.customerPage.creating')
-                  : t('cashback.widget.customerPage.createButton')}
+                  : config.customerPageHandle
+                    ? t('cashback.widget.customerPage.syncButton')
+                    : t('cashback.widget.customerPage.createButton')}
               </Button>
             </Box>
           </Box>

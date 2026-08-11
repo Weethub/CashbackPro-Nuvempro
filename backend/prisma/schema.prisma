@@ -314,11 +314,14 @@ model CashbackConfig {
   winbackPoints      Int     @default(0)
   // Validade dos pontos: "rolling" = cada cliente tem seu próprio ciclo de N
   // meses a partir da última compra; "annual" = todos os clientes da loja
-  // perdem os pontos na mesma data fixa (dia/mês), conforme a política do lojista.
+  // vencem em datas fixas, conforme a política do lojista. pointsExpiryAnnualMonth/Day
+  // é a data-âncora (1ª ocorrência); pointsExpiryTimesPerYear (1,2,3,4,6,12)
+  // repete essa data a cada 12/N meses (ex.: 2x/ano = a cada 6 meses).
   pointsExpiryMode          String @default("rolling")
   pointsExpiryRollingMonths Int    @default(6)
   pointsExpiryAnnualMonth   Int?
   pointsExpiryAnnualDay     Int?
+  pointsExpiryTimesPerYear  Int    @default(1)
   // Aviso de pontos a expirar: avisa N dias antes do fim do ciclo.
   pointsExpiryEnabled     Boolean @default(false)
   pointsExpiryWarningDays Int     @default(15)

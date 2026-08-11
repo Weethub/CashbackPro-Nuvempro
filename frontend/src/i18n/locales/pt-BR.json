@@ -339,6 +339,16 @@
       "rollingMonths": "Validade em meses",
       "annualMonth": "Mês de vencimento",
       "annualDay": "Dia de vencimento",
+      "timesPerYear": "Quantas vezes por ano",
+      "timesPerYearHint": "A data acima é a 1ª ocorrência; as próximas se repetem automaticamente no mesmo intervalo.",
+      "timesPerYearOptions": {
+        "1": "1 vez por ano (anual)",
+        "2": "2 vezes por ano (a cada 6 meses)",
+        "3": "3 vezes por ano (a cada 4 meses)",
+        "4": "4 vezes por ano (trimestral)",
+        "6": "6 vezes por ano (bimestral)",
+        "12": "12 vezes por ano (mensal)"
+      },
       "selectPlaceholder": "Selecione...",
       "months": {
         "january": "Janeiro",
@@ -387,10 +397,11 @@
       },
       "customerPage": {
         "title": "Página \"Minha Fidelidade\"",
-        "hint": "Crie a página na sua loja (Nuvemshop > Páginas) e selecione aqui qual delas é a página de fidelidade do cliente, ou deixe a gente criar automaticamente.",
+        "hint": "Crie a página na sua loja (Nuvemshop > Páginas) e selecione aqui qual delas é a página de fidelidade do cliente, ou deixe a gente criar automaticamente. O conteúdo do cliente aparece embutido direto na página, sem sair da sua loja.",
         "selectPlaceholder": "Selecione uma página",
         "createButton": "Criar página automaticamente",
-        "creating": "Criando..."
+        "syncButton": "Atualizar conteúdo da página",
+        "creating": "Salvando..."
       }
     }
   },

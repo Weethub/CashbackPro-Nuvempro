@@ -10,6 +10,12 @@ function fidelityPageUrl(store) {
   return `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
 }
 
+// Idioma da loja: a resposta da Nuvemshop usa código curto ("pt"), mas
+// escrita (create/update) de página exige o locale completo na chave de i18n
+// ("pt_BR") — testado contra a API real: chave "pt" faz o título entrar
+// vazio -> 400. Mapeia o main_language (curto) pro locale de escrita.
+const LOCALE_MAP = { pt: 'pt_BR', es: 'es_AR', en: 'en_US' };
+
 // ─── Config ───────────────────────────────────────────────────────────────
 
 async function getOrCreateConfig(storeId) {
@@ -43,6 +49,7 @@ async function updateConfig(storeId, data) {
     pointsExpiryRollingMonths,
     pointsExpiryAnnualMonth,
     pointsExpiryAnnualDay,
+    pointsExpiryTimesPerYear,
     pointsExpiryEnabled,
     pointsExpiryWarningDays,
     supportMessage,
@@ -77,6 +84,9 @@ async function updateConfig(storeId, data) {
     }),
     ...(pointsExpiryAnnualDay !== undefined && {
       pointsExpiryAnnualDay: pointsExpiryAnnualDay ? Math.min(31, Math.max(1, parseInt(pointsExpiryAnnualDay))) : null,
+    }),
+    ...(pointsExpiryTimesPerYear !== undefined && {
+      pointsExpiryTimesPerYear: VALID_TIMES_PER_YEAR.includes(parseInt(pointsExpiryTimesPerYear)) ? parseInt(pointsExpiryTimesPerYear) : 1,
     }),
     ...(pointsExpiryEnabled !== undefined && { pointsExpiryEnabled: Boolean(pointsExpiryEnabled) }),
     ...(pointsExpiryWarningDays !== undefined && { pointsExpiryWarningDays: Math.max(1, parseInt(pointsExpiryWarningDays) || 15) }),
@@ -292,14 +302,36 @@ async function getReferralStats(storeId, customerPoints, config) {
   };
 }
 
-// Próxima ocorrência da data anual (mês/dia) estritamente APÓS `date`. Se a
-// data cair exatamente em cima, conta como já vencida — a próxima é só ano que vem.
-function nextAnnualBoundary(date, month, day) {
+// Divisores de 12 aceitos pra "vezes por ano" (1x=anual, 2x=semestral,
+// 3x=a cada 4 meses, 4x=trimestral, 6x=bimestral, 12x=mensal).
+const VALID_TIMES_PER_YEAR = [1, 2, 3, 4, 6, 12];
+
+// Ocorrência nº `stepsFromAnchor` (em passos de `periodMonths`) a partir da
+// âncora (year/month0/day), com o dia PRESO ao último dia válido do mês de
+// destino — ex.: âncora dia 31 trimestral cai em 31/mar, 30/jun, 30/set,
+// 31/dez (não "vaza" pro dia 1 do mês seguinte como o setMonth cru faria).
+function fixedOccurrence(year, month0, day, stepsFromAnchor, periodMonths) {
+  const totalMonths = month0 + stepsFromAnchor * periodMonths;
+  const targetYear = year + Math.floor(totalMonths / 12);
+  const targetMonth0 = ((totalMonths % 12) + 12) % 12;
+  const lastDayOfMonth = new Date(targetYear, targetMonth0 + 1, 0).getDate();
+  return new Date(targetYear, targetMonth0, Math.min(day, lastDayOfMonth), 0, 0, 0, 0);
+}
+
+// Próxima ocorrência da data-âncora (mês/dia) — repetida a cada `periodMonths`
+// meses — estritamente APÓS `date`. Parte de um ano antes da data de
+// referência e vai somando o período até ultrapassar `date`; assim funciona
+// igual pra qualquer período (6, 4, 3, 2 ou 1 mês) sem precisar tratar o
+// ano-calendário como fronteira. Se cair exatamente em cima, conta como já
+// vencida — a próxima ocorrência é a seguinte no ciclo, não a mesma data.
+function nextFixedBoundary(date, month, day, periodMonths) {
   const d = new Date(date);
-  const year = d.getFullYear();
-  let boundary = new Date(year, month - 1, day, 0, 0, 0, 0);
-  if (boundary <= d) {
-    boundary = new Date(year + 1, month - 1, day, 0, 0, 0, 0);
+  const baseYear = d.getFullYear() - 1;
+  let steps = 0;
+  let boundary = fixedOccurrence(baseYear, month - 1, day, steps, periodMonths);
+  while (boundary <= d) {
+    steps++;
+    boundary = fixedOccurrence(baseYear, month - 1, day, steps, periodMonths);
   }
   return boundary;
 }
@@ -307,14 +339,17 @@ function nextAnnualBoundary(date, month, day) {
 /**
  * Data em que o ciclo atual do cliente vence, conforme o modo da loja:
  * - "rolling": N meses a partir da última renovação (padrão, por cliente).
- * - "annual": a mesma data (dia/mês) pra todos os clientes da loja — o
- *   próximo dia/mês configurado que seja estritamente posterior ao início
- *   do ciclo do cliente.
+ * - "annual": datas fixas pra todos os clientes da loja, ancoradas em
+ *   pointsExpiryAnnualMonth/Day e repetidas pointsExpiryTimesPerYear vezes
+ *   ao ano (1x = só a data-âncora; 2x = a cada 6 meses; etc.) — a próxima
+ *   ocorrência estritamente posterior ao início do ciclo do cliente.
  * Sem dia/mês configurado, cai pro comportamento rolling (default seguro).
  */
 function getCycleEnd(config, cycleStartedAt) {
   if (config.pointsExpiryMode === 'annual' && config.pointsExpiryAnnualMonth && config.pointsExpiryAnnualDay) {
-    return nextAnnualBoundary(cycleStartedAt, config.pointsExpiryAnnualMonth, config.pointsExpiryAnnualDay);
+    const times = VALID_TIMES_PER_YEAR.includes(config.pointsExpiryTimesPerYear) ? config.pointsExpiryTimesPerYear : 1;
+    const periodMonths = 12 / times;
+    return nextFixedBoundary(cycleStartedAt, config.pointsExpiryAnnualMonth, config.pointsExpiryAnnualDay, periodMonths);
   }
   const months = config.pointsExpiryRollingMonths || CYCLE_MONTHS;
   const dueDate = new Date(cycleStartedAt);
@@ -753,36 +788,59 @@ async function listStorePages(store) {
 }
 
 /**
- * Cria a página "Minha Fidelidade" na loja (Nuvemshop Pages API) com um
- * simples link pra `fidelidade.html` — sem <script>, então não esbarra na
- * sanitização de conteúdo de Pages. Idempotente: se já existe um handle
- * salvo, retorna ele em vez de criar duplicada. Precisa da 2025-03 (o /v1
- * legado não tem o recurso /pages).
+ * Conteúdo da página "Minha Fidelidade": o dashboard embutido direto via
+ * <iframe> (o app abre dentro da própria loja, sem sair pro domínio da
+ * CashbackPro) + um link de segurança abaixo, caso o iframe seja bloqueado
+ * por algum motivo. Sem <script> — não esbarra na sanitização de Pages.
+ * O CSP do front (frame-ancestors) já libera ser embutido pelos domínios
+ * da Nuvemshop/Tiendanube.
+ */
+function customerPageContent(pageUrl) {
+  return (
+    '<div style="max-width:1100px;margin:0 auto;">' +
+    '<iframe src="' + pageUrl + '" title="Minha Fidelidade" loading="lazy" ' +
+    'style="width:100%;min-height:1000px;border:0;display:block;"></iframe>' +
+    '<p style="text-align:center;margin-top:8px;">' +
+    '<a href="' + pageUrl + '" target="_blank" rel="noopener" style="color:#6B7280;font-size:12px;">' +
+    'Problemas para ver sua conta acima? Abrir em uma nova aba' +
+    '</a></p>' +
+    '</div>'
+  );
+}
+
+/**
+ * Cria a página "Minha Fidelidade" na loja (Nuvemshop Pages API) com o
+ * dashboard embutido (ver customerPageContent). Se a página já existe
+ * (handle salvo), sincroniza o conteúdo em vez de criar duplicada — útil
+ * pra propagar mudanças de template (ex.: a troca do link por iframe) pra
+ * lojas que criaram a página antes dessa mudança. Precisa da 2025-03 (o
+ * /v1 legado não tem o recurso /pages).
  */
 async function createCustomerPage(store) {
   const config = await getOrCreateConfig(store.id);
   const pageUrl = `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
+  const content = customerPageContent(pageUrl);
+  const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
 
   if (config.customerPageHandle) {
+    // Best-effort: se a sincronização falhar (ex.: página apagada na loja),
+    // não quebra o fluxo — o lojista ainda vê o handle salvo no painel.
+    try {
+      const { data } = await client.get('/pages', { params: { per_page: 50 } });
+      const results = data?.pages?.results || [];
+      const existing = results.find((p) => Object.values(p.handle || {}).includes(config.customerPageHandle));
+      const shortLocale = existing && Object.keys(existing.handle || {}).find((k) => existing.handle[k] === config.customerPageHandle);
+      if (existing?.id && shortLocale) {
+        const locale = LOCALE_MAP[shortLocale] || shortLocale;
+        await client.put(`/pages/${existing.id}`, { page: { i18n: { [locale]: { content } } } });
+      }
+    } catch (err) {
+      console.warn('[createCustomerPage] falha ao sincronizar conteúdo (ignorado):', err.response?.data || err.message);
+    }
     return { created: false, handle: config.customerPageHandle, pageUrl };
   }
 
-  const content =
-    '<div style="text-align:center;padding:32px 16px;">' +
-    '<h2>Minha Fidelidade</h2>' +
-    '<p>Acompanhe seus pontos, seu nível e resgate seus cupons de desconto.</p>' +
-    '<p><a href="' +
-    pageUrl +
-    '" style="display:inline-block;background:#0F7A5C;color:#ffffff;padding:14px 28px;border-radius:4px;text-decoration:none;font-weight:bold;">Acessar minha conta</a></p>' +
-    '</div>';
-
-  const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
-
-  // Idioma da loja: a resposta usa código curto ("pt"), mas o REQUEST de
-  // criação exige o locale completo na chave de i18n ("pt_BR") — testado
-  // contra a API real: chave "pt" faz o título entrar vazio -> 400. Mapeamos
-  // o main_language (curto) pro locale de request.
-  const LOCALE_MAP = { pt: 'pt_BR', es: 'es_AR', en: 'en_US' };
+  // Idioma da loja pro locale de escrita (ver LOCALE_MAP acima).
   let short = 'pt';
   try {
     const { data: info } = await client.get('/store');

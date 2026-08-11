@@ -4,8 +4,9 @@
  * "build:widget") — é esse arquivo que sobe no "Carregar arquivo javascript"
  * do painel de parceiros da Nuvemshop.
  *
- * Só desenha o ícone; ao clicar, navega pra página completa (fidelidade.html,
- * hospedada no nosso domínio) em vez de abrir modal — a lógica de
+ * Desenha o ícone; ao clicar, abre a página completa (fidelidade.html,
+ * hospedada no nosso domínio) num painel embutido por cima da loja — o
+ * cliente nunca sai do domínio da loja. A lógica de
  * login/saldo/nível/histórico/resgate mora em widget-src/fidelidade-page.js.
  *
  * Duas formas de chegar na loja:
@@ -142,8 +143,69 @@
     });
   }
 
+  // ─── Painel embutido (abre fidelidade.html sem sair do domínio da loja) ────
+  // Esse script roda direto no domínio da loja (via <script> injetado), então
+  // pode manipular o DOM livremente — diferente da página "Minha Fidelidade"
+  // da Nuvemshop, aqui não existe sanitização de conteúdo pra se preocupar.
+  function buildOverlay(pageUrl) {
+    var overlayHost = document.createElement('div');
+    overlayHost.id = 'cashbackpro-widget-overlay-host';
+    document.body.appendChild(overlayHost);
+    var overlayShadow = overlayHost.attachShadow({ mode: 'open' });
+
+    var style = document.createElement('style');
+    style.textContent = `
+      :host { all: initial; }
+      * { box-sizing: border-box; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+      .backdrop {
+        position: fixed; inset: 0; background: rgba(17,24,39,0.55);
+        display: none; align-items: stretch; justify-content: flex-end;
+        z-index: 2147483001; opacity: 0; transition: opacity 0.2s ease;
+      }
+      .backdrop.open { display: flex; opacity: 1; }
+      .panel {
+        position: relative; width: 100%; max-width: 460px; height: 100%;
+        background: #fff; box-shadow: -8px 0 30px rgba(0,0,0,0.25);
+      }
+      iframe { width: 100%; height: 100%; border: 0; display: block; }
+      .close {
+        position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%;
+        border: 0; background: rgba(17,24,39,0.08); color: #111827; font-size: 16px; line-height: 1;
+        cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1;
+      }
+      .close:hover { background: rgba(17,24,39,0.16); }
+      @media (max-width: 640px) { .panel { max-width: 100%; } }
+    `;
+    overlayShadow.appendChild(style);
+
+    var backdrop = h('<div class="backdrop"></div>');
+    var panel = h('<div class="panel"></div>');
+    var closeBtn = h('<button class="close" aria-label="Fechar">✕</button>');
+    var iframe = document.createElement('iframe');
+    iframe.title = 'Minha Fidelidade';
+    panel.appendChild(closeBtn);
+    panel.appendChild(iframe);
+    backdrop.appendChild(panel);
+    overlayShadow.appendChild(backdrop);
+
+    function close() {
+      backdrop.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+    function open() {
+      if (!iframe.src) iframe.src = pageUrl;
+      backdrop.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+    closeBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', function (e) { if (e.target === backdrop) close(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+
+    return { open: open, close: close };
+  }
+
   // ─── Arrastar o ícone pra outro canto ───────────────────────────────────────
-  function makeDraggable(icon, sizePx) {
+  function makeDraggable(icon, sizePx, onActivate) {
     var dragging = false;
     var moved = false;
     var pointerId = null;
@@ -183,10 +245,10 @@
       styleHost(nearestPosition, sizePx);
     });
 
-    // Clique só navega se não houve arraste — pointerup já tratou o arraste.
+    // Clique só ativa se não houve arraste — pointerup já tratou o arraste.
     icon.addEventListener('click', function (e) {
       if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; return; }
-      window.location.href = icon.dataset.pageUrl;
+      onActivate();
     });
   }
 
@@ -208,11 +270,11 @@
 
       var wrap = h('<div class="icon-wrap"></div>');
       var icon = h('<button class="icon" aria-label="Cashback">%</button>');
-      icon.dataset.pageUrl = config.pageUrl;
       wrap.appendChild(icon);
       container.appendChild(wrap);
 
-      makeDraggable(icon, sizePx);
+      var overlay = buildOverlay(config.pageUrl);
+      makeDraggable(icon, sizePx, overlay.open);
       watchCustomerTier(icon, config.pageUrl, brandColor);
     });
 })();

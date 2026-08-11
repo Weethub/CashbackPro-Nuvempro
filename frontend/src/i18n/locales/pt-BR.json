@@ -327,8 +327,33 @@
       "points": "Pontos de incentivo (0 = só e-mail)"
     },
     "pointsExpiry": {
-      "title": "Aviso de pontos a expirar",
-      "hint": "Avisa o cliente por e-mail quando os pontos dele estão perto de vencer (ciclo de 6 meses).",
+      "title": "Validade dos pontos",
+      "hint": "Defina quando os pontos dos clientes vencem e avise por e-mail quando estiverem perto de expirar.",
+      "mode": {
+        "label": "Quando os pontos expiram",
+        "rolling": "Renovação contínua (N meses após a última compra)",
+        "annual": "Data fixa anual (todos os clientes juntos)",
+        "rollingHint": "Cada cliente tem seu próprio prazo, contado a partir da última compra ou movimentação.",
+        "annualHint": "Todos os clientes da loja perdem os pontos no mesmo dia todo ano — ideal pra política de fim de ano."
+      },
+      "rollingMonths": "Validade em meses",
+      "annualMonth": "Mês de vencimento",
+      "annualDay": "Dia de vencimento",
+      "selectPlaceholder": "Selecione...",
+      "months": {
+        "january": "Janeiro",
+        "february": "Fevereiro",
+        "march": "Março",
+        "april": "Abril",
+        "may": "Maio",
+        "june": "Junho",
+        "july": "Julho",
+        "august": "Agosto",
+        "september": "Setembro",
+        "october": "Outubro",
+        "november": "Novembro",
+        "december": "Dezembro"
+      },
       "enable": "Ativar aviso de expiração",
       "days": "Avisar quantos dias antes"
     },

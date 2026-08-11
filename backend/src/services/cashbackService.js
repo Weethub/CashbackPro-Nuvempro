@@ -39,6 +39,10 @@ async function updateConfig(storeId, data) {
     winbackEnabled,
     winbackDays,
     winbackPoints,
+    pointsExpiryMode,
+    pointsExpiryRollingMonths,
+    pointsExpiryAnnualMonth,
+    pointsExpiryAnnualDay,
     pointsExpiryEnabled,
     pointsExpiryWarningDays,
     supportMessage,
@@ -66,6 +70,14 @@ async function updateConfig(storeId, data) {
     ...(winbackEnabled !== undefined && { winbackEnabled: Boolean(winbackEnabled) }),
     ...(winbackDays !== undefined && { winbackDays: Math.max(1, parseInt(winbackDays) || 60) }),
     ...(winbackPoints !== undefined && { winbackPoints: Math.max(0, parseInt(winbackPoints) || 0) }),
+    ...(pointsExpiryMode !== undefined && { pointsExpiryMode: pointsExpiryMode === 'annual' ? 'annual' : 'rolling' }),
+    ...(pointsExpiryRollingMonths !== undefined && { pointsExpiryRollingMonths: Math.min(60, Math.max(1, parseInt(pointsExpiryRollingMonths) || 6)) }),
+    ...(pointsExpiryAnnualMonth !== undefined && {
+      pointsExpiryAnnualMonth: pointsExpiryAnnualMonth ? Math.min(12, Math.max(1, parseInt(pointsExpiryAnnualMonth))) : null,
+    }),
+    ...(pointsExpiryAnnualDay !== undefined && {
+      pointsExpiryAnnualDay: pointsExpiryAnnualDay ? Math.min(31, Math.max(1, parseInt(pointsExpiryAnnualDay))) : null,
+    }),
     ...(pointsExpiryEnabled !== undefined && { pointsExpiryEnabled: Boolean(pointsExpiryEnabled) }),
     ...(pointsExpiryWarningDays !== undefined && { pointsExpiryWarningDays: Math.max(1, parseInt(pointsExpiryWarningDays) || 15) }),
     ...(supportMessage !== undefined && { supportMessage: supportMessage || null }),
@@ -223,14 +235,14 @@ async function rewardReferralIfDue(store, customerPointsId) {
 
   await prisma.$transaction(async (tx) => {
     if (toReferred > 0) {
-      const fresh = await ensureCycleFresh(tx, cp);
+      const fresh = await ensureCycleFresh(tx, cp, config);
       await tx.pointsTransaction.create({
         data: { customerPointsId: fresh.id, storeId: store.id, type: 'referral', points: toReferred, note: 'Bônus de boas-vindas por indicação' },
       });
       await tx.customerPoints.update({ where: { id: fresh.id }, data: { pointsBalance: { increment: toReferred } } });
     }
     if (toReferrer > 0) {
-      const freshRef = await ensureCycleFresh(tx, referrer);
+      const freshRef = await ensureCycleFresh(tx, referrer, config);
       await tx.pointsTransaction.create({
         data: { customerPointsId: freshRef.id, storeId: store.id, type: 'referral', points: toReferrer, note: 'Seu amigo indicado fez a primeira compra' },
       });
@@ -258,7 +270,7 @@ async function rewardWelcomeBonusIfDue(store, customerPointsId) {
   if (!cp) return;
 
   await prisma.$transaction(async (tx) => {
-    const fresh = await ensureCycleFresh(tx, cp);
+    const fresh = await ensureCycleFresh(tx, cp, config);
     await tx.pointsTransaction.create({
       data: { customerPointsId: fresh.id, storeId: store.id, type: 'welcome', points: config.welcomeBonusPoints, note: 'Bônus de boas-vindas' },
     });
@@ -280,29 +292,59 @@ async function getReferralStats(storeId, customerPoints, config) {
   };
 }
 
-function cycleExpired(cycleStartedAt) {
+// Próxima ocorrência da data anual (mês/dia) estritamente APÓS `date`. Se a
+// data cair exatamente em cima, conta como já vencida — a próxima é só ano que vem.
+function nextAnnualBoundary(date, month, day) {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  let boundary = new Date(year, month - 1, day, 0, 0, 0, 0);
+  if (boundary <= d) {
+    boundary = new Date(year + 1, month - 1, day, 0, 0, 0, 0);
+  }
+  return boundary;
+}
+
+/**
+ * Data em que o ciclo atual do cliente vence, conforme o modo da loja:
+ * - "rolling": N meses a partir da última renovação (padrão, por cliente).
+ * - "annual": a mesma data (dia/mês) pra todos os clientes da loja — o
+ *   próximo dia/mês configurado que seja estritamente posterior ao início
+ *   do ciclo do cliente.
+ * Sem dia/mês configurado, cai pro comportamento rolling (default seguro).
+ */
+function getCycleEnd(config, cycleStartedAt) {
+  if (config.pointsExpiryMode === 'annual' && config.pointsExpiryAnnualMonth && config.pointsExpiryAnnualDay) {
+    return nextAnnualBoundary(cycleStartedAt, config.pointsExpiryAnnualMonth, config.pointsExpiryAnnualDay);
+  }
+  const months = config.pointsExpiryRollingMonths || CYCLE_MONTHS;
   const dueDate = new Date(cycleStartedAt);
-  dueDate.setMonth(dueDate.getMonth() + CYCLE_MONTHS);
-  return dueDate <= new Date();
+  dueDate.setMonth(dueDate.getMonth() + months);
+  return dueDate;
+}
+
+function isCycleExpired(config, cycleStartedAt) {
+  return getCycleEnd(config, cycleStartedAt) <= new Date();
 }
 
 /**
  * Versão read-only da checagem de ciclo — usada em listagens (painel do
  * lojista, /widget/me) pra exibir o saldo correto sem escrever no banco.
  */
-function computeEffectiveBalance(customerPoints) {
-  if (cycleExpired(customerPoints.cycleStartedAt)) return 0;
+function computeEffectiveBalance(customerPoints, config) {
+  if (isCycleExpired(config, customerPoints.cycleStartedAt)) return 0;
   return customerPoints.pointsBalance;
 }
 
 /**
- * Reseta o ciclo de 6 meses se vencido. Roda DENTRO de uma transação, chamado
- * só no momento de creditar/resgatar (lazy) — nunca em listagens, evitando
- * escrita em massa. Sem cron job: o próprio próximo evento do cliente dispara
- * a checagem.
+ * Reseta o ciclo se vencido (rolling ou annual, conforme a config da loja).
+ * Roda DENTRO de uma transação, chamado só no momento de creditar/resgatar
+ * (lazy) — nunca em listagens, evitando escrita em massa. Sem cron job: o
+ * próprio próximo evento do cliente dispara a checagem. No modo annual isso
+ * também garante que todo cliente da loja vença exatamente na mesma data,
+ * mesmo sem um job em lote resetando todo mundo de uma vez.
  */
-async function ensureCycleFresh(tx, customerPoints) {
-  if (!cycleExpired(customerPoints.cycleStartedAt)) return customerPoints;
+async function ensureCycleFresh(tx, customerPoints, config) {
+  if (!isCycleExpired(config, customerPoints.cycleStartedAt)) return customerPoints;
 
   if (customerPoints.pointsBalance > 0) {
     await tx.pointsTransaction.create({
@@ -311,7 +353,7 @@ async function ensureCycleFresh(tx, customerPoints) {
         storeId: customerPoints.storeId,
         type: 'reset',
         points: -customerPoints.pointsBalance,
-        note: 'Reset de ciclo (6 meses)',
+        note: 'Reset de ciclo de pontos',
       },
     });
   }
@@ -372,14 +414,14 @@ async function creditPointsForOrder(store, order) {
 
   // O multiplicador é o do nível ATUAL do cliente no momento da compra (ex.:
   // Ouro com 1.2 ganha 20% a mais). Calculado antes de creditar.
-  const { currentTier: tierBefore } = await getTierProgress(store.id, customerPoints);
+  const { currentTier: tierBefore } = await getTierProgress(store.id, customerPoints, config);
   const multiplier = tierBefore?.pointsMultiplier || 1;
 
   const pointsEarned = Math.floor(orderTotal * config.pointsPerCurrency * multiplier);
   if (pointsEarned <= 0) return { skipped: 'zero_points' };
 
   const updated = await prisma.$transaction(async (tx) => {
-    const fresh = await ensureCycleFresh(tx, customerPoints);
+    const fresh = await ensureCycleFresh(tx, customerPoints, config);
     await tx.pointsTransaction.create({
       data: {
         customerPointsId: fresh.id,
@@ -459,12 +501,13 @@ async function creditPointsForOrder(store, order) {
  * Retorna o nível atual do cliente (o maior tier cujo pointsRequired cabe no
  * saldo efetivo), o próximo nível e quantos pontos faltam pra ele.
  */
-async function getTierProgress(storeId, customerPoints) {
+async function getTierProgress(storeId, customerPoints, config) {
   const tiers = await prisma.cashbackTier.findMany({
     where: { storeId },
     orderBy: { pointsRequired: 'asc' },
   });
-  const balance = computeEffectiveBalance(customerPoints);
+  const effectiveConfig = config || (await getOrCreateConfig(storeId));
+  const balance = computeEffectiveBalance(customerPoints, effectiveConfig);
 
   let currentTier = null;
   let nextTier = null;
@@ -490,7 +533,8 @@ async function redeemCurrentTier(store, customerPointsId) {
   const customerPoints = await prisma.customerPoints.findUnique({ where: { id: customerPointsId } });
   if (!customerPoints) throw new AppError('Cliente não encontrado.', 404, 'CUSTOMER_NOT_FOUND');
 
-  const fresh = await prisma.$transaction((tx) => ensureCycleFresh(tx, customerPoints));
+  const config = await getOrCreateConfig(store.id);
+  const fresh = await prisma.$transaction((tx) => ensureCycleFresh(tx, customerPoints, config));
 
   const tiers = await prisma.cashbackTier.findMany({
     where: { storeId: store.id },
@@ -575,6 +619,7 @@ const CUSTOMER_SORT_FIELDS = new Set(['pointsBalance', 'email', 'createdAt']);
  * saldo exibido — caso raro, aceito para não precisar calcular isso em SQL.
  */
 async function listCustomers(storeId, { page, limit, skip, sortBy, sortDir, search }) {
+  const config = await getOrCreateConfig(storeId);
   const orderField = CUSTOMER_SORT_FIELDS.has(sortBy) ? sortBy : 'pointsBalance';
   const orderDir = sortDir === 'asc' ? 'asc' : 'desc';
 
@@ -606,7 +651,7 @@ async function listCustomers(storeId, { page, limit, skip, sortBy, sortDir, sear
   const data = customers.map((c) => ({
     id: c.id,
     email: c.email,
-    pointsBalance: computeEffectiveBalance(c),
+    pointsBalance: computeEffectiveBalance(c, config),
     couponsUsed: couponsMap.get(c.id) || 0,
     createdAt: c.createdAt,
   }));
@@ -874,7 +919,8 @@ async function getStatsTimeSeries(storeId, days = 30) {
  * barras/donut de distribuição no dashboard.
  */
 async function getTierDistribution(storeId) {
-  const [tiers, customers] = await Promise.all([
+  const [config, tiers, customers] = await Promise.all([
+    getOrCreateConfig(storeId),
     prisma.cashbackTier.findMany({ where: { storeId }, orderBy: { pointsRequired: 'asc' } }),
     prisma.customerPoints.findMany({ where: { storeId }, select: { pointsBalance: true, cycleStartedAt: true } }),
   ]);
@@ -883,7 +929,7 @@ async function getTierDistribution(storeId) {
   let noTier = 0;
 
   for (const customer of customers) {
-    const balance = computeEffectiveBalance(customer);
+    const balance = computeEffectiveBalance(customer, config);
     let reachedIndex = -1;
     tiers.forEach((t, i) => {
       if (t.pointsRequired <= balance) reachedIndex = i;
@@ -934,7 +980,7 @@ async function runWinbackForStore(store, config) {
     const bonus = config.winbackPoints || 0;
     if (bonus > 0) {
       await prisma.$transaction(async (tx) => {
-        const fresh = await ensureCycleFresh(tx, cp);
+        const fresh = await ensureCycleFresh(tx, cp, config);
         await tx.pointsTransaction.create({
           data: { customerPointsId: fresh.id, storeId: store.id, type: 'bonus', points: bonus, note: 'Bônus de reconquista' },
         });
@@ -972,8 +1018,7 @@ async function runPointsExpiryForStore(store, config) {
     where: { storeId: store.id, email: { not: null }, pointsBalance: { gt: 0 } },
   });
   for (const cp of customers) {
-    const cycleEnd = new Date(cp.cycleStartedAt);
-    cycleEnd.setMonth(cycleEnd.getMonth() + CYCLE_MONTHS);
+    const cycleEnd = getCycleEnd(config, cp.cycleStartedAt);
     const warnStart = new Date(cycleEnd);
     warnStart.setDate(warnStart.getDate() - warningDays);
     if (now < warnStart || now >= cycleEnd) continue; // fora da janela de aviso
@@ -1036,6 +1081,7 @@ module.exports = {
   setTiers,
   getOrCreateCustomerPoints,
   computeEffectiveBalance,
+  getCycleEnd,
   creditPointsForOrder,
   getTierProgress,
   redeemCurrentTier,

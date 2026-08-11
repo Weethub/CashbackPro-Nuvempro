@@ -35,12 +35,21 @@ const DEFAULT_CONFIG = {
   winbackEnabled: false,
   winbackDays: 60,
   winbackPoints: 0,
+  pointsExpiryMode: 'rolling',
+  pointsExpiryRollingMonths: 6,
+  pointsExpiryAnnualMonth: null,
+  pointsExpiryAnnualDay: null,
   pointsExpiryEnabled: false,
   pointsExpiryWarningDays: 15,
   supportMessage: '',
   supportWhatsapp: '',
   supportEmail: '',
 };
+
+const MONTHS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+];
 
 let nextTempId = -1;
 
@@ -522,6 +531,76 @@ export default function Settings() {
         </Card.Header>
         <Card.Body>
           <Box display="flex" flexDirection="column" gap="4">
+            <Box display="flex" flexDirection="column" gap="1" minWidth="240px">
+              <Text fontWeight="bold">{t('cashback.pointsExpiry.mode.label')}</Text>
+              <Select
+                name="pointsExpiryMode"
+                id="pointsExpiryMode"
+                value={config.pointsExpiryMode || 'rolling'}
+                onChange={(e) => update('pointsExpiryMode', e.target.value)}
+              >
+                <Select.Option value="rolling" label={t('cashback.pointsExpiry.mode.rolling')}>
+                  {t('cashback.pointsExpiry.mode.rolling')}
+                </Select.Option>
+                <Select.Option value="annual" label={t('cashback.pointsExpiry.mode.annual')}>
+                  {t('cashback.pointsExpiry.mode.annual')}
+                </Select.Option>
+              </Select>
+              <Text fontSize="caption" color="neutral-textLow">
+                {config.pointsExpiryMode === 'annual'
+                  ? t('cashback.pointsExpiry.mode.annualHint')
+                  : t('cashback.pointsExpiry.mode.rollingHint')}
+              </Text>
+            </Box>
+
+            {config.pointsExpiryMode === 'annual' ? (
+              <Box display="flex" gap="4" flexWrap="wrap">
+                <Box display="flex" flexDirection="column" gap="1" minWidth="180px">
+                  <Text>{t('cashback.pointsExpiry.annualMonth')}</Text>
+                  <Select
+                    name="pointsExpiryAnnualMonth"
+                    id="pointsExpiryAnnualMonth"
+                    value={config.pointsExpiryAnnualMonth || ''}
+                    onChange={(e) => update('pointsExpiryAnnualMonth', e.target.value || null)}
+                  >
+                    <Select.Option value="" label={t('cashback.pointsExpiry.selectPlaceholder')}>
+                      {t('cashback.pointsExpiry.selectPlaceholder')}
+                    </Select.Option>
+                    {MONTHS.map((m, i) => (
+                      <Select.Option key={m} value={i + 1} label={t(`cashback.pointsExpiry.months.${m}`)}>
+                        {t(`cashback.pointsExpiry.months.${m}`)}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Box>
+                <Box display="flex" flexDirection="column" gap="1" minWidth="120px">
+                  <Text>{t('cashback.pointsExpiry.annualDay')}</Text>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="31"
+                    step="1"
+                    name="pointsExpiryAnnualDay"
+                    value={config.pointsExpiryAnnualDay ?? ''}
+                    onChange={(e) => update('pointsExpiryAnnualDay', e.target.value || null)}
+                  />
+                </Box>
+              </Box>
+            ) : (
+              <Box display="flex" flexDirection="column" gap="1" minWidth="200px">
+                <Text>{t('cashback.pointsExpiry.rollingMonths')}</Text>
+                <Input
+                  type="number"
+                  min="1"
+                  max="60"
+                  step="1"
+                  name="pointsExpiryRollingMonths"
+                  value={config.pointsExpiryRollingMonths ?? 6}
+                  onChange={(e) => update('pointsExpiryRollingMonths', e.target.value)}
+                />
+              </Box>
+            )}
+
             <Box display="flex" justifyContent="space-between" alignItems="center" gap="4">
               <Text fontWeight="bold">{t('cashback.pointsExpiry.enable')}</Text>
               <Toggle

@@ -227,10 +227,15 @@ router.get('/me', requireCustomerAuth, async (req, res, next) => {
       customerPoints = await cashbackService.ensureReferralCode(customerPoints);
     }
     const [progress, tiers, referral] = await Promise.all([
-      cashbackService.getTierProgress(req.storeId, customerPoints),
+      cashbackService.getTierProgress(req.storeId, customerPoints, config),
       cashbackService.getTiers(req.storeId),
       cashbackService.getReferralStats(req.storeId, customerPoints, config),
     ]);
+    // Data em que o saldo atual vence (mesma pra todo mundo no modo "annual",
+    // por cliente no modo "rolling") — pra o front mostrar o aviso real em
+    // vez de um texto fixo de "6 meses".
+    const expiryDate = cashbackService.getCycleEnd(config, customerPoints.cycleStartedAt);
+    const daysLeft = Math.max(0, Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24)));
     res.json({
       email: customerPoints.email,
       // Ano de "cliente desde" e taxa de pontos->R$ pra a página do cliente:
@@ -239,6 +244,7 @@ router.get('/me', requireCustomerAuth, async (req, res, next) => {
       pointsPerCurrency: config.pointsPerCurrency,
       tiers,
       referral,
+      pointsExpiry: progress.balance > 0 ? { mode: config.pointsExpiryMode, date: expiryDate, daysLeft } : null,
       ...progress,
     });
   } catch (err) {

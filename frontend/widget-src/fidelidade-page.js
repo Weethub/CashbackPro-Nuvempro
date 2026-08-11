@@ -192,6 +192,20 @@
   }
 
   // ─── Dashboard ──────────────────────────────────────────────────────────
+  // Texto do tooltip "ⓘ" de "Seus pontos": no modo anual, a mesma data pra
+  // todo mundo da loja (ex.: 31/dez); no modo rolante, N meses a partir da
+  // última movimentação — reflete a política real configurada pelo lojista.
+  function pointsExpiryText(info) {
+    if (!info) return 'Seus pontos ainda não têm validade — comece a pontuar em uma compra!';
+    var dateStr = new Date(info.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    if (info.mode === 'annual') {
+      return 'Seus pontos valem até ' + dateStr + '. Use-os antes que expirem!';
+    }
+    var days = info.daysLeft;
+    var when = days <= 0 ? 'nos próximos dias' : 'em ' + days + (days === 1 ? ' dia' : ' dias') + ' (' + dateStr + ')';
+    return 'Seus pontos expiram ' + when + ' se não houver nova compra. Use-os antes que expirem!';
+  }
+
   function tierLevelNumber(me) {
     if (!me.currentTier) return 1;
     var sorted = (me.tiers || []).slice().sort(function (a, b) { return a.pointsRequired - b.pointsRequired; });
@@ -232,6 +246,12 @@
     } else {
       convEl.hidden = true;
     }
+
+    // Tooltip "ⓘ" ao lado de "Seus pontos": explica a validade real
+    // configurada pelo lojista (ciclo rolante ou data fixa anual), em vez de
+    // um texto genérico fixo.
+    var infoPop = $('cbp-points-infopop');
+    if (infoPop) infoPop.textContent = pointsExpiryText(me.pointsExpiry);
 
     // Lista de todos os níveis (coluna direita)
     renderLevels(me);

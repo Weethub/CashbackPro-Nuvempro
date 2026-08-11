@@ -256,18 +256,33 @@
   // A Nuvemshop sanitiza o conteúdo de Pages e remove o atributo `src` de
   // qualquer <iframe> ali dentro — então o backend deixa só um container
   // vazio com esse id, e é este script (rodando direto no DOM da loja, fora
-  // do alcance do sanitizador) que injeta o iframe de verdade, ocupando a
-  // página inteira. Roda em toda página da loja, mas só faz algo nas que têm
-  // o container — ou seja, só na própria página "Minha Fidelidade".
+  // do alcance do sanitizador) que injeta o iframe de verdade. Roda em toda
+  // página da loja, mas só faz algo nas que têm o container — ou seja, só na
+  // própria página "Minha Fidelidade".
+  //
+  // O iframe cobre a tela INTEIRA via position:fixed (por cima do
+  // header/menu/rodapé do tema, não como um bloco dentro do conteúdo) — é
+  // isso que faz a experiência ser "a página em si" e não um pedaço a mais
+  // dentro do layout padrão da loja.
   function hydratePageEmbed(pageUrl) {
     var embedEl = document.getElementById('cashbackpro-page-embed');
     if (!embedEl) return;
+    embedEl.innerHTML = '';
+
     var iframe = document.createElement('iframe');
     iframe.src = pageUrl;
     iframe.title = 'Minha Fidelidade';
-    iframe.style.cssText = 'width:100%;min-height:100vh;border:0;display:block;';
-    embedEl.innerHTML = '';
-    embedEl.appendChild(iframe);
+    iframe.style.cssText =
+      'position: fixed !important;' +
+      'inset: 0 !important;' +
+      'width: 100vw !important;' +
+      'height: 100vh !important;' +
+      'border: 0 !important;' +
+      'display: block !important;' +
+      'z-index: 2147483000 !important;' +
+      'background: #fff !important;';
+    document.body.appendChild(iframe);
+    document.documentElement.style.overflow = 'hidden';
   }
 
   // ─── Boot ───────────────────────────────────────────────────────────────

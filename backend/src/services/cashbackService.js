@@ -873,7 +873,11 @@ async function createCustomerPage(store) {
     const shortLocale = Object.keys(existing.handle || {}).find((k) => existing.handle[k] === config.customerPageHandle) || 'pt';
     const locale = LOCALE_MAP[shortLocale] || shortLocale;
     try {
-      await client.put(`/pages/${existing.id}`, { page: { i18n: { [locale]: pageI18nFields(content) } } });
+      // publish: true precisa ir explícito — sem ele a Nuvemshop trata o PUT
+      // como se o campo tivesse virado false e derruba a página pra rascunho
+      // (confirmado: foi exatamente isso que aconteceu ao sincronizar sem essa
+      // linha, mesmo a página já estando publicada antes).
+      await client.put(`/pages/${existing.id}`, { page: { publish: true, i18n: { [locale]: pageI18nFields(content) } } });
     } catch (err) {
       const status = err.response?.status;
       const apiErr = err.response?.data;

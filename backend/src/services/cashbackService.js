@@ -798,7 +798,7 @@ async function listStorePages(store) {
  */
 function customerPageContent(pageUrl) {
   return (
-    '<div id="cashbackpro-page-embed" style="max-width:1100px;margin:0 auto;min-height:600px;">' +
+    '<div id="cashbackpro-page-embed" style="min-height:400px;">' +
     '<p style="text-align:center;color:#9CA3AF;padding:80px 16px;">Carregando sua área de fidelidade...</p>' +
     '</div>' +
     '<p style="text-align:center;margin-top:8px;">' +

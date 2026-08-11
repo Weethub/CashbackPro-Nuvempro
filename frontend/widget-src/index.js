@@ -260,29 +260,24 @@
   // página da loja, mas só faz algo nas que têm o container — ou seja, só na
   // própria página "Minha Fidelidade".
   //
-  // O iframe cobre a tela INTEIRA via position:fixed (por cima do
-  // header/menu/rodapé do tema, não como um bloco dentro do conteúdo) — é
-  // isso que faz a experiência ser "a página em si" e não um pedaço a mais
-  // dentro do layout padrão da loja.
+  // Substitui só o CONTEÚDO da página — o cabeçalho e o rodapé do tema
+  // continuam visíveis normalmente, igual em qualquer outra página da loja.
+  // O iframe ocupa toda a largura disponível e pelo menos uma tela de altura.
   function hydratePageEmbed(pageUrl) {
     var embedEl = document.getElementById('cashbackpro-page-embed');
     if (!embedEl) return;
+    embedEl.style.cssText = 'max-width: none !important; margin: 0 !important; padding: 0 !important;';
     embedEl.innerHTML = '';
 
     var iframe = document.createElement('iframe');
     iframe.src = pageUrl;
     iframe.title = 'Minha Fidelidade';
     iframe.style.cssText =
-      'position: fixed !important;' +
-      'inset: 0 !important;' +
-      'width: 100vw !important;' +
-      'height: 100vh !important;' +
+      'width: 100% !important;' +
+      'min-height: 100vh !important;' +
       'border: 0 !important;' +
-      'display: block !important;' +
-      'z-index: 2147483000 !important;' +
-      'background: #fff !important;';
-    document.body.appendChild(iframe);
-    document.documentElement.style.overflow = 'hidden';
+      'display: block !important;';
+    embedEl.appendChild(iframe);
   }
 
   // ─── Boot ───────────────────────────────────────────────────────────────

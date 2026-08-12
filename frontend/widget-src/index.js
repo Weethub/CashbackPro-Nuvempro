@@ -262,19 +262,23 @@
   //
   // Substitui só o CONTEÚDO da página — o cabeçalho e o rodapé do tema
   // continuam visíveis normalmente, igual em qualquer outra página da loja.
-  // O tema, porém, tem seu próprio container (max-width + centralizado) em
-  // volta do conteúdo da página — remover o max-width só do nosso <div> não
-  // basta, ele continua preso dentro desse container do tema. A técnica
-  // "full-bleed" abaixo (width:100vw + margem negativa de metade da tela)
-  // arromba esse limite e estica de ponta a ponta, incorporado à loja em vez
-  // de aparecer como um bloco dentro do espaço de conteúdo normal.
+  // O tema, porém, tem seu próprio container (grid do Bootstrap: .container
+  // > .row > .col-md-8, com uma coluna irmã do lado) em volta do conteúdo da
+  // página — remover o max-width só do nosso <div> não basta, ele continua
+  // preso dentro dessa coluna, que nem fica centralizada na tela sozinha.
+  // Por isso o full-bleed é calculado via JS (posição real medida do
+  // elemento-pai) em vez de CSS puro (left:50%) — "left:50%" é relativo à
+  // largura do PAI, não da viewport, e um .col-md-8 não é simétrico na tela
+  // quando existe uma coluna irmã ocupando o resto do .row (confirmado ao
+  // vivo: a Nuvemshop bota nosso conteúdo dentro de col-md-8, faltando
+  // exatamente a largura da coluna irmã pra fechar a conta).
   // Estilo "encaixado no fluxo da página" (full-bleed, altura = conteúdo
   // real) vs. "tela cheia" (só enquanto um modal interno está aberto — ver
   // abaixo). Aplicados ao próprio <iframe>; embedEl só precisa do full-bleed
   // uma vez, ele não muda entre os dois modos.
   function embedFlowStyle() {
     return (
-      'width: 100vw !important;' +
+      'width: 100% !important;' + // 100% do embedEl (já com a largura exata da viewport, ver applyFullBleed)
       'border: 0 !important;' +
       'display: block !important;' +
       'position: static !important;' +
@@ -294,26 +298,45 @@
     );
   }
 
+  // Mede a posição real do <div> ANTES de mexer nele (ainda preso dentro da
+  // coluna do tema) e usa isso pra calcular a margem negativa exata que leva
+  // a borda esquerda até 0 — funciona não importa a estrutura de containers/
+  // colunas que o tema usar, já que não depende de porcentagem nenhuma.
+  function applyFullBleed(embedEl) {
+    var vpWidth = document.documentElement.clientWidth;
+    // clientWidth pode vir 0 se isso rodar antes do navegador terminar o
+    // primeiro layout da página (ex.: resposta do /config chegando rápido
+    // demais) — tenta de novo no próximo frame em vez de aplicar um valor
+    // errado que reduziria o embed a largura zero.
+    if (!vpWidth) { requestAnimationFrame(function () { applyFullBleed(embedEl); }); return; }
+    var rect = embedEl.getBoundingClientRect();
+    embedEl.style.cssText =
+      'all: unset !important;' +
+      'display: block !important;' +
+      'width: ' + vpWidth + 'px !important;' +
+      'margin-left: ' + (-rect.left) + 'px !important;' +
+      'margin-right: 0 !important;';
+  }
+
   function hydratePageEmbed(pageUrl) {
     var embedEl = document.getElementById('cashbackpro-page-embed');
     if (!embedEl) return;
     var origin;
     try { origin = new URL(pageUrl).origin; } catch (e) { return; }
 
-    // 100vw inclui a largura da barra de rolagem em vários navegadores, o que
-    // sobra uns pixels além da borda direita real — sem isso, dá um scroll
-    // horizontal fantasma de uns 15px na página inteira.
-    document.documentElement.style.overflowX = 'hidden';
-    embedEl.style.cssText =
-      'all: unset !important;' +
-      'display: block !important;' +
-      'width: 100vw !important;' +
-      'max-width: 100vw !important;' +
-      'position: relative !important;' +
-      'left: 50% !important;' +
-      'right: 50% !important;' +
-      'margin-left: -50vw !important;' +
-      'margin-right: -50vw !important;';
+    applyFullBleed(embedEl);
+    // Se a janela for redimensionada (ou o celular girar), a coluna do tema
+    // pode mudar de posição/largura — remede e reaplica. Repõe o
+    // <embedEl>.style ANTES de medir de novo (senão mediria a própria
+    // margem negativa já aplicada, e não a posição "natural" da coluna).
+    var resizeTimer = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        embedEl.style.cssText = ''; // solta a margem negativa antes de remedir a posição natural
+        applyFullBleed(embedEl);
+      }, 150);
+    });
     embedEl.innerHTML = '';
 
     var iframe = document.createElement('iframe');
@@ -346,7 +369,6 @@
       } else if (data.type === 'modal-close') {
         inModal = false;
         document.documentElement.style.overflow = '';
-        document.documentElement.style.overflowX = 'hidden';
         iframe.style.cssText = embedFlowStyle();
         iframe.style.minHeight = '100vh';
         if (lastHeight) iframe.style.height = lastHeight + 'px';

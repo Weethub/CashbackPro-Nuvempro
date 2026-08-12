@@ -118,9 +118,35 @@
   // salvo lá (localStorage é isolado por origem). Um iframe oculto apontando
   // pra widget-session.html (mesma origem da página de fidelidade) resolve
   // isso: ele lê o token e devolve o nível atual via postMessage.
+  function applyTierToIcon(icon, tier, brandColor) {
+    if (tier) {
+      icon.style.border = '3px solid ' + (tier.color || brandColor);
+      if (tier.icon) {
+        icon.style.backgroundImage = 'url(' + tier.icon + ')';
+        icon.textContent = '';
+        return;
+      }
+    } else {
+      icon.style.border = '';
+    }
+    icon.style.backgroundImage = '';
+    icon.textContent = '%';
+  }
+
   function watchCustomerTier(icon, pageUrl, brandColor) {
     var origin;
     try { origin = new URL(pageUrl).origin; } catch (e) { return; }
+
+    // Mostra o último nível conhecido NA HORA (cache local, no domínio da
+    // própria loja — sem esperar o round-trip pro nosso domínio via iframe),
+    // pra o ícone já aparecer certo desde o primeiro carregamento em vez de
+    // genérico até o cliente abrir o app. A checagem real abaixo confirma
+    // (ou corrige, se o nível mudou nesse meio tempo) em seguida.
+    var cacheKey = 'cashbackpro_widget_tier_' + storeId;
+    try {
+      var cached = localStorage.getItem(cacheKey);
+      if (cached) applyTierToIcon(icon, JSON.parse(cached), brandColor);
+    } catch (e) { /* localStorage indisponível ou cache corrompido — ignora */ }
 
     var iframe = document.createElement('iframe');
     iframe.src = origin + '/widget-session.html?store=' + encodeURIComponent(storeId);
@@ -133,13 +159,11 @@
       if (!data || data.source !== 'cashbackpro-widget-session' || data.type !== 'tier') return;
 
       var tier = data.tier;
-      if (!tier) return;
-      var accent = tier.color || brandColor;
-      icon.style.border = '3px solid ' + accent;
-      if (tier.icon) {
-        icon.style.backgroundImage = 'url(' + tier.icon + ')';
-        icon.textContent = '';
-      }
+      applyTierToIcon(icon, tier, brandColor);
+      try {
+        if (tier) localStorage.setItem(cacheKey, JSON.stringify(tier));
+        else localStorage.removeItem(cacheKey); // sem sessão válida — não deixa cache velho enganar da próxima vez
+      } catch (e) { /* ignore */ }
     });
   }
 
@@ -164,7 +188,7 @@
       }
       .backdrop.open { display: flex; opacity: 1; }
       .panel {
-        position: relative; width: 100%; max-width: 460px; height: 100%;
+        position: relative; width: 100%; max-width: 560px; height: 100%;
         background: #fff; box-shadow: -8px 0 30px rgba(0,0,0,0.25);
       }
       iframe { width: 100%; height: 100%; border: 0; display: block; }

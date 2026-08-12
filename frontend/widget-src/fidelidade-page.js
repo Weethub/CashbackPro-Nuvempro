@@ -86,14 +86,18 @@
     var mix = function (c) { return Math.round((t - c) * p + c).toString(16).padStart(2, '0'); };
     return '#' + mix(r) + mix(g) + mix(b);
   }
-  function applyBrand(color) {
-    if (!color) return;
+  function applyBrand(color, bgColor) {
     var root = document.documentElement.style;
-    root.setProperty('--cbp-primary', color);
-    root.setProperty('--cbp-primary-dark', shade(color, -18));
-    root.setProperty('--cbp-primary-2', shade(color, 14));
-    root.setProperty('--cbp-surface', shade(color, 90));
-    root.setProperty('--cbp-on-primary', pickTextColor(color));
+    if (color) {
+      root.setProperty('--cbp-primary', color);
+      root.setProperty('--cbp-primary-dark', shade(color, -18));
+      root.setProperty('--cbp-primary-2', shade(color, 14));
+      root.setProperty('--cbp-surface', shade(color, 90));
+      root.setProperty('--cbp-on-primary', pickTextColor(color));
+    }
+    // Cor de fundo da página — independente da cor principal, configurada
+    // separadamente pelo lojista (ver painel: Aparência).
+    if (bgColor) root.setProperty('--bg', bgColor);
   }
   function esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
@@ -468,7 +472,7 @@
     fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
       .then(function (r) { return r.json(); })
       .then(function (cfg) {
-        applyBrand(autoColorParam && isValidColor(autoColorParam) ? autoColorParam : cfg.brandColor);
+        applyBrand(autoColorParam && isValidColor(autoColorParam) ? autoColorParam : cfg.brandColor, cfg.brandBackgroundColor);
         state.howItWorks = cfg.howItWorks || null;
         state.support = cfg.support || null;
         if (cfg.blocked) { showPaused(); return; }

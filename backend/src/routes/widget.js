@@ -51,7 +51,8 @@ router.get('/config', async (req, res, next) => {
       iconPosition: config.widgetIconPosition,
       iconSize: config.widgetIconSize,
       brandColor: config.brandColor || '#7C3AED',
-      brandColorAuto: config.brandColorAuto !== false,
+      brandBackgroundColor: config.brandBackgroundColor || '#F5F3F7',
+      brandColorAuto: config.brandColorAuto === true,
       howItWorks: config.howItWorks || null,
       support: {
         message: config.supportMessage || null,

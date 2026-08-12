@@ -262,18 +262,36 @@
   //
   // Substitui só o CONTEÚDO da página — o cabeçalho e o rodapé do tema
   // continuam visíveis normalmente, igual em qualquer outra página da loja.
-  // O iframe ocupa toda a largura disponível e pelo menos uma tela de altura.
+  // O tema, porém, tem seu próprio container (max-width + centralizado) em
+  // volta do conteúdo da página — remover o max-width só do nosso <div> não
+  // basta, ele continua preso dentro desse container do tema. A técnica
+  // "full-bleed" abaixo (width:100vw + margem negativa de metade da tela)
+  // arromba esse limite e estica de ponta a ponta, incorporado à loja em vez
+  // de aparecer como um bloco dentro do espaço de conteúdo normal.
   function hydratePageEmbed(pageUrl) {
     var embedEl = document.getElementById('cashbackpro-page-embed');
     if (!embedEl) return;
-    embedEl.style.cssText = 'max-width: none !important; margin: 0 !important; padding: 0 !important;';
+    // 100vw inclui a largura da barra de rolagem em vários navegadores, o que
+    // sobra uns pixels além da borda direita real — sem isso, dá um scroll
+    // horizontal fantasma de uns 15px na página inteira.
+    document.documentElement.style.overflowX = 'hidden';
+    embedEl.style.cssText =
+      'all: unset !important;' +
+      'display: block !important;' +
+      'width: 100vw !important;' +
+      'max-width: 100vw !important;' +
+      'position: relative !important;' +
+      'left: 50% !important;' +
+      'right: 50% !important;' +
+      'margin-left: -50vw !important;' +
+      'margin-right: -50vw !important;';
     embedEl.innerHTML = '';
 
     var iframe = document.createElement('iframe');
     iframe.src = pageUrl;
     iframe.title = 'Minha Fidelidade';
     iframe.style.cssText =
-      'width: 100% !important;' +
+      'width: 100vw !important;' +
       'min-height: 100vh !important;' +
       'border: 0 !important;' +
       'display: block !important;';

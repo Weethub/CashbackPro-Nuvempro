@@ -50,6 +50,10 @@ router.get('/config', async (req, res, next) => {
       blocked,
       iconPosition: config.widgetIconPosition,
       iconSize: config.widgetIconSize,
+      // "overlay" (padrão) abre o painel lateral embutido; "page" navega pra
+      // página "Minha Fidelidade" da própria loja (customerPageHandle abaixo).
+      clickAction: config.widgetClickAction === 'page' ? 'page' : 'overlay',
+      customerPageHandle: config.customerPageHandle || null,
       brandColor: config.brandColor || '#7C3AED',
       brandBackgroundColor: config.brandBackgroundColor || '#F5F3F7',
       brandColorAuto: config.brandColorAuto === true,

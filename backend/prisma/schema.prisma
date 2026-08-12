@@ -287,9 +287,11 @@ model CashbackConfig {
   // Config do widget flutuante na vitrine
   widgetIconPosition String   @default("bottom-right") // bottom-right | bottom-left | top-right | top-left
   widgetIconSize     String   @default("md") // sm | md | lg
+  // Ao clicar no ícone flutuante: "overlay" abre o painel lateral embutido
+  // (padrão); "page" navega pra página "Minha Fidelidade" da própria loja.
+  widgetClickAction  String   @default("overlay")
   // Página "Minha Fidelidade" criada via Nuvemshop Pages API — handle (slug) da
-  // página real na loja. Null = ainda não criada. Ícone flutuante navega pra ela
-  // em vez de abrir modal.
+  // página real na loja. Null = ainda não criada.
   customerPageHandle String?
   // Cor da marca da loja (hex), configurável pelo lojista pra combinar com o
   // tema real da vitrine — usada na página "Minha Fidelidade" e no ícone

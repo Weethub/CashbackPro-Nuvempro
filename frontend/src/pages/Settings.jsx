@@ -24,6 +24,7 @@ const DEFAULT_CONFIG = {
   redeemMessage: '',
   widgetIconPosition: 'bottom-right',
   widgetIconSize: 'md',
+  widgetClickAction: 'overlay',
   brandColor: '#7C3AED',
   brandBackgroundColor: '#F5F3F7',
   brandColorAuto: false,
@@ -841,6 +842,27 @@ export default function Settings() {
                   </Select.Option>
                 ))}
               </Select>
+            </Box>
+            <Box display="flex" flexDirection="column" gap="1" minWidth="240px">
+              <Text>{t('cashback.widget.clickAction')}</Text>
+              <Select
+                name="widgetClickAction"
+                id="widgetClickAction"
+                value={config.widgetClickAction || 'overlay'}
+                onChange={(e) => update('widgetClickAction', e.target.value)}
+              >
+                <Select.Option value="overlay" label={t('cashback.widget.clickActionOptions.overlay')}>
+                  {t('cashback.widget.clickActionOptions.overlay')}
+                </Select.Option>
+                <Select.Option value="page" label={t('cashback.widget.clickActionOptions.page')}>
+                  {t('cashback.widget.clickActionOptions.page')}
+                </Select.Option>
+              </Select>
+              {config.widgetClickAction === 'page' && !config.customerPageHandle && (
+                <Text fontSize="caption" color="danger-textLow">
+                  {t('cashback.widget.clickActionOptions.pageWarning')}
+                </Text>
+              )}
             </Box>
           </Box>
         </Card.Body>

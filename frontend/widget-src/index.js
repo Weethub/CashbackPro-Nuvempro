@@ -457,7 +457,14 @@
       container.appendChild(wrap);
 
       var overlay = buildOverlay(pageUrl);
-      makeDraggable(icon, sizePx, overlay.open);
+      // "page": navega pra página "Minha Fidelidade" da própria loja (só faz
+      // sentido se ela já foi criada, ver customerPageHandle). Sem página
+      // criada ainda, cai pro painel lateral pra não deixar o clique sem efeito.
+      var storePageUrl = config.customerPageHandle ? window.location.origin + '/' + config.customerPageHandle : null;
+      var onActivate = (config.clickAction === 'page' && storePageUrl)
+        ? function () { window.location.href = storePageUrl; }
+        : overlay.open;
+      makeDraggable(icon, sizePx, onActivate);
       watchCustomerTier(icon, pageUrl, brandColor);
     });
 })();

@@ -399,6 +399,12 @@
         "md": "Médio",
         "lg": "Grande"
       },
+      "clickAction": "Ao clicar no ícone",
+      "clickActionOptions": {
+        "overlay": "Abrir painel lateral (embutido)",
+        "page": "Abrir a página \"Minha Fidelidade\"",
+        "pageWarning": "Você ainda não criou a página \"Minha Fidelidade\" — crie uma abaixo, ou o clique vai abrir o painel lateral por enquanto."
+      },
       "customerPage": {
         "title": "Página \"Minha Fidelidade\"",
         "hint": "Crie a página na sua loja (Nuvemshop > Páginas) e selecione aqui qual delas é a página de fidelidade do cliente, ou deixe a gente criar automaticamente. O conteúdo do cliente aparece embutido direto na página, sem sair da sua loja.",

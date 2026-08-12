@@ -140,21 +140,23 @@
       container.style.setProperty('--icon-ring-width', ringWidth + 'px');
       container.style.setProperty('--icon-progress-color', accent);
       container.style.setProperty('--icon-progress', String(info.progressPercent || 0));
-      icon.style.background = '#ffffff';
+      icon.style.backgroundColor = '#ffffff';
       icon.style.color = accent;
-      // Sem nível ainda alcançado, mostra o ícone do PRÓXIMO como prévia da
-      // meta — sem isso, quem ainda não bateu o primeiro nível via um
-      // círculo branco vazio mesmo com o ícone já configurado no painel.
       var iconSource = (info.tier && info.tier.icon) ? info.tier.icon : (info.nextTier && info.nextTier.icon ? info.nextTier.icon : null);
       if (iconSource) {
         icon.style.backgroundImage = 'url(' + iconSource + ')';
+        icon.style.backgroundSize = 'cover';
+        icon.style.backgroundPosition = 'center';
         icon.textContent = '';
         return;
       }
     } else {
       container.style.setProperty('--icon-ring-width', '0px');
       container.style.setProperty('--icon-progress', '0');
-      icon.style.background = '';
+      icon.style.backgroundColor = '';
+      icon.style.backgroundImage = '';
+      icon.style.backgroundSize = '';
+      icon.style.backgroundPosition = '';
       icon.style.color = '';
     }
     icon.style.backgroundImage = '';

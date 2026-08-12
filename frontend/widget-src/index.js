@@ -87,9 +87,17 @@
   var STYLE = `
     :host { all: initial; }
     * { box-sizing: border-box; font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
-    .icon-wrap { width: var(--icon-size, 60px); height: var(--icon-size, 60px); }
-    .icon {
+    .icon-wrap {
       width: var(--icon-size, 60px); height: var(--icon-size, 60px); border-radius: 50%;
+      padding: var(--icon-ring-width, 0px);
+      background: conic-gradient(
+        var(--icon-progress-color, transparent) calc(var(--icon-progress, 0) * 1%),
+        rgba(17,24,39,0.15) 0
+      );
+      transition: background 0.5s ease;
+    }
+    .icon {
+      width: 100%; height: 100%; border-radius: 50%;
       background: var(--icon-bg, #7C3AED); color: var(--icon-fg, #fff); display: flex;
       align-items: center; justify-content: center; background-size: cover; background-position: center;
       font-size: calc(var(--icon-size, 60px) * 0.4); font-weight: 700; cursor: grab; border: none;
@@ -112,22 +120,30 @@
     return t.content.firstChild;
   }
 
-  // ─── Reflete o nível atual do cliente no ícone ─────────────────────────────
+  // ─── Reflete o nível/progresso do cliente no ícone ─────────────────────────
   // O login (e-mail+código) só acontece em fidelidade.html, hospedada no NOSSO
   // domínio — esse script roda no domínio da loja, então não enxerga o token
   // salvo lá (localStorage é isolado por origem). Um iframe oculto apontando
   // pra widget-session.html (mesma origem da página de fidelidade) resolve
-  // isso: ele lê o token e devolve o nível atual via postMessage.
-  function applyTierToIcon(icon, tier, brandColor) {
-    if (tier) {
-      icon.style.border = '3px solid ' + (tier.color || brandColor);
-      if (tier.icon) {
-        icon.style.backgroundImage = 'url(' + tier.icon + ')';
+  // isso: ele lê o token e devolve nível + % até o próximo via postMessage.
+  //
+  // O "anel" ao redor do ícone é um conic-gradient no wrap (não no ícone em
+  // si) — a fatia preenchida (cor do nível) cresce com --icon-progress (0-100)
+  // até fechar o círculo quando o próximo nível é alcançado.
+  function applyTierToIcon(icon, info, brandColor) {
+    if (info && (info.tier || info.nextTier)) {
+      var accent = (info.tier && info.tier.color) || brandColor;
+      container.style.setProperty('--icon-ring-width', '3px');
+      container.style.setProperty('--icon-progress-color', accent);
+      container.style.setProperty('--icon-progress', String(info.progressPercent || 0));
+      if (info.tier && info.tier.icon) {
+        icon.style.backgroundImage = 'url(' + info.tier.icon + ')';
         icon.textContent = '';
         return;
       }
     } else {
-      icon.style.border = '';
+      container.style.setProperty('--icon-ring-width', '0px');
+      container.style.setProperty('--icon-progress', '0');
     }
     icon.style.backgroundImage = '';
     icon.textContent = '%';
@@ -137,11 +153,11 @@
     var origin;
     try { origin = new URL(pageUrl).origin; } catch (e) { return; }
 
-    // Mostra o último nível conhecido NA HORA (cache local, no domínio da
-    // própria loja — sem esperar o round-trip pro nosso domínio via iframe),
-    // pra o ícone já aparecer certo desde o primeiro carregamento em vez de
-    // genérico até o cliente abrir o app. A checagem real abaixo confirma
-    // (ou corrige, se o nível mudou nesse meio tempo) em seguida.
+    // Mostra o último nível/progresso conhecido NA HORA (cache local, no
+    // domínio da própria loja — sem esperar o round-trip pro nosso domínio
+    // via iframe), pra o ícone já aparecer certo desde o primeiro
+    // carregamento em vez de genérico até o cliente abrir o app. A checagem
+    // real abaixo confirma (ou corrige, se mudou nesse meio tempo) em seguida.
     var cacheKey = 'cashbackpro_widget_tier_' + storeId;
     try {
       var cached = localStorage.getItem(cacheKey);
@@ -158,10 +174,10 @@
       var data = event.data;
       if (!data || data.source !== 'cashbackpro-widget-session' || data.type !== 'tier') return;
 
-      var tier = data.tier;
-      applyTierToIcon(icon, tier, brandColor);
+      var info = { tier: data.tier, nextTier: data.nextTier, progressPercent: data.progressPercent };
+      applyTierToIcon(icon, info, brandColor);
       try {
-        if (tier) localStorage.setItem(cacheKey, JSON.stringify(tier));
+        if (info.tier || info.nextTier) localStorage.setItem(cacheKey, JSON.stringify(info));
         else localStorage.removeItem(cacheKey); // sem sessão válida — não deixa cache velho enganar da próxima vez
       } catch (e) { /* ignore */ }
     });

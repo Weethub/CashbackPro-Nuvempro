@@ -800,15 +800,11 @@ async function listStorePages(store) {
  * injetado na loja inteira) que encontra esse id pelo DOM e injeta o
  * <iframe> de verdade via JS — sem passar pelo sanitizador de Pages.
  */
-function customerPageContent(pageUrl) {
+function customerPageContent() {
   return (
     '<div id="cashbackpro-page-embed" style="min-height:400px;">' +
     '<p style="text-align:center;color:#9CA3AF;padding:80px 16px;">Carregando sua área de fidelidade...</p>' +
-    '</div>' +
-    '<p style="text-align:center;margin-top:8px;">' +
-    '<a href="' + pageUrl + '" target="_blank" rel="noopener" style="color:#6B7280;font-size:12px;">' +
-    'Não carregou? Abrir em uma nova aba' +
-    '</a></p>'
+    '</div>'
   );
 }
 
@@ -836,7 +832,7 @@ function pageI18nFields(content) {
 async function createCustomerPage(store) {
   const config = await getOrCreateConfig(store.id);
   const pageUrl = `${process.env.FRONTEND_URL}/fidelidade.html?store=${store.nuvemshopId}`;
-  const content = customerPageContent(pageUrl);
+  const content = customerPageContent();
   const client = createNuvemshopClient(store.nuvemshopId, store.accessToken, NUVEMSHOP_API_BASE_2025);
 
   if (config.customerPageHandle) {

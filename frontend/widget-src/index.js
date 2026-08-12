@@ -324,6 +324,12 @@
     var origin;
     try { origin = new URL(pageUrl).origin; } catch (e) { return; }
 
+    // O título "Minha Fidelidade" acima do embed é gerado pelo TEMA da
+    // Nuvemshop a partir do título da página, não vem do nosso conteúdo —
+    // fica redundante em cima do app, que já tem seu próprio cabeçalho.
+    var pageHeader = document.querySelector('section.page-header');
+    if (pageHeader) pageHeader.remove();
+
     applyFullBleed(embedEl);
     // Se a janela for redimensionada (ou o celular girar), a coluna do tema
     // pode mudar de posição/largura — remede e reaplica. Repõe o

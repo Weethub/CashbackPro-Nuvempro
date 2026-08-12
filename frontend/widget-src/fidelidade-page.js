@@ -467,5 +467,40 @@
       .catch(function () { continueBoot(); }); // config indisponível — segue o fluxo normal (best-effort)
   }
 
+  // ─── Comunicação com o script pai (quando embutido na página "Minha
+  // Fidelidade" da loja, ver widget-src/index.js) ────────────────────────────
+  // A página roda dentro de um <iframe> injetado por JS na loja. Sem isso, o
+  // iframe teria altura fixa e o conteúdo rolaria SÓ por dentro dele (efeito
+  // "caixa" com rolagem dupla) — em vez disso, avisamos o tamanho real do
+  // conteúdo pro pai ajustar a altura do iframe e a página inteira rolar
+  // naturalmente. E como os modais daqui usam position:fixed (relativo ao
+  // viewport do PRÓPRIO iframe, não da loja), avisamos quando abrem/fecham
+  // pro pai trocar o iframe pra tela cheia só enquanto o modal está aberto.
+  if (window.top !== window.self) {
+    function reportHeight() {
+      window.parent.postMessage(
+        { source: 'cashbackpro-fidelidade', type: 'resize', height: document.documentElement.scrollHeight },
+        '*'
+      );
+    }
+    function reportModalState() {
+      var anyOpen = Array.prototype.some.call(document.querySelectorAll('.cbp-modal'), function (m) { return !m.hidden; });
+      window.parent.postMessage(
+        { source: 'cashbackpro-fidelidade', type: anyOpen ? 'modal-open' : 'modal-close' },
+        '*'
+      );
+    }
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(reportHeight).observe(document.body);
+    }
+    window.addEventListener('load', reportHeight);
+    if (typeof MutationObserver !== 'undefined') {
+      var modalObserver = new MutationObserver(reportModalState);
+      Array.prototype.forEach.call(document.querySelectorAll('.cbp-modal'), function (m) {
+        modalObserver.observe(m, { attributes: true, attributeFilter: ['hidden'] });
+      });
+    }
+  }
+
   boot();
 })();

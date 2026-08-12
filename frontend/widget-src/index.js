@@ -268,9 +268,38 @@
   // "full-bleed" abaixo (width:100vw + margem negativa de metade da tela)
   // arromba esse limite e estica de ponta a ponta, incorporado à loja em vez
   // de aparecer como um bloco dentro do espaço de conteúdo normal.
+  // Estilo "encaixado no fluxo da página" (full-bleed, altura = conteúdo
+  // real) vs. "tela cheia" (só enquanto um modal interno está aberto — ver
+  // abaixo). Aplicados ao próprio <iframe>; embedEl só precisa do full-bleed
+  // uma vez, ele não muda entre os dois modos.
+  function embedFlowStyle() {
+    return (
+      'width: 100vw !important;' +
+      'border: 0 !important;' +
+      'display: block !important;' +
+      'position: static !important;' +
+      'z-index: auto !important;'
+    );
+  }
+  function embedFullscreenStyle() {
+    return (
+      'position: fixed !important;' +
+      'inset: 0 !important;' +
+      'width: 100vw !important;' +
+      'height: 100vh !important;' +
+      'border: 0 !important;' +
+      'display: block !important;' +
+      'z-index: 2147483000 !important;' +
+      'background: #fff !important;'
+    );
+  }
+
   function hydratePageEmbed(pageUrl) {
     var embedEl = document.getElementById('cashbackpro-page-embed');
     if (!embedEl) return;
+    var origin;
+    try { origin = new URL(pageUrl).origin; } catch (e) { return; }
+
     // 100vw inclui a largura da barra de rolagem em vários navegadores, o que
     // sobra uns pixels além da borda direita real — sem isso, dá um scroll
     // horizontal fantasma de uns 15px na página inteira.
@@ -290,12 +319,39 @@
     var iframe = document.createElement('iframe');
     iframe.src = pageUrl;
     iframe.title = 'Minha Fidelidade';
-    iframe.style.cssText =
-      'width: 100vw !important;' +
-      'min-height: 100vh !important;' +
-      'border: 0 !important;' +
-      'display: block !important;';
+    iframe.style.cssText = embedFlowStyle();
+    iframe.style.minHeight = '100vh'; // placeholder até o 1º aviso de altura real
     embedEl.appendChild(iframe);
+
+    // fidelidade-page.js (dentro do iframe) avisa o tamanho real do conteúdo
+    // via postMessage — sem isso o iframe teria altura fixa e o conteúdo
+    // rolaria só por dentro dele (efeito "caixa" com rolagem dupla). Os
+    // modais de lá usam position:fixed relativo ao viewport do PRÓPRIO
+    // iframe, então quando um abre, o iframe vira tela cheia temporariamente
+    // (senão o modal ficaria preso à altura do conteúdo, não da tela).
+    var inModal = false;
+    var lastHeight = null; // preservado através do ciclo abre/fecha modal
+    window.addEventListener('message', function (event) {
+      if (event.origin !== origin || event.source !== iframe.contentWindow) return;
+      var data = event.data;
+      if (!data || data.source !== 'cashbackpro-fidelidade') return;
+
+      if (data.type === 'resize') {
+        lastHeight = data.height;
+        if (!inModal) iframe.style.height = lastHeight + 'px';
+      } else if (data.type === 'modal-open') {
+        inModal = true;
+        iframe.style.cssText = embedFullscreenStyle();
+        document.documentElement.style.overflow = 'hidden';
+      } else if (data.type === 'modal-close') {
+        inModal = false;
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.overflowX = 'hidden';
+        iframe.style.cssText = embedFlowStyle();
+        iframe.style.minHeight = '100vh';
+        if (lastHeight) iframe.style.height = lastHeight + 'px';
+      }
+    });
   }
 
   // ─── Boot ───────────────────────────────────────────────────────────────

@@ -92,7 +92,7 @@
       padding: var(--icon-ring-width, 0px);
       background: conic-gradient(
         var(--icon-progress-color, transparent) calc(var(--icon-progress, 0) * 1%),
-        rgba(17,24,39,0.15) 0
+        #E5E7EB 0
       );
       transition: background 0.5s ease;
     }
@@ -102,7 +102,7 @@
       align-items: center; justify-content: center; background-size: cover; background-position: center;
       font-size: calc(var(--icon-size, 60px) * 0.4); font-weight: 700; cursor: grab; border: none;
       box-shadow: 0 2px 10px rgba(0,0,0,0.25); user-select: none; touch-action: none;
-      transition: filter 0.15s ease;
+      transition: filter 0.15s ease, background-color 0.3s ease, color 0.3s ease;
     }
     .icon:hover { filter: brightness(0.9); }
     .icon.dragging { cursor: grabbing; transition: none; }
@@ -130,12 +130,18 @@
   // O "anel" ao redor do ícone é um conic-gradient no wrap (não no ícone em
   // si) — a fatia preenchida (cor do nível) cresce com --icon-progress (0-100)
   // até fechar o círculo quando o próximo nível é alcançado.
-  function applyTierToIcon(icon, info, brandColor) {
+  // Fundo branco + símbolo/imagem do nível na cor DELE (nunca a cor da loja
+  // quando já existe um nível real envolvido) — só cai pra brandColor se não
+  // houver nível nem próximo nível nenhum pra puxar cor.
+  function applyTierToIcon(icon, info, brandColor, sizePx) {
     if (info && (info.tier || info.nextTier)) {
-      var accent = (info.tier && info.tier.color) || brandColor;
-      container.style.setProperty('--icon-ring-width', '3px');
+      var accent = (info.tier && info.tier.color) || (info.nextTier && info.nextTier.color) || brandColor;
+      var ringWidth = Math.max(3, Math.round((sizePx || 60) * 0.08));
+      container.style.setProperty('--icon-ring-width', ringWidth + 'px');
       container.style.setProperty('--icon-progress-color', accent);
       container.style.setProperty('--icon-progress', String(info.progressPercent || 0));
+      icon.style.background = '#ffffff';
+      icon.style.color = accent;
       if (info.tier && info.tier.icon) {
         icon.style.backgroundImage = 'url(' + info.tier.icon + ')';
         icon.textContent = '';
@@ -144,12 +150,14 @@
     } else {
       container.style.setProperty('--icon-ring-width', '0px');
       container.style.setProperty('--icon-progress', '0');
+      icon.style.background = '';
+      icon.style.color = '';
     }
     icon.style.backgroundImage = '';
     icon.textContent = '%';
   }
 
-  function watchCustomerTier(icon, pageUrl, brandColor) {
+  function watchCustomerTier(icon, pageUrl, brandColor, sizePx) {
     var origin;
     try { origin = new URL(pageUrl).origin; } catch (e) { return; }
 
@@ -161,7 +169,7 @@
     var cacheKey = 'cashbackpro_widget_tier_' + storeId;
     try {
       var cached = localStorage.getItem(cacheKey);
-      if (cached) applyTierToIcon(icon, JSON.parse(cached), brandColor);
+      if (cached) applyTierToIcon(icon, JSON.parse(cached), brandColor, sizePx);
     } catch (e) { /* localStorage indisponível ou cache corrompido — ignora */ }
 
     var iframe = document.createElement('iframe');
@@ -175,7 +183,7 @@
       if (!data || data.source !== 'cashbackpro-widget-session' || data.type !== 'tier') return;
 
       var info = { tier: data.tier, nextTier: data.nextTier, progressPercent: data.progressPercent };
-      applyTierToIcon(icon, info, brandColor);
+      applyTierToIcon(icon, info, brandColor, sizePx);
       try {
         if (info.tier || info.nextTier) localStorage.setItem(cacheKey, JSON.stringify(info));
         else localStorage.removeItem(cacheKey); // sem sessão válida — não deixa cache velho enganar da próxima vez
@@ -505,6 +513,6 @@
         ? function () { window.location.href = storePageUrl; }
         : overlay.open;
       makeDraggable(icon, sizePx, onActivate);
-      watchCustomerTier(icon, pageUrl, brandColor);
+      watchCustomerTier(icon, pageUrl, brandColor, sizePx);
     });
 })();

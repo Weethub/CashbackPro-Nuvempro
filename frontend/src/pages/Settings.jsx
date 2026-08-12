@@ -25,6 +25,7 @@ const DEFAULT_CONFIG = {
   widgetIconPosition: 'bottom-right',
   widgetIconSize: 'md',
   brandColor: '#7C3AED',
+  brandColorAuto: true,
   referralEnabled: false,
   referralPointsReferrer: 0,
   referralPointsReferred: 0,
@@ -427,20 +428,42 @@ export default function Settings() {
           </Text>
         </Card.Header>
         <Card.Body>
-          <Box display="flex" flexDirection="column" gap="1" minWidth="160px">
-            <Text>{t('cashback.appearance.brandColor')}</Text>
-            <Box display="flex" gap="2" alignItems="center">
-              <input
-                type="color"
-                value={config.brandColor || '#7C3AED'}
-                onChange={(e) => update('brandColor', e.target.value)}
-                style={{ width: 44, height: 36, padding: 0, border: '1px solid #D5D9D7', borderRadius: 6, cursor: 'pointer' }}
+          <Box display="flex" flexDirection="column" gap="4">
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap="4">
+              <Box display="flex" flexDirection="column" gap="1">
+                <Text fontWeight="bold">{t('cashback.appearance.autoDetect')}</Text>
+                <Text fontSize="caption" color="neutral-textLow">
+                  {t('cashback.appearance.autoDetectHint')}
+                </Text>
+              </Box>
+              <Toggle
+                active={config.brandColorAuto !== false}
+                onChange={() => update('brandColorAuto', !(config.brandColorAuto !== false))}
+                name="brandColorAuto"
               />
-              <Input
-                name="brandColorHex"
-                value={config.brandColor || '#7C3AED'}
-                onChange={(e) => update('brandColor', e.target.value)}
-              />
+            </Box>
+            <Box display="flex" flexDirection="column" gap="1" minWidth="160px">
+              <Text>{t('cashback.appearance.brandColor')}</Text>
+              <Box display="flex" gap="2" alignItems="center">
+                <input
+                  type="color"
+                  value={config.brandColor || '#7C3AED'}
+                  onChange={(e) => update('brandColor', e.target.value)}
+                  disabled={config.brandColorAuto !== false}
+                  style={{ width: 44, height: 36, padding: 0, border: '1px solid #D5D9D7', borderRadius: 6, cursor: config.brandColorAuto !== false ? 'not-allowed' : 'pointer', opacity: config.brandColorAuto !== false ? 0.5 : 1 }}
+                />
+                <Input
+                  name="brandColorHex"
+                  value={config.brandColor || '#7C3AED'}
+                  onChange={(e) => update('brandColor', e.target.value)}
+                  disabled={config.brandColorAuto !== false}
+                />
+              </Box>
+              {config.brandColorAuto !== false && (
+                <Text fontSize="caption" color="neutral-textLow">
+                  {t('cashback.appearance.brandColorDisabledHint')}
+                </Text>
+              )}
             </Box>
           </Box>
         </Card.Body>

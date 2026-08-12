@@ -295,6 +295,9 @@ model CashbackConfig {
   // tema real da vitrine — usada na página "Minha Fidelidade" e no ícone
   // flutuante em vez de uma cor fixa do CashbackPro.
   brandColor         String?  @default("#7C3AED")
+  // Detecta automaticamente a cor da loja (lida ao vivo da vitrine pelo
+  // widget) em vez de usar o brandColor configurado manualmente acima.
+  brandColorAuto     Boolean  @default(true)
   // Indique e ganhe: liga/desliga e quantos pontos pro indicador e pro indicado
   // (creditados quando o indicado faz a primeira compra paga).
   referralEnabled        Boolean @default(false)

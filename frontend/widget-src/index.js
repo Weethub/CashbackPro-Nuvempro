@@ -354,13 +354,63 @@
     });
   }
 
+  // ─── Detecção automática da cor da loja ────────────────────────────────────
+  // Esse script roda direto no DOM real da loja, então em vez do lojista
+  // digitar um hex manualmente, dá pra ler a cor já renderizada na página.
+  // Heurística: cabeçalho, depois botões/links de destaque comuns — a
+  // primeira cor "não neutra" (nem branco/preto/cinza) encontrada vence.
+  // Best-effort: cada tema da Nuvemshop é construído de um jeito diferente,
+  // sem um padrão universal de "isso aqui é a cor da marca" — em temas fora
+  // do comum pode não achar nada, e aí cai pra cor manual do painel.
+  function parseRgb(str) {
+    var m = str && String(str).match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    return m ? [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)] : null;
+  }
+  function isNeutralColor(rgb) {
+    var r = rgb[0] / 255, g = rgb[1] / 255, b = rgb[2] / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b);
+    var l = (max + min) / 2;
+    var s = max === min ? 0 : (l > 0.5 ? (max - min) / (2 - max - min) : (max - min) / (max + min));
+    return s < 0.15 || l > 0.95 || l < 0.05;
+  }
+  function rgbToHex(rgb) {
+    return '#' + rgb.map(function (c) { return Math.max(0, Math.min(255, c)).toString(16).padStart(2, '0'); }).join('');
+  }
+  function detectBrandColor() {
+    var selectors = [
+      'header',
+      'button[type="submit"]',
+      '[class*="add-to-cart" i]',
+      '[class*="addtocart" i]',
+      '[class*="btn-primary" i]',
+      '.button, a.button, button.button',
+      'nav a',
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var el = document.querySelector(selectors[i]);
+      if (!el) continue;
+      var rgb = parseRgb(getComputedStyle(el).backgroundColor);
+      if (rgb && !isNeutralColor(rgb)) return rgbToHex(rgb);
+    }
+    return null;
+  }
+
   // ─── Boot ───────────────────────────────────────────────────────────────
   fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
     .then(function (res) { return res.json(); })
     .then(function (config) {
+      var autoColor = config.brandColorAuto !== false ? detectBrandColor() : null;
+      var brandColor = autoColor || config.brandColor || '#7C3AED';
+      // A cor detectada só existe aqui (script rodando na loja) — repassa
+      // pro iframe via querystring, já que fidelidade-page.js (cross-origin,
+      // no nosso domínio) não consegue ler a página da loja por conta própria.
+      var pageUrl = config.pageUrl + (autoColor
+        ? (config.pageUrl.indexOf('?') >= 0 ? '&' : '?') + 'autoColor=' + encodeURIComponent(autoColor)
+        : '');
+
       // Independe do "blocked" do ícone: o cliente navegou direto pra essa
       // página, então mostra o app (que já trata sozinho o estado de pausa).
-      hydratePageEmbed(config.pageUrl);
+      hydratePageEmbed(pageUrl);
 
       // "blocked" = lojista pausou o programa E ligou o bloqueio total (o
       // ícone flutuante some). Na pausa "leve" (isActive=false, blocked=false)
@@ -368,7 +418,6 @@
       if (config.blocked) return;
       var sizePx = ICON_SIZES[config.iconSize] || 60;
       var position = getSavedPosition() || config.iconPosition;
-      var brandColor = config.brandColor || '#7C3AED';
       styleHost(position, sizePx);
       container.style.setProperty('--icon-size', sizePx + 'px');
       container.style.setProperty('--icon-bg', brandColor);
@@ -379,8 +428,8 @@
       wrap.appendChild(icon);
       container.appendChild(wrap);
 
-      var overlay = buildOverlay(config.pageUrl);
+      var overlay = buildOverlay(pageUrl);
       makeDraggable(icon, sizePx, overlay.open);
-      watchCustomerTier(icon, config.pageUrl, brandColor);
+      watchCustomerTier(icon, pageUrl, brandColor);
     });
 })();

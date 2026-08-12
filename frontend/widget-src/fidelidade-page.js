@@ -16,6 +16,16 @@
   var TOKEN_KEY = 'cashbackpro_token_' + storeId;
   var REF_KEY = 'cashbackpro_ref_' + storeId;
 
+  // Cor detectada ao vivo na loja pelo widget (ver widget-src/index.js) e
+  // repassada aqui via querystring — só usada quando embutido na própria
+  // loja (o widget é quem consegue ler a página real; aqui dentro do iframe,
+  // cross-origin, não dá). Visitando fidelidade.html direto (fora da loja),
+  // não tem esse parâmetro e cai na cor manual configurada no painel.
+  var autoColorParam = new URL(window.location.href).searchParams.get('autoColor');
+  function isValidColor(c) {
+    return /^#[0-9a-f]{3,8}$/i.test(c) || /^rgb\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*\)$/i.test(c);
+  }
+
   // Captura ?ref=CODE do link de indicação e guarda até o cliente logar.
   try {
     var refParam = new URL(window.location.href).searchParams.get('ref');
@@ -458,7 +468,7 @@
     fetch(API_BASE + '/api/widget/config?store=' + encodeURIComponent(storeId))
       .then(function (r) { return r.json(); })
       .then(function (cfg) {
-        applyBrand(cfg.brandColor);
+        applyBrand(autoColorParam && isValidColor(autoColorParam) ? autoColorParam : cfg.brandColor);
         state.howItWorks = cfg.howItWorks || null;
         state.support = cfg.support || null;
         if (cfg.blocked) { showPaused(); return; }

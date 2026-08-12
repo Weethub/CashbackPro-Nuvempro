@@ -302,7 +302,10 @@
     "appearance": {
       "title": "Aparência",
       "hint": "Combine com as cores da sua loja — usada na página \"Minha Fidelidade\" e no ícone flutuante da vitrine.",
-      "brandColor": "Cor principal da loja"
+      "autoDetect": "Detectar cor automaticamente",
+      "autoDetectHint": "Lê a cor já usada na sua loja (cabeçalho/botões) e aplica sozinho, sem precisar escolher um hex manualmente.",
+      "brandColor": "Cor principal da loja",
+      "brandColorDisabledHint": "Desative a detecção automática acima para escolher uma cor manualmente."
     },
     "referral": {
       "title": "Indique e ganhe",

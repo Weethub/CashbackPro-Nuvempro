@@ -299,7 +299,10 @@
     "appearance": {
       "title": "Apariencia",
       "hint": "Combina con los colores de tu tienda — se usa en la página \"Mi Fidelidad\" y en el ícono flotante de la tienda.",
-      "brandColor": "Color principal de la tienda"
+      "autoDetect": "Detectar color automáticamente",
+      "autoDetectHint": "Lee el color que ya usa tu tienda (encabezado/botones) y lo aplica solo, sin necesidad de elegir un hex manualmente.",
+      "brandColor": "Color principal de la tienda",
+      "brandColorDisabledHint": "Desactiva la detección automática arriba para elegir un color manualmente."
     },
     "referral": {
       "title": "Recomienda y gana",
